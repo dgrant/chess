@@ -1,0 +1,6 @@
+[package]
+name = "chess"
+version = "0.1.0"
+authors = ["David Grant <david.grant@poweredbygrow.com>"]
+
+[dependencies]
