@@ -23,6 +23,10 @@ pub static F: &'static str = "f";
 pub static G: &'static str = "g";
 pub static H: &'static str = "h";
 
+pub enum Squares {
+    A0
+}
+
 
 pub struct Board {
     pub w_pawns: u64,
