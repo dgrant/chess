@@ -6,3 +6,4 @@ authors = ["David Grant <david.grant@poweredbygrow.com>"]
 [dependencies]
 permutohedron = "0.2.4"
 rand = "0.6"
+statistical = "*"

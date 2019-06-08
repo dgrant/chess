@@ -1,5 +1,6 @@
 extern crate permutohedron;
 extern crate rand;
+extern crate statistical;
 
 //use permutohedron::LexicalPermutation;
 use std::cmp::Ordering;
@@ -100,23 +101,27 @@ fn main() {
     println!("{:?}", boxed_players);
     let mut rng = thread_rng();
     let mut best_runs_scored: f32 = 0__f32;
+    let mut best_stddev: f32;
     let mut number_orders_tested = 0;
     loop {
         const NUM_SAMPLES: usize = 1000;
-        let mut runs_array: [u32; NUM_SAMPLES] = [0; NUM_SAMPLES];
+        let mut runs_array: [f32; NUM_SAMPLES] = [0__f32; NUM_SAMPLES];
         let mut sample_counter: usize = 0;
         while sample_counter < NUM_SAMPLES {
-            let runs_scored: u32 = evaluate_order_python(&boxed_players,
+            let runs_scored: f32 = evaluate_order_python(&boxed_players,
                                                          5,
                                                          [2, 2, 4, 4, 99],
-                                                         obs_stats.len());
+                                                         obs_stats.len()) as f32;
             runs_array[sample_counter] = runs_scored;
             sample_counter += 1;
         }
-        let mean_runs_scored: f32 = (runs_array.iter().fold(0,|a, &b| a + b) as f32) / (NUM_SAMPLES as f32);
+        let mean_runs_scored: f32 = statistical::mean(&runs_array);
+        let stddev = statistical::standard_deviation(&runs_array, None);
         if mean_runs_scored > best_runs_scored {
             best_runs_scored = mean_runs_scored;
-            println!("{:?}", mean_runs_scored);
+            best_stddev = stddev;
+            println!("{:?}", best_runs_scored);
+            println!("{:?}", best_stddev);
             println!("{:?}", &boxed_players);
         }
         number_orders_tested += 1;
