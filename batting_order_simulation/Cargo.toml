@@ -1,0 +1,8 @@
+[package]
+name = "batting_order_simulation"
+version = "0.1.0"
+authors = ["David Grant <david.grant@poweredbygrow.com>"]
+
+[dependencies]
+permutohedron = "0.2.4"
+rand = "0.6"
