@@ -44,7 +44,7 @@ pub struct Board {
 }
 
 pub fn get_starting_board() -> Board {
-    let board = Board {
+    Board {
         w_pawns: (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) + (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7)),
         w_knights: (1 << (0 + 1)) + (1 << (0 + 6)),
         w_bishops: (1 << (0 + 2)) + (1 << (0 + 5)),
@@ -57,8 +57,7 @@ pub fn get_starting_board() -> Board {
         b_rooks: (1 << (7*8 + 0)) + (1 << (7*8 + 7)),
         b_queen: (1 << (7*8 + 3)),
         b_king: (1 << (7*8 + 4)),
-    };
-    board
+    }
 }
 
 pub fn string_file_to_int(file: &str) -> u8 {
@@ -111,7 +110,7 @@ pub fn get_piece_at_coordinate(board: &Board, coordinate: &str) -> &'static str 
     } else if is_bit_set(board.w_bishops, bitboard_index) {
         return W_BISHOP;
     } else if is_bit_set(board.w_queen, bitboard_index) {
-        return W_QUEEN;
+        return W_QUEEN;`
     } else if is_bit_set(board.w_rooks, bitboard_index) {
         return W_ROOK;
     } else if is_bit_set(board.w_king, bitboard_index) {
