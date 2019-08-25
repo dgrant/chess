@@ -5,8 +5,9 @@ extern crate statistical;
 //use permutohedron::LexicalPermutation;
 use std::cmp::Ordering;
 //use permutohedron::heap_recursive;
-use rand::thread_rng;
+use rand::{thread_rng, random};
 use rand::seq::SliceRandom;
+use std::collections::LinkedList;
 
 #[derive(Debug)]
 #[derive(Eq)]
@@ -49,24 +50,40 @@ fn evaluate_order_python(players: &Box<[Player]>,
     let mut order_position: usize = 0;
     let mut runs_scored: u32 = 0;
     let mut inning: usize = 0;
+    let mut bases: LinkedList<bool> = LinkedList::new();
     while inning < num_innings {
-        let mut num_on_base: u32 = 0;
+        bases.clear();
+//        println!("Inning: {:?}", inning);
         let mut num_outs: u32 = 0;
+        let mut runs_scored_this_inning: u32 = 0;
         let runs_limit_for_inning: u32 = run_limits[inning];
-        while num_outs < 3 && runs_scored < runs_limit_for_inning {
+        while num_outs < 3 && runs_scored_this_inning < runs_limit_for_inning {
             order_position += 1;
             order_position = order_position % num_batters;
-            let obs_int: u32 = players[order_position].obs;
-            let random_number: f64 = rand::random();
+            let player = &players[order_position];
+//            println!("Player: {:?}", player);
+            let obs_int: u32 = player.obs;
+            let random_number: f64 = random();
+//            println!("{:?}", random_number);
             if ((random_number * 1000__f64) as u32) < obs_int {
-                num_on_base += 1;
-                if num_on_base > 3 {
-                    runs_scored += 1;
+//                println!("*** HIT!");
+                bases.push_front(true);
+                if player.hits_doubles && random::<f64>() < 0.4__f64 {
+                    bases.push_front(false);
                 }
             } else {
+//                println!("*** OUT!");
                 num_outs += 1
             }
+            while bases.len() > 3 {
+                if bases.pop_back().unwrap() {
+                    runs_scored_this_inning += 1;
+//                    println!("*** Run scored!!");
+                }
+            }
         }
+//        println!("Runs scored this inning: {:?}", runs_scored_this_inning);
+        runs_scored += runs_scored_this_inning;
         inning += 1;
     }
     return runs_scored;
@@ -75,25 +92,25 @@ fn evaluate_order_python(players: &Box<[Player]>,
 
 fn main() {
     let obs_stats = [
-        ("Felix", 0.259),
-        ("Isaiah", 0.774),
-        ("Caleb", 0.586),
-        ("Claire", 0.710),
-        ("Sam", 0.581),
-        ("Piper", 0.571),
-        ("William", 0.419),
-        ("Casey", 0.360),
-        ("Zayne", 0.320),
-        ("Jodhyn", 0.286),
-        ("Naden", 0.871),
-        ("Aiden", 0.333),
+        ("Naden", 0.833, true),
+        ("Isaiah", 0.750, true),
+        ("Claire", 0.722, true),
+        ("Caleb", 0.618, false),
+        ("Sam", 0.528, false),
+        ("Piper", 0.576, false),
+        ("William", 0.400, false),
+        ("Felix", 0.267, false),
+        ("Casey", 0.414, false),
+        ("Zayne", 0.345, false),
+//        ("Jodhyn", 0.250, false),
+        ("Aiden", 0.367, false),
     ];
     let mut players = Vec::new();
     let mut index = 0;
     while index < obs_stats.len() {
         let player = build_player(String::from(obs_stats[index].0),
                                   (obs_stats[index].1 * 1000__f64).round() as u32,
-                                  false);
+                            obs_stats[index].2);
         players.push(player);
         index += 1;
     }
@@ -132,6 +149,7 @@ fn main() {
 //            break;
 //        }
         boxed_players.shuffle(&mut rng);
+//        break;
     }
 //    println!("{:?}", boxed_players);
 }
