@@ -24,17 +24,27 @@ pub static G: &'static str = "g";
 pub static H: &'static str = "h";
 
 pub enum Squares {
-    A0
+    A1,B1,C1,D1,E1,F1,G1,H1,
+    A2,B2,C2,D2,E2,F2,G2,H2,
+    A3,B3,C3,D3,E3,F3,G3,H3,
+    A4,B4,C4,D4,E4,F4,G4,H4,
+    A5,B5,C5,D5,E5,F5,G5,H5,
+    A6,B6,C6,D6,E6,F6,G6,H6,
+    A7,B7,C7,D7,E7,F7,G7,H7,
+    A8,B8,C8,D8,E8,F8,G8,H8,
 }
 
 
 pub struct Board {
+    /// White pieces
     pub w_pawns: u64,
     pub w_knights: u64,
     pub w_bishops: u64,
     pub w_rooks: u64,
     pub w_queen: u64,
     pub w_king: u64,
+
+    /// Black pieces
     pub b_knights: u64,
     pub b_bishops: u64,
     pub b_rooks: u64,
@@ -42,6 +52,40 @@ pub struct Board {
     pub b_queen: u64,
     pub b_king: u64,
 }
+
+impl Board {
+    pub fn get_piece_at_coordinate(&self, coordinate: &str) -> &'static str {
+        let bitboard_index = convert_coordinate_to_bitboard_index(coordinate);
+        if is_bit_set(self.w_pawns, bitboard_index) {
+            return W_PAWN;
+        } else if is_bit_set(self.w_knights, bitboard_index) {
+            return W_KNIGHT;
+        } else if is_bit_set(self.w_bishops, bitboard_index) {
+            return W_BISHOP;
+        } else if is_bit_set(self.w_queen, bitboard_index) {
+            return W_QUEEN;
+        } else if is_bit_set(self.w_rooks, bitboard_index) {
+            return W_ROOK;
+        } else if is_bit_set(self.w_king, bitboard_index) {
+            return W_KING;
+        } else if is_bit_set(self.b_pawns, bitboard_index) {
+            return B_PAWN;
+        } else if is_bit_set(self.b_knights, bitboard_index) {
+            return B_KNIGHT;
+        } else if is_bit_set(self.b_bishops, bitboard_index) {
+            return B_BISHOP;
+        } else if is_bit_set(self.b_queen, bitboard_index) {
+            return B_QUEEN;
+        } else if is_bit_set(self.b_king, bitboard_index) {
+            return B_KING;
+        } else if is_bit_set(self.b_rooks, bitboard_index) {
+            return B_ROOK;
+        } else {
+            return W_SPACE;
+        }
+    }
+}
+
 
 pub fn get_starting_board() -> Board {
     Board {
@@ -60,7 +104,7 @@ pub fn get_starting_board() -> Board {
     }
 }
 
-pub fn string_file_to_int(file: &str) -> u8 {
+pub fn file_name_to_int(file: &str) -> u8 {
     match file {
         "a" => 0,
         "b" => 1,
@@ -90,46 +134,19 @@ pub fn int_file_to_string(file: u8) -> &'static str {
     }
 }
 
+/// Converts a coordinate like a1 into a bitboard index. ie. a1->0, h8->63
+///
+/// # Arguments
+/// * `coordinate` - a chess board coordinate like f6
 pub fn convert_coordinate_to_bitboard_index(coordinate: &str) -> u8 {
-    let first_char = &coordinate[0..1];
-    let file_number = string_file_to_int(first_char);
+    let file = &coordinate[0..1];
+    let file_number = file_name_to_int(file);
     let rank: u8 = (&coordinate[1..2]).parse().unwrap();
     return (rank - 1) * 8 + file_number;
 }
 
 pub fn is_bit_set(bitboard: u64, bit: u8) -> bool {
     (1 << bit) & bitboard != 0
-}
-
-pub fn get_piece_at_coordinate(board: &Board, coordinate: &str) -> &'static str {
-    let bitboard_index = convert_coordinate_to_bitboard_index(coordinate);
-    if is_bit_set(board.w_pawns, bitboard_index) {
-        return W_PAWN;
-    } else if is_bit_set(board.w_knights, bitboard_index) {
-        return W_KNIGHT;
-    } else if is_bit_set(board.w_bishops, bitboard_index) {
-        return W_BISHOP;
-    } else if is_bit_set(board.w_queen, bitboard_index) {
-        return W_QUEEN;`
-    } else if is_bit_set(board.w_rooks, bitboard_index) {
-        return W_ROOK;
-    } else if is_bit_set(board.w_king, bitboard_index) {
-        return W_KING;
-    } else if is_bit_set(board.b_pawns, bitboard_index) {
-        return B_PAWN;
-    } else if is_bit_set(board.b_knights, bitboard_index) {
-        return B_KNIGHT;
-    } else if is_bit_set(board.b_bishops, bitboard_index) {
-        return B_BISHOP;
-    } else if is_bit_set(board.b_queen, bitboard_index) {
-        return B_QUEEN;
-    } else if is_bit_set(board.b_king, bitboard_index) {
-        return B_KING;
-    } else if is_bit_set(board.b_rooks, bitboard_index) {
-        return B_ROOK;
-    } else {
-        return W_SPACE;
-    }
 }
 
 pub fn print_board(_board: &Board) {
