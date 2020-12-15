@@ -1,3 +1,6 @@
+use board::Color::{White, Black};
+use board;
+
 pub static W_PAWN: &'static str = "♙";
 pub static W_ROOK: &'static str = "♖";
 pub static W_KNIGHT: &'static str = "♘";
@@ -23,62 +26,180 @@ pub static F: &'static str = "f";
 pub static G: &'static str = "g";
 pub static H: &'static str = "h";
 
-pub enum Squares {
-    A1,B1,C1,D1,E1,F1,G1,H1,
-    A2,B2,C2,D2,E2,F2,G2,H2,
-    A3,B3,C3,D3,E3,F3,G3,H3,
-    A4,B4,C4,D4,E4,F4,G4,H4,
-    A5,B5,C5,D5,E5,F5,G5,H5,
-    A6,B6,C6,D6,E6,F6,G6,H6,
-    A7,B7,C7,D7,E7,F7,G7,H7,
-    A8,B8,C8,D8,E8,F8,G8,H8,
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum Color {
+    White,
+    Black,
+}
+
+#[derive(PartialEq)]
+pub enum PieceType {
+    Pawn,
+    Rook,
+    Knight,
+    Bishop,
+    Queen,
+    King,
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum Piece {
+    WhitePawn,
+    WhiteRook,
+    WhiteKnight,
+    WhiteBishop,
+    WhiteQueen,
+    WhiteKing,
+    BlackPawn,
+    BlackRook,
+    BlackKnight,
+    BlackBishop,
+    BlackQueen,
+    BlackKing,
+}
+
+impl Piece {
+    pub fn color(&self) -> Color {
+        match self {
+            board::Piece::WhitePawn => White,
+            board::Piece::WhiteRook => White,
+            board::Piece::WhiteKnight => White,
+            board::Piece::WhiteBishop => White,
+            board::Piece::WhiteQueen => White,
+            board::Piece::WhiteKing => White,
+            board::Piece::BlackPawn => Black,
+            board::Piece::BlackRook => Black,
+            board::Piece::BlackKnight => Black,
+            board::Piece::BlackBishop => Black,
+            board::Piece::BlackQueen => Black,
+            board::Piece::BlackKing => Black,
+        }
+    }
+}
+
+#[derive(PartialEq)]
+pub enum Square {
+    A1,
+    B1,
+    C1,
+    D1,
+    E1,
+    F1,
+    G1,
+    H1,
+    A2,
+    B2,
+    C2,
+    D2,
+    E2,
+    F2,
+    G2,
+    H2,
+    A3,
+    B3,
+    C3,
+    D3,
+    E3,
+    F3,
+    G3,
+    H3,
+    A4,
+    B4,
+    C4,
+    D4,
+    E4,
+    F4,
+    G4,
+    H4,
+    A5,
+    B5,
+    C5,
+    D5,
+    E5,
+    F5,
+    G5,
+    H5,
+    A6,
+    B6,
+    C6,
+    D6,
+    E6,
+    F6,
+    G6,
+    H6,
+    A7,
+    B7,
+    C7,
+    D7,
+    E7,
+    F7,
+    G7,
+    H7,
+    A8,
+    B8,
+    C8,
+    D8,
+    E8,
+    F8,
+    G8,
+    H8,
 }
 
 
 pub struct Board {
     /// White pieces
-    pub w_pawns: u64,
-    pub w_knights: u64,
-    pub w_bishops: u64,
-    pub w_rooks: u64,
-    pub w_queen: u64,
-    pub w_king: u64,
+    pub white_pawns: u64,
+    pub white_knights: u64,
+    pub white_bishops: u64,
+    pub white_rooks: u64,
+    pub white_queen: u64,
+    pub white_king: u64,
+    pub any_white: u64,
 
     /// Black pieces
-    pub b_knights: u64,
-    pub b_bishops: u64,
-    pub b_rooks: u64,
-    pub b_pawns: u64,
-    pub b_queen: u64,
-    pub b_king: u64,
+    pub black_pawns: u64,
+    pub black_knights: u64,
+    pub black_bishops: u64,
+    pub black_rooks: u64,
+    pub black_queen: u64,
+    pub black_king: u64,
+    pub any_black: u64,
+
+    pub empty: u64,
+    pub occupied: u64,
 }
 
 impl Board {
+    // pub fn get_piece_at(&self, position: Square) -> &'static str {
+    // }
+
     pub fn get_piece_at_coordinate(&self, coordinate: &str) -> &'static str {
         let bitboard_index = convert_coordinate_to_bitboard_index(coordinate);
-        if is_bit_set(self.w_pawns, bitboard_index) {
+        if is_bit_set(self.white_pawns, bitboard_index) {
             return W_PAWN;
-        } else if is_bit_set(self.w_knights, bitboard_index) {
+        } else if is_bit_set(self.white_knights, bitboard_index) {
             return W_KNIGHT;
-        } else if is_bit_set(self.w_bishops, bitboard_index) {
+        } else if is_bit_set(self.white_bishops, bitboard_index) {
             return W_BISHOP;
-        } else if is_bit_set(self.w_queen, bitboard_index) {
+        } else if is_bit_set(self.white_queen, bitboard_index) {
             return W_QUEEN;
-        } else if is_bit_set(self.w_rooks, bitboard_index) {
+        } else if is_bit_set(self.white_rooks, bitboard_index) {
             return W_ROOK;
-        } else if is_bit_set(self.w_king, bitboard_index) {
+        } else if is_bit_set(self.white_king, bitboard_index) {
             return W_KING;
-        } else if is_bit_set(self.b_pawns, bitboard_index) {
+        } else if is_bit_set(self.black_pawns, bitboard_index) {
             return B_PAWN;
-        } else if is_bit_set(self.b_knights, bitboard_index) {
+        } else if is_bit_set(self.black_knights, bitboard_index) {
             return B_KNIGHT;
-        } else if is_bit_set(self.b_bishops, bitboard_index) {
+        } else if is_bit_set(self.black_bishops, bitboard_index) {
             return B_BISHOP;
-        } else if is_bit_set(self.b_queen, bitboard_index) {
+        } else if is_bit_set(self.black_queen, bitboard_index) {
             return B_QUEEN;
-        } else if is_bit_set(self.b_king, bitboard_index) {
+        } else if is_bit_set(self.black_king, bitboard_index) {
             return B_KING;
-        } else if is_bit_set(self.b_rooks, bitboard_index) {
+        } else if is_bit_set(self.black_rooks, bitboard_index) {
             return B_ROOK;
         } else {
             return W_SPACE;
@@ -89,18 +210,18 @@ impl Board {
 
 pub fn get_starting_board() -> Board {
     Board {
-        w_pawns: (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) + (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7)),
-        w_knights: (1 << (0 + 1)) + (1 << (0 + 6)),
-        w_bishops: (1 << (0 + 2)) + (1 << (0 + 5)),
-        w_rooks: (1 << (0 + 0)) + (1 << (0 + 7)),
-        w_queen: (1 << (0 + 3)),
-        w_king: (1 << (0 + 4)),
-        b_pawns: (1 << (6*8 + 0)) + (1 << (6*8 + 1)) + (1 << (6*8 + 2)) + (1 << (6*8 + 3)) + (1 << (6*8 + 4)) + (1 << (6*8 + 5)) + (1 << (6*8 + 6)) + (1 << (6*8 + 7)),
-        b_knights: (1 << (7*8 + 1)) + (1 << (7*8 + 6)),
-        b_bishops: (1 << (7*8 + 2)) + (1 << (7*8 + 5)),
-        b_rooks: (1 << (7*8 + 0)) + (1 << (7*8 + 7)),
-        b_queen: (1 << (7*8 + 3)),
-        b_king: (1 << (7*8 + 4)),
+        white_pawns: (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) + (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7)),
+        white_knights: (1 << (0 + 1)) + (1 << (0 + 6)),
+        white_bishops: (1 << (0 + 2)) + (1 << (0 + 5)),
+        white_rooks: (1 << (0 + 0)) + (1 << (0 + 7)),
+        white_queen: (1 << (0 + 3)),
+        white_king: (1 << (0 + 4)),
+        black_pawns: (1 << (6 * 8 + 0)) + (1 << (6 * 8 + 1)) + (1 << (6 * 8 + 2)) + (1 << (6 * 8 + 3)) + (1 << (6 * 8 + 4)) + (1 << (6 * 8 + 5)) + (1 << (6 * 8 + 6)) + (1 << (6 * 8 + 7)),
+        black_knights: (1 << (7 * 8 + 1)) + (1 << (7 * 8 + 6)),
+        black_bishops: (1 << (7 * 8 + 2)) + (1 << (7 * 8 + 5)),
+        black_rooks: (1 << (7 * 8 + 0)) + (1 << (7 * 8 + 7)),
+        black_queen: (1 << (7 * 8 + 3)),
+        black_king: (1 << (7 * 8 + 4)),
     }
 }
 
@@ -154,7 +275,7 @@ pub fn print_board(_board: &Board) {
         for file in 0..8 {
             let coordinate = &format!("{}{}", int_file_to_string(file), (rank + 1).to_string());
 //            print!("coordinate:{}\n", coordinate);
-            let piece = get_piece_at_coordinate(_board, coordinate);
+            let piece = _board.get_piece_at_coordinate(coordinate);
             print!("{}", piece);
         }
         print!("\n");

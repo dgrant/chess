@@ -3,6 +3,7 @@ pub mod board;
 #[cfg(test)]
 mod tests {
     use board;
+    use board::{Piece, Color};
 
     #[test]
     fn convert_coordinate_to_bitboard_index_valid() {
@@ -27,7 +28,13 @@ mod tests {
     }
 
     #[test]
-    fn test() {
+    fn test_enums() {
+        assert_eq!(Piece::WhitePawn.color(), Color::White);
+        assert_eq!(Piece::WhitePawn.color(), Color::White);
+    }
+
+    #[test]
+    fn test_board() {
         let myboard = board::get_starting_board();
         assert_eq!(myboard.get_piece_at_coordinate("a2"), board::W_PAWN);
         assert_eq!(myboard.get_piece_at_coordinate("b2"), board::W_PAWN);
@@ -64,7 +71,7 @@ mod tests {
 
         board::print_board(&myboard);
 
-        assert_eq!(myboard.w_pawns, 0b0000000000000000000000000000000000000000000000001111111100000000);
-        assert_eq!(myboard.b_pawns, 0b0000000011111111000000000000000000000000000000000000000000000000);
+        assert_eq!(myboard.white_pawns, 0b0000000000000000000000000000000000000000000000001111111100000000);
+        assert_eq!(myboard.black_pawns, 0b0000000011111111000000000000000000000000000000000000000000000000);
     }
 }
