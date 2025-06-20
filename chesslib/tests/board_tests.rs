@@ -1,6 +1,7 @@
 extern crate chesslib;
-use chesslib::board::{get_starting_board, convert_coordinate_to_bitboard_index, is_bit_set};
+use chesslib::board::{get_starting_board, convert_coordinate_to_bitboard_index, is_bit_set, bitboard_to_string};
 use chesslib::move_generation::{w_single_push_targets, w_double_push_targets, b_single_push_targets, b_double_push_targets, w_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_able_to_double_push};
+use rand::Rng;
 
 #[test]
 fn test_initial_board_pawns() {
@@ -116,4 +117,59 @@ fn test_b_pawns_able_to_double_push() {
     let expected_black_pawns_double_push = 0x00FF000000000000; // Adjusted expected value
     let diff_black_pawns_double_push = black_pawns_double_push ^ expected_black_pawns_double_push;
     assert!(diff_black_pawns_double_push == 0, "Black pawns able to double push mismatch: diff = {:064b}", diff_black_pawns_double_push);
+}
+
+#[test]
+fn test_random_pawn_moves_no_capture() {
+    use rand::Rng;
+
+    let mut board = get_starting_board();
+    let mut rng = rand::thread_rng();
+
+    loop { // Run until no more valid moves for white or black
+        let white_pawns_push = w_pawns_able_to_push(board.white_pawns, board.empty);
+        let black_pawns_push = b_pawns_able_to_push(board.black_pawns, board.empty);
+
+        // Break the loop if no valid moves for both sides
+        if white_pawns_push == 0 && black_pawns_push == 0 {
+            break;
+        }
+
+        // Randomly select a pawn to move for white
+        if white_pawns_push != 0 {
+            let white_pawn_that_can_push = white_pawns_push & (1 << rng.gen_range(0..64));
+            if white_pawn_that_can_push != 0 {
+                println!("White pawn that will push:\n{}", bitboard_to_string(white_pawn_that_can_push));
+                board.white_pawns ^= white_pawn_that_can_push; // Remove pawn from current position
+                board.empty ^= white_pawn_that_can_push; // Update empty squares
+                let new_position = white_pawn_that_can_push << 8;
+                board.white_pawns |= new_position; // Add pawn to new position
+                board.empty ^= new_position; // Update empty squares
+                println!("White pawns:\n{}", bitboard_to_string(board.white_pawns));
+                // println!("Empty squares:\n{}", bitboard_to_string(board.empty));
+            }
+        }
+
+        // Randomly select a pawn to move for black
+        if black_pawns_push != 0 {
+            let black_move = black_pawns_push & (1 << rng.gen_range(0..64));
+            if black_move != 0 {
+                println!("Black pawn that will move:\n{}", bitboard_to_string(black_move));
+                board.black_pawns ^= black_move; // Remove pawn from current position
+                board.empty ^= black_move; // Update empty squares
+                let new_position = black_move >> 8;
+                board.black_pawns |= new_position; // Add pawn to new position
+                board.empty ^= new_position; // Update empty squares
+                println!("Black pawns:\n{}", bitboard_to_string(board.black_pawns));
+                // println!("Empty squares:\n{}", bitboard_to_string(board.empty));
+            }
+        }
+
+        // Ensure no overlap between white and black pawns
+        assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap!");
+    }
+
+    // Verify that white and black pawns reached each other
+    assert!(board.white_pawns ^ (board.black_pawns >> 8) == 0, "White pawns and black pawns should have reached each other!");
+    assert!((board.white_pawns << 8) ^ board.black_pawns == 0, "White pawns and black pawns should have reached each other!");
 }

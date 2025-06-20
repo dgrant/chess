@@ -292,16 +292,38 @@ pub fn is_bit_set(bitboard: u64, bit: u8) -> bool {
     (1 << bit) & bitboard != 0
 }
 
-pub fn print_board(_board: &Board) {
+pub fn board_to_string(board: &Board) -> String {
+    let mut result = String::new();
     for rank in (0..8).rev() {
         for file in 0..8 {
             let coordinate = &format!("{}{}", int_file_to_string(file), (rank + 1).to_string());
-//            print!("coordinate:{}\n", coordinate);
-            let piece = _board.get_piece_at_coordinate(coordinate);
-            print!("{}", piece);
+            let piece = board.get_piece_at_coordinate(coordinate);
+            result.push_str(piece);
         }
-        print!("\n");
+        result.push('\n');
     }
+    result
+}
+
+pub fn print_board(board: &Board) {
+    let board_string = board_to_string(board);
+    print!("{}", board_string);
+}
+
+pub fn bitboard_to_string(bitboard: u64) -> String {
+    let mut result = String::new();
+    for rank in (0..8).rev() {
+        for file in 0..8 {
+            let square = 1 << (rank * 8 + file);
+            if bitboard & square != 0 {
+                result.push('1'); // Occupied square
+            } else {
+                result.push('.'); // Empty square
+            }
+        }
+        result.push('\n'); // Newline after each rank
+    }
+    result
 }
 
 #[cfg(test)]
