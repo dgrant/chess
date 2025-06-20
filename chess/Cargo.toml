@@ -1,6 +1,8 @@
 [package]
 name = "chess"
 version = "0.1.0"
-authors = ["David Grant <david.grant@poweredbygrow.com>"]
+authors = ["David Grant <davidgrant@gmail.com>"]
+edition = "2021"
 
 [dependencies]
+chesslib = { path = "../chesslib" }

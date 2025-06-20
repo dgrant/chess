@@ -1,5 +1,4 @@
-use board::Color::{White, Black};
-use board;
+use crate::board::Color::{White, Black};
 
 pub static W_PAWN: &'static str = "♙";
 pub static W_ROOK: &'static str = "♖";
@@ -63,18 +62,18 @@ pub enum Piece {
 impl Piece {
     pub fn color(&self) -> Color {
         match self {
-            board::Piece::WhitePawn => White,
-            board::Piece::WhiteRook => White,
-            board::Piece::WhiteKnight => White,
-            board::Piece::WhiteBishop => White,
-            board::Piece::WhiteQueen => White,
-            board::Piece::WhiteKing => White,
-            board::Piece::BlackPawn => Black,
-            board::Piece::BlackRook => Black,
-            board::Piece::BlackKnight => Black,
-            board::Piece::BlackBishop => Black,
-            board::Piece::BlackQueen => Black,
-            board::Piece::BlackKing => Black,
+            Piece::WhitePawn => White,
+            Piece::WhiteRook => White,
+            Piece::WhiteKnight => White,
+            Piece::WhiteBishop => White,
+            Piece::WhiteQueen => White,
+            Piece::WhiteKing => White,
+            Piece::BlackPawn => Black,
+            Piece::BlackRook => Black,
+            Piece::BlackKnight => Black,
+            Piece::BlackBishop => Black,
+            Piece::BlackQueen => Black,
+            Piece::BlackKing => Black,
         }
     }
 }
@@ -156,8 +155,6 @@ pub struct Board {
     pub white_rooks: u64,
     pub white_queen: u64,
     pub white_king: u64,
-    pub any_white: u64,
-
     /// Black pieces
     pub black_pawns: u64,
     pub black_knights: u64,
@@ -165,10 +162,10 @@ pub struct Board {
     pub black_rooks: u64,
     pub black_queen: u64,
     pub black_king: u64,
+    pub any_white: u64,
     pub any_black: u64,
-
     pub empty: u64,
-    pub occupied: u64,
+    pub side_to_move: Color
 }
 
 impl Board {
@@ -209,19 +206,43 @@ impl Board {
 
 
 pub fn get_starting_board() -> Board {
+    let white_pawns = (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) +
+                     (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7));
+    let white_knights = (1 << (0 + 1)) + (1 << (0 + 6));
+    let white_bishops = (1 << (0 + 2)) + (1 << (0 + 5));
+    let white_rooks = (1 << (0 + 0)) + (1 << (0 + 7));
+    let white_queen = 1 << (0 + 3);
+    let white_king = 1 << (0 + 4);
+    let black_pawns = (1 << (6 * 8 + 0)) + (1 << (6 * 8 + 1)) + (1 << (6 * 8 + 2)) +
+                     (1 << (6 * 8 + 3)) + (1 << (6 * 8 + 4)) + (1 << (6 * 8 + 5)) +
+                     (1 << (6 * 8 + 6)) + (1 << (6 * 8 + 7));
+    let black_knights = (1 << (7 * 8 + 1)) + (1 << (7 * 8 + 6));
+    let black_bishops = (1 << (7 * 8 + 2)) + (1 << (7 * 8 + 5));
+    let black_rooks = (1 << (7 * 8 + 0)) + (1 << (7 * 8 + 7));
+    let black_queen = 1 << (7 * 8 + 3);
+    let black_king = 1 << (7 * 8 + 4);
+
+    let any_white = white_pawns | white_knights | white_bishops | white_rooks | white_queen | white_king;
+    let any_black = black_pawns | black_knights | black_bishops | black_rooks | black_queen | black_king;
+    let empty = !(any_white | any_black);
+
     Board {
-        white_pawns: (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) + (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7)),
-        white_knights: (1 << (0 + 1)) + (1 << (0 + 6)),
-        white_bishops: (1 << (0 + 2)) + (1 << (0 + 5)),
-        white_rooks: (1 << (0 + 0)) + (1 << (0 + 7)),
-        white_queen: (1 << (0 + 3)),
-        white_king: (1 << (0 + 4)),
-        black_pawns: (1 << (6 * 8 + 0)) + (1 << (6 * 8 + 1)) + (1 << (6 * 8 + 2)) + (1 << (6 * 8 + 3)) + (1 << (6 * 8 + 4)) + (1 << (6 * 8 + 5)) + (1 << (6 * 8 + 6)) + (1 << (6 * 8 + 7)),
-        black_knights: (1 << (7 * 8 + 1)) + (1 << (7 * 8 + 6)),
-        black_bishops: (1 << (7 * 8 + 2)) + (1 << (7 * 8 + 5)),
-        black_rooks: (1 << (7 * 8 + 0)) + (1 << (7 * 8 + 7)),
-        black_queen: (1 << (7 * 8 + 3)),
-        black_king: (1 << (7 * 8 + 4)),
+        white_pawns,
+        white_knights,
+        white_bishops,
+        white_rooks,
+        white_queen,
+        white_king,
+        black_pawns,
+        black_knights,
+        black_bishops,
+        black_rooks,
+        black_queen,
+        black_king,
+        any_white,
+        any_black,
+        empty,
+        side_to_move: Color::White
     }
 }
 
@@ -279,5 +300,183 @@ pub fn print_board(_board: &Board) {
             print!("{}", piece);
         }
         print!("\n");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_starting_board_side_to_move() {
+        let board = get_starting_board();
+        assert_eq!(board.side_to_move, Color::White);
+    }
+
+    #[test]
+    fn test_starting_board_piece_counts() {
+        let board = get_starting_board();
+        
+        // Count bits set in each piece bitboard
+        let white_pawn_count = board.white_pawns.count_ones();
+        let black_pawn_count = board.black_pawns.count_ones();
+        let white_knight_count = board.white_knights.count_ones();
+        let black_knight_count = board.black_knights.count_ones();
+        
+        assert_eq!(white_pawn_count, 8, "Should be 8 white pawns");
+        assert_eq!(black_pawn_count, 8, "Should be 8 black pawns");
+        assert_eq!(white_knight_count, 2, "Should be 2 white knights");
+        assert_eq!(black_knight_count, 2, "Should be 2 black knights");
+    }
+
+    #[test]
+    fn test_starting_board_white_piece_positions() {
+        let board = get_starting_board();
+        
+        // White pieces
+        // Pawns on rank 2
+        assert_eq!(board.get_piece_at_coordinate("a2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("b2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("c2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("d2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("e2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("f2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("g2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("h2"), W_PAWN);
+        
+        // Back rank pieces
+        assert_eq!(board.get_piece_at_coordinate("a1"), W_ROOK);
+        assert_eq!(board.get_piece_at_coordinate("h1"), W_ROOK);
+        assert_eq!(board.get_piece_at_coordinate("b1"), W_KNIGHT);
+        assert_eq!(board.get_piece_at_coordinate("g1"), W_KNIGHT);
+        assert_eq!(board.get_piece_at_coordinate("c1"), W_BISHOP);
+        assert_eq!(board.get_piece_at_coordinate("f1"), W_BISHOP);
+        assert_eq!(board.get_piece_at_coordinate("d1"), W_QUEEN);
+        assert_eq!(board.get_piece_at_coordinate("e1"), W_KING);
+    }
+
+    #[test]
+    fn test_starting_board_black_piece_positions() {
+        let board = get_starting_board();
+        
+        // Black pieces
+        // Pawns on rank 7
+        assert_eq!(board.get_piece_at_coordinate("a7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("b7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("c7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("d7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("e7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("f7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("g7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("h7"), B_PAWN);
+        
+        // Back rank pieces
+        assert_eq!(board.get_piece_at_coordinate("a8"), B_ROOK);
+        assert_eq!(board.get_piece_at_coordinate("h8"), B_ROOK);
+        assert_eq!(board.get_piece_at_coordinate("b8"), B_KNIGHT);
+        assert_eq!(board.get_piece_at_coordinate("g8"), B_KNIGHT);
+        assert_eq!(board.get_piece_at_coordinate("c8"), B_BISHOP);
+        assert_eq!(board.get_piece_at_coordinate("f8"), B_BISHOP);
+        assert_eq!(board.get_piece_at_coordinate("d8"), B_QUEEN);
+        assert_eq!(board.get_piece_at_coordinate("e8"), B_KING);
+    }
+
+    #[test]
+    fn test_starting_board_bitboard_representation() {
+        let board = get_starting_board();
+        
+        // Verify exact bitboard representations
+        assert_eq!(board.white_pawns, 0b0000000000000000000000000000000000000000000000001111111100000000);
+        assert_eq!(board.black_pawns, 0b0000000011111111000000000000000000000000000000000000000000000000);
+    }
+
+    #[test]
+    fn test_coordinate_conversion() {
+        // a file
+        assert_eq!(convert_coordinate_to_bitboard_index("a1"), 0);
+        assert_eq!(convert_coordinate_to_bitboard_index("a2"), 8);
+        assert_eq!(convert_coordinate_to_bitboard_index("a3"), 16);
+        assert_eq!(convert_coordinate_to_bitboard_index("a4"), 24);
+        assert_eq!(convert_coordinate_to_bitboard_index("a5"), 32);
+        assert_eq!(convert_coordinate_to_bitboard_index("a6"), 40);
+        assert_eq!(convert_coordinate_to_bitboard_index("a7"), 48);
+        assert_eq!(convert_coordinate_to_bitboard_index("a8"), 56);
+        
+        // Center squares
+        assert_eq!(convert_coordinate_to_bitboard_index("d4"), 27);
+        assert_eq!(convert_coordinate_to_bitboard_index("e4"), 28);
+        assert_eq!(convert_coordinate_to_bitboard_index("d5"), 35);
+        assert_eq!(convert_coordinate_to_bitboard_index("e5"), 36);
+        
+        // h file
+        assert_eq!(convert_coordinate_to_bitboard_index("h8"), 63);
+    }
+
+    #[test]
+    fn test_piece_colors() {
+        assert_eq!(Piece::WhitePawn.color(), Color::White);
+        assert_eq!(Piece::BlackPawn.color(), Color::Black);
+        assert_eq!(Piece::WhiteKing.color(), Color::White);
+        assert_eq!(Piece::BlackKing.color(), Color::Black);
+    }
+
+    #[test]
+    fn test_complete_bitboard_representation() {
+        let board = get_starting_board();
+        
+        // White pieces bitboard patterns
+        assert_eq!(board.white_pawns, 0b0000000000000000000000000000000000000000000000001111111100000000);
+        assert_eq!(board.white_knights, 0b0000000000000000000000000000000000000000000000000000000001000010);
+        assert_eq!(board.white_bishops, 0b0000000000000000000000000000000000000000000000000000000000100100);
+        assert_eq!(board.white_rooks, 0b0000000000000000000000000000000000000000000000000000000010000001);
+        assert_eq!(board.white_queen, 0b0000000000000000000000000000000000000000000000000000000000001000);
+        assert_eq!(board.white_king, 0b0000000000000000000000000000000000000000000000000000000000010000);
+        
+        // Black pieces bitboard patterns
+        assert_eq!(board.black_pawns, 0b0000000011111111000000000000000000000000000000000000000000000000);
+        assert_eq!(board.black_knights, 0b0100001000000000000000000000000000000000000000000000000000000000);
+        assert_eq!(board.black_bishops, 0b0010010000000000000000000000000000000000000000000000000000000000);
+        assert_eq!(board.black_rooks, 0b1000000100000000000000000000000000000000000000000000000000000000);
+        assert_eq!(board.black_queen, 0b0000100000000000000000000000000000000000000000000000000000000000);
+        assert_eq!(board.black_king, 0b0001000000000000000000000000000000000000000000000000000000000000);
+        
+        // Composite bitboards
+        assert_eq!(board.any_white, 
+            board.white_pawns | board.white_knights | board.white_bishops | 
+            board.white_rooks | board.white_queen | board.white_king);
+            
+        assert_eq!(board.any_black, 
+            board.black_pawns | board.black_knights | board.black_bishops | 
+            board.black_rooks | board.black_queen | board.black_king);
+            
+        assert_eq!(board.empty, !(board.any_white | board.any_black));
+        
+        // Verify the relationship between the bitboards
+        assert_eq!(board.any_white & board.any_black, 0); // No overlap between white and black pieces
+        assert_eq!(board.any_white | board.any_black | board.empty, !0u64); // All squares are accounted for
+    }
+
+    #[test]
+    fn test_bitboard_layout_matches_chess_coordinates() {
+        // This test verifies that the bit layout matches the chess board layout
+        // according to the Wisconsin CS page convention
+        
+        // Test rank-by-rank layout (8 bits per rank)
+        assert_eq!(convert_coordinate_to_bitboard_index("a1"), 0);
+        assert_eq!(convert_coordinate_to_bitboard_index("h1"), 7);
+        assert_eq!(convert_coordinate_to_bitboard_index("a2"), 8);
+        assert_eq!(convert_coordinate_to_bitboard_index("h2"), 15);
+        assert_eq!(convert_coordinate_to_bitboard_index("a8"), 56);
+        assert_eq!(convert_coordinate_to_bitboard_index("h8"), 63);
+        
+        // Verify specific squares from the Wisconsin CS page examples
+        // These are the bit positions as shown in their diagrams
+        let board = get_starting_board();
+        
+        // White king is at e1 (bit 4)
+        assert!(is_bit_set(board.white_king, 4));
+        
+        // Black queen is at d8 (bit 59)
+        assert!(is_bit_set(board.black_queen, 59));
     }
 }
