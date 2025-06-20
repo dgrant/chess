@@ -147,6 +147,7 @@ pub enum Square {
 }
 
 
+#[derive(Debug)]
 pub struct Board {
     /// White pieces
     pub white_pawns: u64,
