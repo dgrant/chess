@@ -347,50 +347,51 @@ impl Board {
         let src_idx = mv.src.to_bit_index();
         let target_idx = mv.target.to_bit_index();
 
-        // First, if there's a piece on the target square, remove it from its bitboard
-        if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
-            let captured_bitboard = match captured_piece {
-                Piece::WhitePawn => &mut self.white_pawns,
-                Piece::WhiteKnight => &mut self.white_knights,
-                Piece::WhiteBishop => &mut self.white_bishops,
-                Piece::WhiteRook => &mut self.white_rooks,
-                Piece::WhiteQueen => &mut self.white_queen,
-                Piece::WhiteKing => &mut self.white_king,
-                Piece::BlackPawn => &mut self.black_pawns,
-                Piece::BlackKnight => &mut self.black_knights,
-                Piece::BlackBishop => &mut self.black_bishops,
-                Piece::BlackRook => &mut self.black_rooks,
-                Piece::BlackQueen => &mut self.black_queen,
-                Piece::BlackKing => &mut self.black_king,
-            };
-            *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
-        }
+        // Get the piece at the source square
+        let piece = self.get_piece_at_square(src_idx);
 
-        // Then move the piece from source to target
-        if let Some(piece) = self.get_piece_at_square(src_idx) {
-            let bitboard = match piece {
-                Piece::WhitePawn => &mut self.white_pawns,
-                Piece::WhiteKnight => &mut self.white_knights,
-                Piece::WhiteBishop => &mut self.white_bishops,
-                Piece::WhiteRook => &mut self.white_rooks,
-                Piece::WhiteQueen => &mut self.white_queen,
-                Piece::WhiteKing => &mut self.white_king,
-                Piece::BlackPawn => &mut self.black_pawns,
-                Piece::BlackKnight => &mut self.black_knights,
-                Piece::BlackBishop => &mut self.black_bishops,
-                Piece::BlackRook => &mut self.black_rooks,
-                Piece::BlackQueen => &mut self.black_queen,
-                Piece::BlackKing => &mut self.black_king,
-            };
-            *bitboard ^= from_bit;  // Clear the source square
-            *bitboard |= to_bit;    // Set the target square
-        }
+        // Only proceed if it's a pawn
+        if let Some(piece) = piece {
+            match piece {
+                Piece::WhitePawn | Piece::BlackPawn => {
+                    // First, if there's a piece on the target square, remove it from its bitboard
+                    if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
+                        let captured_bitboard = match captured_piece {
+                            Piece::WhitePawn => &mut self.white_pawns,
+                            Piece::BlackPawn => &mut self.black_pawns,
+                            // For other piece types, we still need to handle capture but we won't allow them to move
+                            Piece::WhiteRook => &mut self.white_rooks,
+                            Piece::WhiteKnight => &mut self.white_knights,
+                            Piece::WhiteBishop => &mut self.white_bishops,
+                            Piece::WhiteQueen => &mut self.white_queen,
+                            Piece::WhiteKing => &mut self.white_king,
+                            Piece::BlackRook => &mut self.black_rooks,
+                            Piece::BlackKnight => &mut self.black_knights,
+                            Piece::BlackBishop => &mut self.black_bishops,
+                            Piece::BlackQueen => &mut self.black_queen,
+                            Piece::BlackKing => &mut self.black_king,
+                        };
+                        *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
+                    }
 
-        self.update_composite_bitboards();
-        self.side_to_move = match self.side_to_move {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        };
+                    // Then move the pawn from source to target
+                    let bitboard = match piece {
+                        Piece::WhitePawn => &mut self.white_pawns,
+                        Piece::BlackPawn => &mut self.black_pawns,
+                        _ => unreachable!(), // We already checked it's a pawn
+                    };
+                    *bitboard ^= from_bit;  // Clear the source square
+                    *bitboard |= to_bit;    // Set the target square
+
+                    self.update_composite_bitboards();
+                    self.side_to_move = match self.side_to_move {
+                        Color::White => Color::Black,
+                        Color::Black => Color::White,
+                    };
+                }
+                _ => () // Do nothing for non-pawn pieces
+            }
+        }
     }
 
     /// Updates the composite bitboards that represent the state of the board.
