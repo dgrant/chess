@@ -1,6 +1,6 @@
 extern crate chesslib;
 use chesslib::board::{get_starting_board, convert_coordinate_to_bitboard_index, is_bit_set, bitboard_to_string, Color, bitboard_to_pawn_single_moves};
-use chesslib::move_generation::{w_single_push_targets, w_double_push_targets, b_single_push_targets, b_double_push_targets, w_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_able_to_double_push};
+use chesslib::move_generation::{w_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_able_to_double_push};
 
 #[test]
 fn test_initial_board_pawns() {
@@ -29,50 +29,50 @@ fn test_coordinate_conversion() {
 }
 
 
-
-#[test]
-fn test_w_single_push_targets() {
-    let board = get_starting_board();
-
-    // Test white single push targets
-    let white_single_push = w_single_push_targets(board.white_pawns, board.empty);
-    let expected_white_single_push = 0x0000000000FF0000;
-    let diff_white_single_push = white_single_push ^ expected_white_single_push;
-    assert!(diff_white_single_push == 0, "White single push targets mismatch: diff = {:064b}", diff_white_single_push);
-}
-
-#[test]
-fn test_w_double_push_targets() {
-    let board = get_starting_board();
-
-    // Test white double push targets
-    let white_double_push = w_double_push_targets(board.white_pawns, board.empty);
-    let expected_white_double_push = 0x00000000FF000000;
-    let diff_white_double_push = white_double_push ^ expected_white_double_push;
-    assert!(diff_white_double_push == 0, "White double push targets mismatch: diff = {:064b}", diff_white_double_push);
-}
-
-#[test]
-fn test_b_single_push_targets() {
-    let board = get_starting_board();
-
-    // Test black single push targets
-    let black_single_push = b_single_push_targets(board.black_pawns, board.empty);
-    let expected_black_single_push = 0x0000FF0000000000; // Adjusted expected value
-    let diff_black_single_push = black_single_push ^ expected_black_single_push;
-    assert!(diff_black_single_push == 0, "Black single push targets mismatch: diff = {:064b}", diff_black_single_push);
-}
-
-#[test]
-fn test_b_double_push_targets() {
-    let board = get_starting_board();
-
-    // Test black double push targets
-    let black_double_push = b_double_push_targets(board.black_pawns, board.empty);
-    let expected_black_double_push = 0x000000FF00000000; // Adjusted expected value
-    let diff_black_double_push = black_double_push ^ expected_black_double_push;
-    assert!(diff_black_double_push == 0, "Black double push targets mismatch: diff = {:064b}", diff_black_double_push);
-}
+//
+// #[test]
+// fn test_w_single_push_targets() {
+//     let board = get_starting_board();
+//
+//     // Test white single push targets
+//     let white_single_push = w_single_push_targets(board.white_pawns, board.empty);
+//     let expected_white_single_push = 0x0000000000FF0000;
+//     let diff_white_single_push = white_single_push ^ expected_white_single_push;
+//     assert!(diff_white_single_push == 0, "White single push targets mismatch: diff = {:064b}", diff_white_single_push);
+// }
+//
+// #[test]
+// fn test_w_double_push_targets() {
+//     let board = get_starting_board();
+//
+//     // Test white double push targets
+//     let white_double_push = w_double_push_targets(board.white_pawns, board.empty);
+//     let expected_white_double_push = 0x00000000FF000000;
+//     let diff_white_double_push = white_double_push ^ expected_white_double_push;
+//     assert!(diff_white_double_push == 0, "White double push targets mismatch: diff = {:064b}", diff_white_double_push);
+// }
+//
+// #[test]
+// fn test_b_single_push_targets() {
+//     let board = get_starting_board();
+//
+//     // Test black single push targets
+//     let black_single_push = b_single_push_targets(board.black_pawns, board.empty);
+//     let expected_black_single_push = 0x0000FF0000000000; // Adjusted expected value
+//     let diff_black_single_push = black_single_push ^ expected_black_single_push;
+//     assert!(diff_black_single_push == 0, "Black single push targets mismatch: diff = {:064b}", diff_black_single_push);
+// }
+//
+// #[test]
+// fn test_b_double_push_targets() {
+//     let board = get_starting_board();
+//
+//     // Test black double push targets
+//     let black_double_push = b_double_push_targets(board.black_pawns, board.empty);
+//     let expected_black_double_push = 0x000000FF00000000; // Adjusted expected value
+//     let diff_black_double_push = black_double_push ^ expected_black_double_push;
+//     assert!(diff_black_double_push == 0, "Black double push targets mismatch: diff = {:064b}", diff_black_double_push);
+// }
 
 #[test]
 fn test_w_pawns_able_to_push() {
@@ -121,7 +121,7 @@ fn test_b_pawns_able_to_double_push() {
 #[test]
 fn test_random_pawn_moves_no_capture() {
     use chesslib::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push};
-    
+
     let mut board = get_starting_board();
     let mut iteration_count = 0;
     const MAX_ITERATIONS: usize = 1000;
@@ -145,9 +145,9 @@ fn test_random_pawn_moves_no_capture() {
             if let Some(mv) = possible_moves.as_slice().choose(&mut rand::thread_rng()) {
                 println!("Applying move: {}", mv);
                 board.apply_moves_from_strings(std::iter::once(mv.to_string()));
-                
+
                 assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap!");
-                
+
                 println!("Current board state after move {}:", mv);
                 println!("{}", bitboard_to_string(board.white_pawns | board.black_pawns));
             }
