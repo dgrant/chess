@@ -204,15 +204,7 @@ impl Board {
         }
     }
 
-    pub fn update_composite_bitboards(&mut self) {
-        self.any_white = self.white_pawns | self.white_knights | self.white_bishops | 
-                        self.white_rooks | self.white_queen | self.white_king;
-        self.any_black = self.black_pawns | self.black_knights | self.black_bishops | 
-                        self.black_rooks | self.black_queen | self.black_king;
-        self.empty = !(self.any_white | self.any_black);
-    }
-
-    pub fn apply_move(&mut self, mv: &str) {
+    pub fn apply_pawn_move(&mut self, mv: &str) {
         // Parse the move (e.g., "e2e4") and update the board state
         let from = convert_coordinate_to_bitboard_index(&mv[0..2]);
         let to = convert_coordinate_to_bitboard_index(&mv[2..4]);
@@ -225,7 +217,7 @@ impl Board {
             self.black_pawns |= 1 << to;  // Add pawn to the new square
         }
 
-        self.update_composite_bitboards();
+        self.empty = !(self.any_white | self.any_black); // Update empty squares
 
         self.side_to_move = match self.side_to_move {
             Color::White => Color::Black,
@@ -235,7 +227,7 @@ impl Board {
 
     pub fn apply_moves(&mut self, moves: impl Iterator<Item = String>) {
         for mv in moves {
-            self.apply_move(&mv);
+            self.apply_pawn_move(&mv);
         }
     }
 
@@ -254,26 +246,6 @@ impl Board {
             possible_moves.into_iter().choose(&mut rand::thread_rng())
                 .expect("No moves found for white, which should be impossible in current state")
         }
-    }
-
-    pub fn move_white_pawn(&mut self, from_square: u64, to_square: u64) {
-        self.white_pawns ^= from_square;
-        self.white_pawns |= to_square;
-        self.update_composite_bitboards();
-    }
-
-    pub fn move_black_pawn(&mut self, from_square: u64, to_square: u64) {
-        self.black_pawns ^= from_square;
-        self.black_pawns |= to_square;
-        self.update_composite_bitboards();
-    }
-
-    pub fn get_white_pawns(&self) -> u64 {
-        self.white_pawns
-    }
-
-    pub fn get_black_pawns(&self) -> u64 {
-        self.black_pawns
     }
 }
 
@@ -600,16 +572,41 @@ mod tests {
         let mut board = get_starting_board();
 
         // Test moving a white pawn from e2 to e4
-        board.apply_move("e2e4");
+        board.apply_pawn_move("e2e4");
         assert!(is_bit_set(board.white_pawns, convert_coordinate_to_bitboard_index("e4")));
         assert!(!is_bit_set(board.white_pawns, convert_coordinate_to_bitboard_index("e2")));
 
         // Test moving a black pawn from d7 to d5
-        board.apply_move("d7d5");
+        board.apply_pawn_move("d7d5");
         assert!(is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d5")));
         assert!(!is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d7")));
 
         // Verify empty squares are updated correctly
         assert_eq!(board.empty, !(board.any_white | board.any_black));
+    }
+
+    #[test]
+    fn test_side_to_move_after_sequence() {
+        let mut board = get_starting_board();
+        assert_eq!(board.side_to_move, Color::White);
+        
+        // First move: White e2e4
+        board.apply_pawn_move("e2e4");
+        assert_eq!(board.side_to_move, Color::Black);
+        
+        // Second move: Black d7d6
+        board.apply_pawn_move("d7d6");
+        assert_eq!(board.side_to_move, Color::White);
+        
+        // Third move: White g2g4
+        board.apply_pawn_move("g2g4");
+        assert_eq!(board.side_to_move, Color::Black);
+        
+        // Get next move - should suggest a black move
+        let next_move = board.get_next_move();
+        assert!(next_move.starts_with("a7") || next_move.starts_with("b7") || next_move.starts_with("c7") || 
+               next_move.starts_with("d6") || next_move.starts_with("e7") || next_move.starts_with("f7") || 
+               next_move.starts_with("g7") || next_move.starts_with("h7"),
+               "Move {} should be a black pawn move", next_move);
     }
 }
