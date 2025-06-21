@@ -29,7 +29,7 @@ pub fn w_pawns_able_to_double_push(wpawns: u64, empty: u64) -> u64 {
 }
 
 pub fn b_pawns_able_to_push(bpawns: u64, empty: u64) -> u64 {
-    (empty << 8) & bpawns
+    (empty << 8) & bpawns  // Shift empty squares UP to check squares BELOW the pawns
 }
 
 pub fn b_pawns_able_to_double_push(bpawns: u64, empty: u64) -> u64 {

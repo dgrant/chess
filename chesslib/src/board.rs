@@ -204,20 +204,30 @@ impl Board {
         }
     }
 
+    fn update_composite_bitboards(&mut self) {
+        self.any_white = self.white_pawns | self.white_knights | self.white_bishops |
+                        self.white_rooks | self.white_queen | self.white_king;
+        self.any_black = self.black_pawns | self.black_knights | self.black_bishops |
+                        self.black_rooks | self.black_queen | self.black_king;
+        self.empty = !(self.any_white | self.any_black);
+    }
+
     pub fn apply_pawn_move(&mut self, mv: &str) {
         // Parse the move (e.g., "e2e4") and update the board state
         let from = convert_coordinate_to_bitboard_index(&mv[0..2]);
         let to = convert_coordinate_to_bitboard_index(&mv[2..4]);
+        let from_bit = 1u64 << from;
+        let to_bit = 1u64 << to;
 
         if is_bit_set(self.white_pawns, from) {
-            self.white_pawns ^= 1 << from; // Remove pawn from the original square
-            self.white_pawns |= 1 << to;  // Add pawn to the new square
+            self.white_pawns ^= from_bit; // Remove pawn from the original square
+            self.white_pawns |= to_bit;   // Add pawn to the new square
         } else if is_bit_set(self.black_pawns, from) {
-            self.black_pawns ^= 1 << from; // Remove pawn from the original square
-            self.black_pawns |= 1 << to;  // Add pawn to the new square
+            self.black_pawns ^= from_bit; // Remove pawn from the original square
+            self.black_pawns |= to_bit;   // Add pawn to the new square
         }
 
-        self.empty = !(self.any_white | self.any_black); // Update empty squares
+        self.update_composite_bitboards();
 
         self.side_to_move = match self.side_to_move {
             Color::White => Color::Black,
@@ -267,11 +277,7 @@ pub fn get_starting_board() -> Board {
     let black_queen = 1 << (7 * 8 + 3);
     let black_king = 1 << (7 * 8 + 4);
 
-    let any_white = white_pawns | white_knights | white_bishops | white_rooks | white_queen | white_king;
-    let any_black = black_pawns | black_knights | black_bishops | black_rooks | black_queen | black_king;
-    let empty = !(any_white | any_black);
-
-    Board {
+    let mut board = Board {
         white_pawns,
         white_knights,
         white_bishops,
@@ -284,11 +290,13 @@ pub fn get_starting_board() -> Board {
         black_rooks,
         black_queen,
         black_king,
-        any_white,
-        any_black,
-        empty,
+        any_white: 0,
+        any_black: 0,
+        empty: 0,
         side_to_move: Color::White
-    }
+    };
+    board.update_composite_bitboards();
+    board
 }
 
 pub fn file_name_to_int(file: &str) -> u8 {
@@ -589,23 +597,23 @@ mod tests {
     fn test_side_to_move_after_sequence() {
         let mut board = get_starting_board();
         assert_eq!(board.side_to_move, Color::White);
-        
+
         // First move: White e2e4
         board.apply_pawn_move("e2e4");
         assert_eq!(board.side_to_move, Color::Black);
-        
+
         // Second move: Black d7d6
         board.apply_pawn_move("d7d6");
         assert_eq!(board.side_to_move, Color::White);
-        
+
         // Third move: White g2g4
         board.apply_pawn_move("g2g4");
         assert_eq!(board.side_to_move, Color::Black);
-        
+
         // Get next move - should suggest a black move
         let next_move = board.get_next_move();
-        assert!(next_move.starts_with("a7") || next_move.starts_with("b7") || next_move.starts_with("c7") || 
-               next_move.starts_with("d6") || next_move.starts_with("e7") || next_move.starts_with("f7") || 
+        assert!(next_move.starts_with("a7") || next_move.starts_with("b7") || next_move.starts_with("c7") ||
+               next_move.starts_with("d6") || next_move.starts_with("e7") || next_move.starts_with("f7") ||
                next_move.starts_with("g7") || next_move.starts_with("h7"),
                "Move {} should be a black pawn move", next_move);
     }
