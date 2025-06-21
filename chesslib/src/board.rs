@@ -204,6 +204,14 @@ impl Board {
         }
     }
 
+    pub fn update_composite_bitboards(&mut self) {
+        self.any_white = self.white_pawns | self.white_knights | self.white_bishops | 
+                        self.white_rooks | self.white_queen | self.white_king;
+        self.any_black = self.black_pawns | self.black_knights | self.black_bishops | 
+                        self.black_rooks | self.black_queen | self.black_king;
+        self.empty = !(self.any_white | self.any_black);
+    }
+
     pub fn apply_move(&mut self, mv: &str) {
         // Parse the move (e.g., "e2e4") and update the board state
         let from = convert_coordinate_to_bitboard_index(&mv[0..2]);
@@ -217,12 +225,55 @@ impl Board {
             self.black_pawns |= 1 << to;  // Add pawn to the new square
         }
 
-        self.empty = !(self.any_white | self.any_black); // Update empty squares
+        self.update_composite_bitboards();
 
         self.side_to_move = match self.side_to_move {
             Color::White => Color::Black,
             Color::Black => Color::White,
         };
+    }
+
+    pub fn apply_moves(&mut self, moves: impl Iterator<Item = String>) {
+        for mv in moves {
+            self.apply_move(&mv);
+        }
+    }
+
+    pub fn get_next_move(&self) -> String {
+        use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push};
+        use rand::seq::IteratorRandom;
+
+        if self.side_to_move == Color::Black {
+            let moveable_pawns = b_pawns_able_to_push(self.black_pawns, self.empty);
+            let possible_moves: Vec<String> = bitboard_to_pawn_single_moves(moveable_pawns, true);
+            possible_moves.into_iter().choose(&mut rand::thread_rng())
+                .expect("No moves found for black, which should be impossible in current state")
+        } else {
+            let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
+            let possible_moves: Vec<String> = bitboard_to_pawn_single_moves(moveable_pawns, false);
+            possible_moves.into_iter().choose(&mut rand::thread_rng())
+                .expect("No moves found for white, which should be impossible in current state")
+        }
+    }
+
+    pub fn move_white_pawn(&mut self, from_square: u64, to_square: u64) {
+        self.white_pawns ^= from_square;
+        self.white_pawns |= to_square;
+        self.update_composite_bitboards();
+    }
+
+    pub fn move_black_pawn(&mut self, from_square: u64, to_square: u64) {
+        self.black_pawns ^= from_square;
+        self.black_pawns |= to_square;
+        self.update_composite_bitboards();
+    }
+
+    pub fn get_white_pawns(&self) -> u64 {
+        self.white_pawns
+    }
+
+    pub fn get_black_pawns(&self) -> u64 {
+        self.black_pawns
     }
 }
 
@@ -347,18 +398,19 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     result
 }
 
-pub fn bitboard_to_moves(bitboard: u64, is_black: bool) -> Vec<String> {
+pub fn bitboard_to_pawn_single_moves(bitboard: u64, is_black: bool) -> Vec<String> {
     let mut moves = Vec::new();
     for rank in 0..8 {
         for file in 0..8 {
             let square = 1 << (rank * 8 + file);
             if bitboard & square != 0 {
                 let from = format!("{}{}", int_file_to_string(file), rank + 1);
-                let to = if is_black {
-                    format!("{}{}", int_file_to_string(file), rank) // Black pawns move downward
+                let to_rank = if is_black {
+                    rank - 1 // Black pawns move downward by decreasing rank
                 } else {
-                    format!("{}{}", int_file_to_string(file), rank + 2) // White pawns move upward
+                    rank + 1 // White pawns move upward by increasing rank
                 };
+                let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
                 moves.push(format!("{}{}", from, to));
             }
         }
