@@ -19,11 +19,20 @@ pub fn handle_uci_command(input: &str) -> String {
         },
         command if command.starts_with("position") => {
             let mut board_state = BOARD_STATE.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-            if let Some(board) = board_state.as_mut() {
-                let moves = command.strip_prefix("position startpos moves ").unwrap_or("").split_whitespace();
-                board.apply_moves(moves.map(String::from));
-            } else {
+            // Always reset to starting position when "startpos" is used
+            if command.contains("startpos") {
                 *board_state = Some(get_starting_board());
+                if let Some(board) = board_state.as_mut() {
+                    if let Some(moves_str) = command.strip_prefix("position startpos moves ") {
+                        let moves = moves_str.split_whitespace();
+                        board.apply_moves(moves.map(String::from));
+                    }
+                }
+            } else {
+                // Handle other position commands (like FEN) here if needed
+                if board_state.is_none() {
+                    *board_state = Some(get_starting_board());
+                }
             }
             "position set".to_string()
         },
@@ -88,5 +97,20 @@ mod tests {
     #[test]
     fn test_handle_uci_stop() {
         assert_eq!(handle_uci_command("stop"), "calculation stopped");
+    }
+
+    #[test]
+    fn test_position_startpos_resets_board() {
+        // Make some moves
+        handle_uci_command("position startpos moves e2e4 e7e5");
+        
+        // Start a new position - this should reset
+        handle_uci_command("position startpos moves d2d4");
+        
+        // Get next move - should be Black to move after d2d4
+        let response = handle_uci_command("go");
+        assert!(response.starts_with("bestmove"));
+        let black_move = response.split_whitespace().nth(1).unwrap();
+        assert!(black_move.chars().nth(1).unwrap() == '7', "Should be Black's move from rank 7");
     }
 }
