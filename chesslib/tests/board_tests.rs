@@ -1,7 +1,6 @@
 extern crate chesslib;
-use chesslib::board::{get_starting_board, convert_coordinate_to_bitboard_index, is_bit_set, bitboard_to_string};
+use chesslib::board::{get_starting_board, convert_coordinate_to_bitboard_index, is_bit_set, bitboard_to_string, Color, bitboard_to_moves};
 use chesslib::move_generation::{w_single_push_targets, w_double_push_targets, b_single_push_targets, b_double_push_targets, w_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_able_to_double_push};
-use rand::Rng;
 
 #[test]
 fn test_initial_board_pawns() {
@@ -172,4 +171,40 @@ fn test_random_pawn_moves_no_capture() {
     // Verify that white and black pawns reached each other
     assert!(board.white_pawns ^ (board.black_pawns >> 8) == 0, "White pawns and black pawns should have reached each other!");
     assert!((board.white_pawns << 8) ^ board.black_pawns == 0, "White pawns and black pawns should have reached each other!");
+}
+
+#[test]
+fn test_invalid_black_move() {
+    let mut board = get_starting_board();
+
+    // Apply a move for white
+    board.apply_move("e2e4");
+
+    // Ensure the side to move is now black
+    assert_eq!(board.side_to_move, Color::Black);
+
+    // Attempt to generate a move for black
+    let black_pawn_moves = b_single_push_targets(board.black_pawns, board.empty) & board.black_pawns;
+    let possible_moves: Vec<String> = bitboard_to_moves(black_pawn_moves, true);
+
+    // Ensure the generated move is valid for black
+    for mv in possible_moves {
+        assert!(!mv.starts_with("e2"), "Invalid move generated for black: {}", mv);
+    }
+}
+
+#[test]
+fn test_uci_black_move_generation() {
+    use chesslib::handle_uci_command;
+
+    // Simulate UCI commands
+    assert_eq!(handle_uci_command("ucinewgame"), "");
+    assert_eq!(handle_uci_command("position startpos moves e2e4"), "position set");
+
+    // Generate a move for black
+    let response = handle_uci_command("go wtime 300000 btime 300000 movestogo 40");
+
+    // Ensure the move is valid for black and not "e2e4"
+    assert!(response.starts_with("bestmove"), "Response should start with 'bestmove'");
+    assert!(!response.contains("e2e4"), "Invalid move generated for black: {}", response);
 }

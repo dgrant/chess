@@ -1,25 +1,16 @@
 extern crate chesslib;
-use chesslib::board::{get_starting_board, print_board};
 use chesslib::handle_uci_command;
 use std::fs::OpenOptions;
 use std::io::{self, BufRead, Write};
 
-fn log_to_file(message: &str) {
+fn log_to_file(message: &str, append: bool) {
     let mut file = OpenOptions::new()
         .create(true)
-        .append(true)
+        .write(true) // Ensure write mode is enabled
+        .append(append) // Append if true, overwrite otherwise
         .open("/home/dgrant/git_personal/rust/chess/engine.log")
-        .unwrap();
-    writeln!(file, "{}", message).unwrap();
-}
-
-fn flush_log_on_exit() {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("/home/dgrant/git_personal/rust/chess/engine.log")
-        .unwrap();
-    file.flush().unwrap();
+        .expect("Failed to open log file");
+    writeln!(file, "{}", message).expect("Failed to write to log file");
 }
 
 fn main() {
@@ -27,7 +18,7 @@ fn main() {
     let mut input = String::new();
 
     println!("Chess engine ready. Waiting for UCI commands...");
-
+    log_to_file("======", false);
     loop {
         input.clear();
         if stdin.lock().read_line(&mut input).is_err() {
@@ -35,13 +26,12 @@ fn main() {
             continue;
         }
 
-        log_to_file(&format!("Received: {}", input.trim()));
+        log_to_file(&format!("Received: {}", input.trim()), true);
 
         let response = handle_uci_command(&input);
-        log_to_file(&format!("Responded: {}", response));
+        log_to_file(&format!("Responded: {}", response), true);
 
         if input.trim() == "quit" {
-            flush_log_on_exit(); // Ensure log file is flushed before exiting
             break; // Exit on "quit" command
         }
 
