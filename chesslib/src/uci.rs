@@ -25,7 +25,7 @@ pub fn handle_uci_command(input: &str) -> String {
                 if let Some(board) = board_state.as_mut() {
                     if let Some(moves_str) = command.strip_prefix("position startpos moves ") {
                         let moves = moves_str.split_whitespace();
-                        board.apply_moves(moves.map(String::from));
+                        board.apply_moves_from_strings(moves.map(|s| s.to_string()));
                     }
                 }
             } else {

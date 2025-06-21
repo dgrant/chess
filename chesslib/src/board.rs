@@ -1,21 +1,6 @@
 use crate::board::Color::{White, Black};
 
-pub static W_PAWN: &'static str = "♙";
-pub static W_ROOK: &'static str = "♖";
-pub static W_KNIGHT: &'static str = "♘";
-pub static W_BISHOP: &'static str = "♗";
-pub static W_QUEEN: &'static str = "♕";
-pub static W_KING: &'static str = "♔";
-pub static W_SPACE: &'static str = " ";
-
-pub static B_PAWN: &'static str = "♟";
-pub static B_ROOK: &'static str = "♜";
-pub static B_KNIGHT: &'static str = "♞";
-pub static B_BISHOP: &'static str = "♝";
-pub static B_QUEEN: &'static str = "♛";
-pub static B_KING: &'static str = "♚";
-pub static B_SPACE: &'static str = " ";
-
+pub static SPACE: &'static str = " ";
 pub static A: &'static str = "a";
 pub static B: &'static str = "b";
 pub static C: &'static str = "c";
@@ -74,6 +59,23 @@ impl Piece {
             Piece::BlackBishop => Black,
             Piece::BlackQueen => Black,
             Piece::BlackKing => Black,
+        }
+    }
+
+    pub fn to_unicode(&self) -> &'static str {
+        match self {
+            Piece::WhitePawn => "♙",
+            Piece::WhiteRook => "♖",
+            Piece::WhiteKnight => "♘",
+            Piece::WhiteBishop => "♗",
+            Piece::WhiteQueen => "♕",
+            Piece::WhiteKing => "♔",
+            Piece::BlackPawn => "♟",
+            Piece::BlackRook => "♜",
+            Piece::BlackKnight => "♞",
+            Piece::BlackBishop => "♝",
+            Piece::BlackQueen => "♛",
+            Piece::BlackKing => "♚",
         }
     }
 }
@@ -144,6 +146,16 @@ pub enum Square {
     F8,
     G8,
     H8,
+}
+
+impl Square {
+    pub fn to_bit_index(&self) -> u8 {
+        *self as u8
+    }
+
+    pub fn to_bitboard(&self) -> u64 {
+        1u64 << self.to_bit_index()
+    }
 }
 
 // Define a Move struct using the Square enum.
@@ -252,6 +264,7 @@ pub struct Board {
     pub white_rooks: u64,
     pub white_queen: u64,
     pub white_king: u64,
+    
     /// Black pieces
     pub black_pawns: u64,
     pub black_knights: u64,
@@ -292,36 +305,74 @@ impl Board {
     /// ```
     pub fn get_piece_at_coordinate(&self, coordinate: &str) -> &'static str {
         let bitboard_index = convert_coordinate_to_bitboard_index(coordinate);
-        if is_bit_set(self.white_pawns, bitboard_index) {
-            return W_PAWN;
-        } else if is_bit_set(self.white_knights, bitboard_index) {
-            return W_KNIGHT;
-        } else if is_bit_set(self.white_bishops, bitboard_index) {
-            return W_BISHOP;
-        } else if is_bit_set(self.white_queen, bitboard_index) {
-            return W_QUEEN;
-        } else if is_bit_set(self.white_rooks, bitboard_index) {
-            return W_ROOK;
-        } else if is_bit_set(self.white_king, bitboard_index) {
-            return W_KING;
-        } else if is_bit_set(self.black_pawns, bitboard_index) {
-            return B_PAWN;
-        } else if is_bit_set(self.black_knights, bitboard_index) {
-            return B_KNIGHT;
-        } else if is_bit_set(self.black_bishops, bitboard_index) {
-            return B_BISHOP;
-        } else if is_bit_set(self.black_queen, bitboard_index) {
-            return B_QUEEN;
-        } else if is_bit_set(self.black_king, bitboard_index) {
-            return B_KING;
-        } else if is_bit_set(self.black_rooks, bitboard_index) {
-            return B_ROOK;
-        } else {
-            return W_SPACE;
+        match self.get_piece_at_square(bitboard_index) {
+            Some(piece) => piece.to_unicode(),
+            None => SPACE
         }
     }
 
-    ///
+    fn get_piece_at_square(&self, square_index: u8) -> Option<Piece> {
+        if is_bit_set(self.white_pawns, square_index) {
+            Some(Piece::WhitePawn)
+        } else if is_bit_set(self.black_pawns, square_index) {
+            Some(Piece::BlackPawn)
+        } else if is_bit_set(self.white_knights, square_index) {
+            Some(Piece::WhiteKnight)
+        } else if is_bit_set(self.black_knights, square_index) {
+            Some(Piece::BlackKnight)
+        } else if is_bit_set(self.white_bishops, square_index) {
+            Some(Piece::WhiteBishop)
+        } else if is_bit_set(self.black_bishops, square_index) {
+            Some(Piece::BlackBishop)
+        } else if is_bit_set(self.white_rooks, square_index) {
+            Some(Piece::WhiteRook)
+        } else if is_bit_set(self.black_rooks, square_index) {
+            Some(Piece::BlackRook)
+        } else if is_bit_set(self.white_queen, square_index) {
+            Some(Piece::WhiteQueen)
+        } else if is_bit_set(self.black_queen, square_index) {
+            Some(Piece::BlackQueen)
+        } else if is_bit_set(self.white_king, square_index) {
+            Some(Piece::WhiteKing)
+        } else if is_bit_set(self.black_king, square_index) {
+            Some(Piece::BlackKing)
+        } else {
+            None
+        }
+    }
+
+    pub fn apply_move(&mut self, mv: &Move) {
+        let from_bit = mv.src.to_bitboard();
+        let to_bit = mv.target.to_bitboard();
+        let src_idx = mv.src.to_bit_index();
+
+        // Find which piece is on the source square and move it
+        if let Some(piece) = self.get_piece_at_square(src_idx) {
+            let bitboard = match piece {
+                Piece::WhitePawn => &mut self.white_pawns,
+                Piece::WhiteKnight => &mut self.white_knights,
+                Piece::WhiteBishop => &mut self.white_bishops,
+                Piece::WhiteRook => &mut self.white_rooks,
+                Piece::WhiteQueen => &mut self.white_queen,
+                Piece::WhiteKing => &mut self.white_king,
+                Piece::BlackPawn => &mut self.black_pawns,
+                Piece::BlackKnight => &mut self.black_knights,
+                Piece::BlackBishop => &mut self.black_bishops,
+                Piece::BlackRook => &mut self.black_rooks,
+                Piece::BlackQueen => &mut self.black_queen,
+                Piece::BlackKing => &mut self.black_king,
+            };
+            *bitboard ^= from_bit;
+            *bitboard |= to_bit;
+        }
+
+        self.update_composite_bitboards();
+        self.side_to_move = match self.side_to_move {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        };
+    }
+
     /// Updates the composite bitboards that represent the state of the board.
     /// This includes the combined bitboards for all white pieces, all black pieces,
     /// and the empty squares.
@@ -335,33 +386,26 @@ impl Board {
         self.empty = !(self.any_white | self.any_black);
     }
 
-    pub fn apply_pawn_move(&mut self, mv: &str) {
-        // Parse the move (e.g., "e2e4") and update the board state
-        let from = convert_coordinate_to_bitboard_index(&mv[0..2]);
-        let to = convert_coordinate_to_bitboard_index(&mv[2..4]);
-        let from_bit = 1u64 << from;
-        let to_bit = 1u64 << to;
-
-        if is_bit_set(self.white_pawns, from) {
-            self.white_pawns ^= from_bit; // Remove pawn from the original square
-            self.white_pawns |= to_bit;   // Add pawn to the new square
-        } else if is_bit_set(self.black_pawns, from) {
-            self.black_pawns ^= from_bit; // Remove pawn from the original square
-            self.black_pawns |= to_bit;   // Add pawn to the new square
+    pub fn apply_move_from_string(&mut self, mv_str: &str) {
+        if let Ok(mv) = Move::try_from(mv_str) {
+            self.apply_move(&mv);
         }
-
-        self.update_composite_bitboards();
-
-        self.side_to_move = match self.side_to_move {
-            Color::White => Color::Black,
-            Color::Black => Color::White,
-        };
     }
 
-    pub fn apply_moves(&mut self, moves: impl Iterator<Item = String>) {
+    pub fn apply_moves(&mut self, moves: impl Iterator<Item = Move>) {
         for mv in moves {
-            self.apply_pawn_move(&mv);
+            self.apply_move(&mv);
         }
+    }
+
+    pub fn apply_moves_from_strings(&mut self, moves: impl Iterator<Item = String>) {
+        for mv in moves {
+            self.apply_move_from_string(&mv);
+        }
+    }
+
+    pub fn convert_moves(moves: impl Iterator<Item = String>) -> impl Iterator<Item = Result<Move, &'static str>> {
+        moves.map(|mv| Move::try_from(mv.as_str()))
     }
 
     pub fn get_next_move(&self) -> String {
@@ -448,7 +492,7 @@ pub fn int_file_to_string(file: u8) -> &'static str {
         6 => G,
         7 => H,
 //        TODO(dgrant): Handle this differently
-        _ => W_SPACE
+        _ => SPACE
     }
 }
 
@@ -553,24 +597,24 @@ mod tests {
 
         // White pieces
         // Pawns on rank 2
-        assert_eq!(board.get_piece_at_coordinate("a2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("b2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("c2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("d2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("e2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("f2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("g2"), W_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("h2"), W_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("a2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("b2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("c2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("d2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("e2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("f2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("g2"), "♙");
+        assert_eq!(board.get_piece_at_coordinate("h2"), "♙");
 
         // Back rank pieces
-        assert_eq!(board.get_piece_at_coordinate("a1"), W_ROOK);
-        assert_eq!(board.get_piece_at_coordinate("h1"), W_ROOK);
-        assert_eq!(board.get_piece_at_coordinate("b1"), W_KNIGHT);
-        assert_eq!(board.get_piece_at_coordinate("g1"), W_KNIGHT);
-        assert_eq!(board.get_piece_at_coordinate("c1"), W_BISHOP);
-        assert_eq!(board.get_piece_at_coordinate("f1"), W_BISHOP);
-        assert_eq!(board.get_piece_at_coordinate("d1"), W_QUEEN);
-        assert_eq!(board.get_piece_at_coordinate("e1"), W_KING);
+        assert_eq!(board.get_piece_at_coordinate("a1"), "♖");
+        assert_eq!(board.get_piece_at_coordinate("h1"), "♖");
+        assert_eq!(board.get_piece_at_coordinate("b1"), "♘");
+        assert_eq!(board.get_piece_at_coordinate("g1"), "♘");
+        assert_eq!(board.get_piece_at_coordinate("c1"), "♗");
+        assert_eq!(board.get_piece_at_coordinate("f1"), "♗");
+        assert_eq!(board.get_piece_at_coordinate("d1"), "♕");
+        assert_eq!(board.get_piece_at_coordinate("e1"), "♔");
     }
 
     #[test]
@@ -579,24 +623,24 @@ mod tests {
 
         // Black pieces
         // Pawns on rank 7
-        assert_eq!(board.get_piece_at_coordinate("a7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("b7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("c7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("d7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("e7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("f7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("g7"), B_PAWN);
-        assert_eq!(board.get_piece_at_coordinate("h7"), B_PAWN);
+        assert_eq!(board.get_piece_at_coordinate("a7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("b7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("c7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("d7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("e7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("f7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("g7"), "♟");
+        assert_eq!(board.get_piece_at_coordinate("h7"), "♟");
 
         // Back rank pieces
-        assert_eq!(board.get_piece_at_coordinate("a8"), B_ROOK);
-        assert_eq!(board.get_piece_at_coordinate("h8"), B_ROOK);
-        assert_eq!(board.get_piece_at_coordinate("b8"), B_KNIGHT);
-        assert_eq!(board.get_piece_at_coordinate("g8"), B_KNIGHT);
-        assert_eq!(board.get_piece_at_coordinate("c8"), B_BISHOP);
-        assert_eq!(board.get_piece_at_coordinate("f8"), B_BISHOP);
-        assert_eq!(board.get_piece_at_coordinate("d8"), B_QUEEN);
-        assert_eq!(board.get_piece_at_coordinate("e8"), B_KING);
+        assert_eq!(board.get_piece_at_coordinate("a8"), "♜");
+        assert_eq!(board.get_piece_at_coordinate("h8"), "♜");
+        assert_eq!(board.get_piece_at_coordinate("b8"), "♞");
+        assert_eq!(board.get_piece_at_coordinate("g8"), "♞");
+        assert_eq!(board.get_piece_at_coordinate("c8"), "♝");
+        assert_eq!(board.get_piece_at_coordinate("f8"), "♝");
+        assert_eq!(board.get_piece_at_coordinate("d8"), "♛");
+        assert_eq!(board.get_piece_at_coordinate("e8"), "♚");
     }
 
     #[test]
@@ -703,12 +747,12 @@ mod tests {
         let mut board = get_starting_board();
 
         // Test moving a white pawn from e2 to e4
-        board.apply_pawn_move("e2e4");
+        board.apply_move(&Move { src: Square::E2, target: Square::E4 });
         assert!(is_bit_set(board.white_pawns, convert_coordinate_to_bitboard_index("e4")));
         assert!(!is_bit_set(board.white_pawns, convert_coordinate_to_bitboard_index("e2")));
 
         // Test moving a black pawn from d7 to d5
-        board.apply_pawn_move("d7d5");
+        board.apply_move(&Move { src: Square::D7, target: Square::D5 });
         assert!(is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d5")));
         assert!(!is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d7")));
 
@@ -722,15 +766,15 @@ mod tests {
         assert_eq!(board.side_to_move, Color::White);
 
         // First move: White e2e4
-        board.apply_pawn_move("e2e4");
+        board.apply_move(&Move { src: Square::E2, target: Square::E4 });
         assert_eq!(board.side_to_move, Color::Black);
 
         // Second move: Black d7d6
-        board.apply_pawn_move("d7d6");
+        board.apply_move(&Move { src: Square::D7, target: Square::D6 });
         assert_eq!(board.side_to_move, Color::White);
 
         // Third move: White g2g4
-        board.apply_pawn_move("g2g4");
+        board.apply_move(&Move { src: Square::G2, target: Square::G4 });
         assert_eq!(board.side_to_move, Color::Black);
 
         // Get next move - should suggest a black move

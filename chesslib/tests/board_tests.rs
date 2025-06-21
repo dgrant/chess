@@ -124,18 +124,16 @@ fn test_random_pawn_moves_no_capture() {
     
     let mut board = get_starting_board();
     let mut iteration_count = 0;
-    const MAX_ITERATIONS: usize = 1000; // Prevent infinite loops in case of issues
+    const MAX_ITERATIONS: usize = 1000;
 
     loop {
         let white_pawns_push = w_pawns_able_to_push(board.white_pawns, board.empty);
         let black_pawns_push = b_pawns_able_to_push(board.black_pawns, board.empty);
 
-        // Break if no valid moves for both sides or too many iterations
         if (white_pawns_push == 0 && black_pawns_push == 0) || iteration_count >= MAX_ITERATIONS {
             break;
         }
 
-        // Get possible moves for the current side
         let possible_moves = if board.side_to_move == Color::White {
             bitboard_to_pawn_single_moves(white_pawns_push, false)
         } else {
@@ -143,16 +141,13 @@ fn test_random_pawn_moves_no_capture() {
         };
 
         if !possible_moves.is_empty() {
-            // Pick a random move
             use rand::seq::SliceRandom;
             if let Some(mv) = possible_moves.as_slice().choose(&mut rand::thread_rng()) {
                 println!("Applying move: {}", mv);
-                board.apply_pawn_move(mv);
+                board.apply_moves_from_strings(std::iter::once(mv.to_string()));
                 
-                // Verify no overlap between white and black pawns after each move
                 assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap!");
                 
-                // Print current board state for debugging
                 println!("Current board state after move {}:", mv);
                 println!("{}", bitboard_to_string(board.white_pawns | board.black_pawns));
             }
@@ -161,7 +156,6 @@ fn test_random_pawn_moves_no_capture() {
         iteration_count += 1;
     }
 
-    // Print final board state
     println!("Final board state after {} iterations:", iteration_count);
     println!("White pawns:\n{}", bitboard_to_string(board.white_pawns));
     println!("Black pawns:\n{}", bitboard_to_string(board.black_pawns));
@@ -172,16 +166,13 @@ fn test_invalid_black_move() {
     let mut board = get_starting_board();
 
     // Apply a move for white
-    board.apply_pawn_move("e2e4");
+    board.apply_moves_from_strings(std::iter::once("e2e4".to_string()));
 
-    // Ensure the side to move is now black
     assert_eq!(board.side_to_move, Color::Black);
 
-    // Get moveable black pawns and verify valid moves
     let moveable_black_pawns = b_pawns_able_to_push(board.black_pawns, board.empty);
     let possible_moves = bitboard_to_pawn_single_moves(moveable_black_pawns, true);
 
-    // Verify black moves are going in the correct direction
     for mv in &possible_moves {
         let from_rank = mv.chars().nth(1).unwrap().to_digit(10).unwrap();
         let to_rank = mv.chars().nth(3).unwrap().to_digit(10).unwrap();
@@ -189,6 +180,5 @@ fn test_invalid_black_move() {
         assert!(!mv.starts_with("e2"), "Invalid move generated for black: {}", mv);
     }
 
-    // Also verify at least one move was generated
     assert!(!possible_moves.is_empty(), "No moves were generated for black");
 }
