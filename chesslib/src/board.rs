@@ -78,7 +78,7 @@ impl Piece {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Square {
     A1,
     B1,
@@ -146,6 +146,102 @@ pub enum Square {
     H8,
 }
 
+// Define a Move struct using the Square enum.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Move {
+    pub src: Square,
+    pub target: Square,
+}
+
+// Implement a conversion from a string coordinate (e.g., "a1") to a Square.
+use std::convert::TryFrom;
+
+impl TryFrom<&str> for Square {
+    type Error = &'static str;
+    fn try_from(coordinate: &str) -> Result<Self, Self::Error> {
+        match coordinate {
+            "a1" => Ok(Square::A1),
+            "b1" => Ok(Square::B1),
+            "c1" => Ok(Square::C1),
+            "d1" => Ok(Square::D1),
+            "e1" => Ok(Square::E1),
+            "f1" => Ok(Square::F1),
+            "g1" => Ok(Square::G1),
+            "h1" => Ok(Square::H1),
+            "a2" => Ok(Square::A2),
+            "b2" => Ok(Square::B2),
+            "c2" => Ok(Square::C2),
+            "d2" => Ok(Square::D2),
+            "e2" => Ok(Square::E2),
+            "f2" => Ok(Square::F2),
+            "g2" => Ok(Square::G2),
+            "h2" => Ok(Square::H2),
+            "a3" => Ok(Square::A3),
+            "b3" => Ok(Square::B3),
+            "c3" => Ok(Square::C3),
+            "d3" => Ok(Square::D3),
+            "e3" => Ok(Square::E3),
+            "f3" => Ok(Square::F3),
+            "g3" => Ok(Square::G3),
+            "h3" => Ok(Square::H3),
+            "a4" => Ok(Square::A4),
+            "b4" => Ok(Square::B4),
+            "c4" => Ok(Square::C4),
+            "d4" => Ok(Square::D4),
+            "e4" => Ok(Square::E4),
+            "f4" => Ok(Square::F4),
+            "g4" => Ok(Square::G4),
+            "h4" => Ok(Square::H4),
+            "a5" => Ok(Square::A5),
+            "b5" => Ok(Square::B5),
+            "c5" => Ok(Square::C5),
+            "d5" => Ok(Square::D5),
+            "e5" => Ok(Square::E5),
+            "f5" => Ok(Square::F5),
+            "g5" => Ok(Square::G5),
+            "h5" => Ok(Square::H5),
+            "a6" => Ok(Square::A6),
+            "b6" => Ok(Square::B6),
+            "c6" => Ok(Square::C6),
+            "d6" => Ok(Square::D6),
+            "e6" => Ok(Square::E6),
+            "f6" => Ok(Square::F6),
+            "g6" => Ok(Square::G6),
+            "h6" => Ok(Square::H6),
+            "a7" => Ok(Square::A7),
+            "b7" => Ok(Square::B7),
+            "c7" => Ok(Square::C7),
+            "d7" => Ok(Square::D7),
+            "e7" => Ok(Square::E7),
+            "f7" => Ok(Square::F7),
+            "g7" => Ok(Square::G7),
+            "h7" => Ok(Square::H7),
+            "a8" => Ok(Square::A8),
+            "b8" => Ok(Square::B8),
+            "c8" => Ok(Square::C8),
+            "d8" => Ok(Square::D8),
+            "e8" => Ok(Square::E8),
+            "f8" => Ok(Square::F8),
+            "g8" => Ok(Square::G8),
+            "h8" => Ok(Square::H8),
+            _ => Err("Invalid coordinate"),
+        }
+    }
+}
+
+// Example conversion of a move string into a Move struct.
+impl TryFrom<&str> for Move {
+    type Error = &'static str;
+    fn try_from(mv: &str) -> Result<Self, Self::Error> {
+        if mv.len() != 4 {
+            return Err("Invalid move format");
+        }
+        let src = Square::try_from(&mv[0..2])?;
+        let target = Square::try_from(&mv[2..4])?;
+        Ok(Move { src, target })
+    }
+}
+
 
 #[derive(Debug)]
 pub struct Board {
@@ -163,6 +259,8 @@ pub struct Board {
     pub black_rooks: u64,
     pub black_queen: u64,
     pub black_king: u64,
+
+    /// State of the board
     pub any_white: u64,
     pub any_black: u64,
     pub empty: u64,
@@ -170,9 +268,28 @@ pub struct Board {
 }
 
 impl Board {
-    // pub fn get_piece_at(&self, position: Square) -> &'static str {
-    // }
 
+    /// Returns the Unicode character representation of the chess piece at the given coordinate
+    ///
+    /// # Arguments
+    ///
+    /// * `coordinate` - A string slice containing the algebraic chess notation coordinate (e.g., "e4", "a1")
+    ///
+    /// # Returns
+    ///
+    /// A static string slice containing the Unicode character representation of the piece
+    /// or a space character if the square is empty
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use chesslib::board::get_starting_board;
+    /// let board = get_starting_board();
+    ///
+    /// assert_eq!(board.get_piece_at_coordinate("e1"), "♔"); // White king
+    /// assert_eq!(board.get_piece_at_coordinate("d8"), "♛"); // Black queen
+    /// assert_eq!(board.get_piece_at_coordinate("e4"), " "); // Empty square
+    /// ```
     pub fn get_piece_at_coordinate(&self, coordinate: &str) -> &'static str {
         let bitboard_index = convert_coordinate_to_bitboard_index(coordinate);
         if is_bit_set(self.white_pawns, bitboard_index) {
@@ -204,6 +321,12 @@ impl Board {
         }
     }
 
+    ///
+    /// Updates the composite bitboards that represent the state of the board.
+    /// This includes the combined bitboards for all white pieces, all black pieces,
+    /// and the empty squares.
+    /// This method should be called after any change to the individual piece bitboards
+    /// to ensure that the composite bitboards reflect the current state of the board.
     fn update_composite_bitboards(&mut self) {
         self.any_white = self.white_pawns | self.white_knights | self.white_bishops |
                         self.white_rooks | self.white_queen | self.white_king;
