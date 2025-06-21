@@ -345,8 +345,28 @@ impl Board {
         let from_bit = mv.src.to_bitboard();
         let to_bit = mv.target.to_bitboard();
         let src_idx = mv.src.to_bit_index();
+        let target_idx = mv.target.to_bit_index();
 
-        // Find which piece is on the source square and move it
+        // First, if there's a piece on the target square, remove it from its bitboard
+        if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
+            let captured_bitboard = match captured_piece {
+                Piece::WhitePawn => &mut self.white_pawns,
+                Piece::WhiteKnight => &mut self.white_knights,
+                Piece::WhiteBishop => &mut self.white_bishops,
+                Piece::WhiteRook => &mut self.white_rooks,
+                Piece::WhiteQueen => &mut self.white_queen,
+                Piece::WhiteKing => &mut self.white_king,
+                Piece::BlackPawn => &mut self.black_pawns,
+                Piece::BlackKnight => &mut self.black_knights,
+                Piece::BlackBishop => &mut self.black_bishops,
+                Piece::BlackRook => &mut self.black_rooks,
+                Piece::BlackQueen => &mut self.black_queen,
+                Piece::BlackKing => &mut self.black_king,
+            };
+            *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
+        }
+
+        // Then move the piece from source to target
         if let Some(piece) = self.get_piece_at_square(src_idx) {
             let bitboard = match piece {
                 Piece::WhitePawn => &mut self.white_pawns,
@@ -362,8 +382,8 @@ impl Board {
                 Piece::BlackQueen => &mut self.black_queen,
                 Piece::BlackKing => &mut self.black_king,
             };
-            *bitboard ^= from_bit;
-            *bitboard |= to_bit;
+            *bitboard ^= from_bit;  // Clear the source square
+            *bitboard |= to_bit;    // Set the target square
         }
 
         self.update_composite_bitboards();
@@ -409,25 +429,31 @@ impl Board {
     }
 
     pub fn get_next_move(&self) -> String {
-        use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_double_push};
+        use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
+                                   w_pawns_able_to_double_push, b_pawns_able_to_double_push,
+                                   w_pawns_attack_targets, b_pawns_attack_targets};
         use rand::seq::IteratorRandom;
 
         if self.side_to_move == Color::Black {
             let moveable_pawns = b_pawns_able_to_push(self.black_pawns, self.empty);
             let double_moveable_pawns = b_pawns_able_to_double_push(self.black_pawns, self.empty);
-            
+            let attacking_pawns = b_pawns_attack_targets(self.black_pawns, self.any_white);
+
             let mut possible_moves = bitboard_to_pawn_single_moves(moveable_pawns, true);
             possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, true));
-            
+            possible_moves.extend(bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
+
             possible_moves.into_iter().choose(&mut rand::thread_rng())
                 .expect("No moves found for black, which should be impossible in current state")
         } else {
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
             let double_moveable_pawns = w_pawns_able_to_double_push(self.white_pawns, self.empty);
-            
+            let attacking_pawns = w_pawns_attack_targets(self.white_pawns, self.any_black);
+
             let mut possible_moves = bitboard_to_pawn_single_moves(moveable_pawns, false);
             possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, false));
-            
+            possible_moves.extend(bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
+
             possible_moves.into_iter().choose(&mut rand::thread_rng())
                 .expect("No moves found for white, which should be impossible in current state")
         }
@@ -559,12 +585,12 @@ pub fn bitboard_to_pawn_single_moves(bitboard: u64, is_black: bool) -> Vec<Strin
         for file in 0..8 {
             let square = 1 << (rank * 8 + file);
             if bitboard & square != 0 {
-                let from = format!("{}{}", int_file_to_string(file), rank + 1);
                 let to_rank = if is_black {
                     rank - 1 // Black pawns move downward by decreasing rank
                 } else {
                     rank + 1 // White pawns move upward by increasing rank
                 };
+                let from = format!("{}{}", int_file_to_string(file), rank + 1);
                 let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
                 moves.push(format!("{}{}", from, to));
             }
@@ -589,6 +615,48 @@ pub fn bitboard_to_pawn_double_moves(bitboard: u64, is_black: bool) -> Vec<Strin
                 moves.push(format!("{}{}", from, to));
             }
         }
+    }
+    moves
+}
+
+pub fn bitboard_to_pawn_capture_moves(from_bitboard: u64, target_bitboard: u64, is_black: bool) -> Vec<String> {
+    let mut moves = Vec::new();
+    let mut working_board = target_bitboard;
+
+    while working_board != 0 {
+        // Get the target square (least significant 1-bit)
+        let to_square = working_board.trailing_zeros() as u8;
+        // Clear the processed bit
+        working_board &= working_board - 1;
+
+        // Find the source pawn that can attack this square
+        let from_square = if is_black {
+            // Check both possible source squares for black pawns (one rank up, one file left or right)
+            let possible_from_east = to_square + 7;
+            let possible_from_west = to_square + 9;
+            if from_bitboard & (1 << possible_from_east) != 0 {
+                possible_from_east
+            } else {
+                possible_from_west
+            }
+        } else {
+            // Check both possible source squares for white pawns (one rank down, one file left or right)
+            let possible_from_east = to_square - 9;
+            let possible_from_west = to_square - 7;
+            if from_bitboard & (1 << possible_from_east) != 0 {
+                possible_from_east
+            } else {
+                possible_from_west
+            }
+        };
+
+        // Convert to algebraic notation
+        let from_file = int_file_to_string(from_square % 8);
+        let from_rank = (from_square / 8 + 1).to_string();
+        let to_file = int_file_to_string(to_square % 8);
+        let to_rank = (to_square / 8 + 1).to_string();
+
+        moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
     }
     moves
 }

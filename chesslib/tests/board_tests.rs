@@ -182,3 +182,4 @@ fn test_invalid_black_move() {
 
     assert!(!possible_moves.is_empty(), "No moves were generated for black");
 }
+
