@@ -1,5 +1,3 @@
-use crate::board::Color::{White, Black};
-
 pub static SPACE: &'static str = " ";
 pub static A: &'static str = "a";
 pub static B: &'static str = "b";
@@ -45,23 +43,6 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub fn color(&self) -> Color {
-        match self {
-            Piece::WhitePawn => White,
-            Piece::WhiteRook => White,
-            Piece::WhiteKnight => White,
-            Piece::WhiteBishop => White,
-            Piece::WhiteQueen => White,
-            Piece::WhiteKing => White,
-            Piece::BlackPawn => Black,
-            Piece::BlackRook => Black,
-            Piece::BlackKnight => Black,
-            Piece::BlackBishop => Black,
-            Piece::BlackQueen => Black,
-            Piece::BlackKing => Black,
-        }
-    }
-
     pub fn to_unicode(&self) -> &'static str {
         match self {
             Piece::WhitePawn => "♙",
@@ -546,24 +527,6 @@ pub fn is_bit_set(bitboard: u64, bit: u8) -> bool {
     (1 << bit) & bitboard != 0
 }
 
-pub fn board_to_string(board: &Board) -> String {
-    let mut result = String::new();
-    for rank in (0..8).rev() {
-        for file in 0..8 {
-            let coordinate = &format!("{}{}", int_file_to_string(file), (rank + 1).to_string());
-            let piece = board.get_piece_at_coordinate(coordinate);
-            result.push_str(piece);
-        }
-        result.push('\n');
-    }
-    result
-}
-
-pub fn print_board(board: &Board) {
-    let board_string = board_to_string(board);
-    print!("{}", board_string);
-}
-
 pub fn bitboard_to_string(bitboard: u64) -> String {
     let mut result = String::new();
     for rank in (0..8).rev() {
@@ -769,14 +732,6 @@ mod tests {
 
         // h file
         assert_eq!(convert_coordinate_to_bitboard_index("h8"), 63);
-    }
-
-    #[test]
-    fn test_piece_colors() {
-        assert_eq!(Piece::WhitePawn.color(), Color::White);
-        assert_eq!(Piece::BlackPawn.color(), Color::Black);
-        assert_eq!(Piece::WhiteKing.color(), Color::White);
-        assert_eq!(Piece::BlackKing.color(), Color::Black);
     }
 
     #[test]
