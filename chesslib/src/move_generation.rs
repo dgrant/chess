@@ -2,6 +2,10 @@
 const NOT_A_FILE: u64 = 0xfefefefefefefefe;  // ~(0x0101010101010101)
 const NOT_H_FILE: u64 = 0x7f7f7f7f7f7f7f7f;  // ~(0x8080808080808080)
 
+// Additional file masks for knight moves
+const NOT_AB_FILE: u64 = 0xfcfcfcfcfcfcfcfc;  // ~(0x0303030303030303)
+const NOT_GH_FILE: u64 = 0x3f3f3f3f3f3f3f3f;  // ~(0xc0c0c0c0c0c0c0c0)
+
 // White pawn capture moves
 pub fn w_pawn_east_attacks(wp: u64) -> u64 {
     (wp & NOT_H_FILE) << 9  // Must mask BEFORE shifting to prevent wrapping
@@ -58,9 +62,43 @@ pub fn b_pawns_able_to_double_push(bpawns: u64, empty: u64) -> u64 {
     b_pawns_able_to_push(bpawns, empty_rank6)
 }
 
+// Knight moves - handling all 8 possible L-shaped movements
+pub fn knight_moves(knights: u64) -> u64 {
+    let mut moves = 0u64;
+    
+    // North movements (up 2, left/right 1)
+    moves |= (knights & NOT_A_FILE) << 15;  // Up 2, left 1
+    moves |= (knights & NOT_H_FILE) << 17;  // Up 2, right 1
+    
+    // South movements (down 2, left/right 1)
+    moves |= (knights & NOT_A_FILE) >> 17;  // Down 2, left 1
+    moves |= (knights & NOT_H_FILE) >> 15;  // Down 2, right 1
+    
+    // East movements (right 2, up/down 1)
+    moves |= (knights & NOT_GH_FILE) << 10;  // Right 2, up 1
+    moves |= (knights & NOT_GH_FILE) >> 6;   // Right 2, down 1
+    
+    // West movements (left 2, up/down 1)
+    moves |= (knights & NOT_AB_FILE) << 6;   // Left 2, up 1
+    moves |= (knights & NOT_AB_FILE) >> 10;  // Left 2, down 1
+    
+    moves
+}
+
+// Get legal knight moves by excluding squares occupied by friendly pieces
+pub fn knight_legal_moves(knights: u64, friendly_pieces: u64) -> u64 {
+    knight_moves(knights) & !friendly_pieces
+}
+
+// Get knight attack targets (squares with enemy pieces that can be captured)
+pub fn knight_attack_targets(knights: u64, enemy_pieces: u64) -> u64 {
+    knight_moves(knights) & enemy_pieces
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::Square;
 
     #[test]
     fn test_white_pawn_attacks() {
@@ -148,5 +186,58 @@ mod tests {
         let white_pieces = (1u64 << 29) | (1u64 << 30);  // white pieces on f4 and g4
         let attack_targets = b_pawns_attack_targets(bp, white_pieces);
         assert_eq!(attack_targets, white_pieces); // both pawns can attack
+    }
+
+    #[test]
+    fn test_knight_moves() {
+        // Test knight moves from central position (e4)
+        let knights = Square::E4.to_bitboard();
+        let moves = knight_moves(knights);
+
+        // Knight on e4 should move to:
+        let expected_moves = 
+            Square::F6.to_bitboard() | Square::D6.to_bitboard() |  // up 2, left/right 1
+            Square::F2.to_bitboard() | Square::D2.to_bitboard() |  // down 2, left/right 1
+            Square::G5.to_bitboard() | Square::G3.to_bitboard() |  // right 2, up/down 1
+            Square::C5.to_bitboard() | Square::C3.to_bitboard();   // left 2, up/down 1
+
+        assert_eq!(moves, expected_moves);
+    }
+
+    #[test]
+    fn test_knight_edge_cases() {
+        // Test corner cases to ensure no wrapping occurs
+        
+        // Knight on a1
+        let moves_a1 = knight_moves(Square::A1.to_bitboard());
+        // Should only be able to move to b3 and c2
+        assert_eq!(moves_a1, Square::B3.to_bitboard() | Square::C2.to_bitboard());
+
+        // Knight on h8
+        let moves_h8 = knight_moves(Square::H8.to_bitboard());
+        // Should only be able to move to f7 and g6
+        assert_eq!(moves_h8, Square::F7.to_bitboard() | Square::G6.to_bitboard());
+    }
+
+    #[test]
+    fn test_knight_legal_moves_and_attacks() {
+        // Knight on e4
+        let knight = Square::E4.to_bitboard();
+        
+        // Friendly pieces on f6 and g5
+        let friendly_pieces = Square::F6.to_bitboard() | Square::G5.to_bitboard();
+        
+        // Enemy pieces on c3 and d2
+        let enemy_pieces = Square::C3.to_bitboard() | Square::D2.to_bitboard();
+        
+        let legal_moves = knight_legal_moves(knight, friendly_pieces);
+        let attack_targets = knight_attack_targets(knight, enemy_pieces);
+        
+        // Legal moves should exclude f6 and g5
+        let expected_legal = knight_moves(knight) & !friendly_pieces;
+        assert_eq!(legal_moves, expected_legal);
+        
+        // Attack targets should only include c3 and d2
+        assert_eq!(attack_targets, enemy_pieces);
     }
 }
