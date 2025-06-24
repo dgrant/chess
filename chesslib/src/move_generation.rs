@@ -241,11 +241,6 @@ pub fn rook_legal_moves(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> 
     rook_moves(rooks, friendly_pieces, enemy_pieces)
 }
 
-// Attack targets are just the enemy pieces that can be captured
-pub fn rook_attack_targets(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
-    rook_moves(rooks, friendly_pieces, enemy_pieces) & enemy_pieces
-}
-
 // Queen moves combine bishop and rook moves
 pub fn queen_moves(queens: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
     bishop_moves(queens, friendly_pieces, enemy_pieces) | rook_moves(queens, friendly_pieces, enemy_pieces)
@@ -254,11 +249,6 @@ pub fn queen_moves(queens: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 
 // Legal moves are already computed in queen_moves
 pub fn queen_legal_moves(queens: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
     queen_moves(queens, friendly_pieces, enemy_pieces)
-}
-
-// Attack targets are just the enemy pieces that can be captured
-pub fn queen_attack_targets(queens: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
-    queen_moves(queens, friendly_pieces, enemy_pieces) & enemy_pieces
 }
 
 // King moves - handling all 8 adjacent squares
@@ -283,11 +273,6 @@ pub fn king_moves(kings: u64) -> u64 {
 // Get legal king moves by excluding squares occupied by friendly pieces
 pub fn king_legal_moves(kings: u64, friendly_pieces: u64) -> u64 {
     king_moves(kings) & !friendly_pieces
-}
-
-// Get king attack targets (squares with enemy pieces that can be captured)
-pub fn king_attack_targets(kings: u64, enemy_pieces: u64) -> u64 {
-    king_moves(kings) & enemy_pieces
 }
 
 #[cfg(test)]
@@ -483,20 +468,31 @@ mod tests {
     }
 
     #[test]
-    fn test_bishop_legal_moves_and_attacks() {
+    fn test_bishop_legal_moves_with_friendlies() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
-        // Friendly pieces on e5 and f3
-        let friendly_pieces = Square::E5.to_bitboard() | Square::F3.to_bitboard();
+        // Friendly pieces on e5 and c5 and b2 and f2
+        let friendly_pieces = Square::E5.to_bitboard() | Square::C5.to_bitboard() | Square::B2.to_bitboard() | Square::F2.to_bitboard();
 
-        // Enemy pieces on c5 and e3
-        let enemy_pieces = Square::C5.to_bitboard() | Square::E3.to_bitboard();
+        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, 0);
+
+        let expected_legal = Square::C3.to_bitboard() | Square::E3.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_bishop_legal_moves_with_enemies() {
+        // Bishop on d4
+        let bishop = Square::D4.to_bitboard();
+
+        // Friendly pieces on e5 and c5 and b2 and f2
+        let friendly_pieces = Square::E5.to_bitboard() | Square::C5.to_bitboard() | Square::B2.to_bitboard() | Square::F2.to_bitboard();
+        let enemy_pieces = Square::C3.to_bitboard() | Square::E3.to_bitboard();
 
         let legal_moves = bishop_legal_moves(bishop, friendly_pieces, enemy_pieces);
 
-        // Legal moves should exclude e5 and f3, but include empty squares and captures
-        let expected_legal = bishop_moves(bishop, friendly_pieces, enemy_pieces);
+        let expected_legal = Square::C3.to_bitboard() | Square::E3.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
@@ -538,25 +534,73 @@ mod tests {
     }
 
     #[test]
-    fn test_rook_legal_moves_and_attacks() {
+    fn test_rook_legal_moves_with_friendlies() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
-        // Friendly pieces on d5 and e4
-        let friendly_pieces = Square::D5.to_bitboard() | Square::E4.to_bitboard();
+        // Friendly pieces on d5 and e4 and c4
+        let friendly_pieces = Square::D5.to_bitboard() | Square::E4.to_bitboard() | Square::D3.to_bitboard();
 
-        // Enemy pieces on d3 and c4
-        let enemy_pieces = Square::D3.to_bitboard() | Square::C4.to_bitboard();
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
 
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
-        let attack_targets = rook_attack_targets(rook, friendly_pieces, enemy_pieces);
-
-        // Legal moves should exclude d5 and e4
-        let expected_legal = rook_moves(rook, friendly_pieces, enemy_pieces);
+        let expected_legal = Square::C4.to_bitboard() | Square::B4.to_bitboard() | Square::A4.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
+    }
 
-        // Attack targets should only include d3 and c4
-        assert_eq!(attack_targets, enemy_pieces);
+    #[test]
+    fn test_rook_legal_moves_with_enemies_going_left() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and e4 and d3
+        let friendly_pieces = Square::D5.to_bitboard() | Square::E4.to_bitboard() | Square::D3.to_bitboard();
+        let enemy_pieces = Square::B4.to_bitboard();
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+
+        let expected_legal = Square::C4.to_bitboard() | Square::B4.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_rook_legal_moves_with_enemies_going_right() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and c4 and d3
+        let friendly_pieces = Square::D5.to_bitboard() | Square::C4.to_bitboard() | Square::D3.to_bitboard();
+        let enemy_pieces = Square::F4.to_bitboard();
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+
+        let expected_legal = Square::E4.to_bitboard() | Square::F4.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_rook_legal_moves_with_enemies_going_up() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and c4 and d3
+        let friendly_pieces = Square::E4.to_bitboard() | Square::C4.to_bitboard() | Square::D3.to_bitboard();
+        let enemy_pieces = Square::D6.to_bitboard();
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+
+        let expected_legal = Square::D5.to_bitboard() | Square::D6.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_rook_legal_moves_with_enemies_going_down() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and c4 and d3
+        let friendly_pieces = Square::D5.to_bitboard() | Square::C4.to_bitboard() | Square::E4.to_bitboard();
+        let enemy_pieces = Square::D2.to_bitboard();
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+
+        let expected_legal = Square::D3.to_bitboard() | Square::D2.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
@@ -662,14 +706,10 @@ mod tests {
         let enemy_pieces = Square::D3.to_bitboard() | Square::C4.to_bitboard() | Square::E3.to_bitboard();
 
         let legal_moves = queen_legal_moves(queen, friendly_pieces, enemy_pieces);
-        let attack_targets = queen_attack_targets(queen, friendly_pieces, enemy_pieces);
 
         // Legal moves should exclude squares with friendly pieces but include empty squares and captures
         let expected_legal = queen_moves(queen, friendly_pieces, enemy_pieces);
         assert_eq!(legal_moves, expected_legal);
-
-        // Attack targets should only include d3, c4, and e3
-        assert_eq!(attack_targets, enemy_pieces);
     }
 
     #[test]
@@ -715,17 +755,10 @@ mod tests {
         // Friendly pieces on d5 and e4
         let friendly_pieces = Square::D5.to_bitboard() | Square::E4.to_bitboard();
 
-        // Enemy pieces on d3 and c4
-        let enemy_pieces = Square::D3.to_bitboard() | Square::C4.to_bitboard();
-
         let legal_moves = king_legal_moves(king, friendly_pieces);
-        let attack_targets = king_attack_targets(king, enemy_pieces);
 
         // Legal moves should exclude d5 and e4
         let expected_legal = king_moves(king) & !friendly_pieces;
         assert_eq!(legal_moves, expected_legal);
-
-        // Attack targets should only include d3 and c4
-        assert_eq!(attack_targets, enemy_pieces);
     }
 }
