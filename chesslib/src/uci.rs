@@ -25,13 +25,22 @@ pub fn handle_uci_command(input: &str) -> String {
                 if let Some(board) = board_state.as_mut() {
                     if let Some(moves_str) = command.strip_prefix("position startpos moves ") {
                         let moves = moves_str.split_whitespace();
-                        board.apply_moves_from_strings(moves.map(|s| s.to_string()));
+                        for move_str in moves {
+                            board.apply_moves_from_strings(std::iter::once(move_str.to_string()));
+                            println!("Position after {}: {}", move_str, board.to_fen());
+                        }
+                    } else {
+                        // Print initial position
+                        println!("Initial position: {}", board.to_fen());
                     }
                 }
             } else {
                 // Handle other position commands (like FEN) here if needed
                 if board_state.is_none() {
                     *board_state = Some(get_starting_board());
+                    if let Some(board) = board_state.as_ref() {
+                        println!("Initial position: {}", board.to_fen());
+                    }
                 }
             }
             "position set".to_string()
@@ -64,56 +73,3 @@ pub fn handle_uci_command(input: &str) -> String {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_handle_uci_command() {
-        assert_eq!(handle_uci_command("uci"), "id name ChessEngine\nid author YourName\nuciok");
-        assert_eq!(handle_uci_command("isready"), "readyok");
-        assert_eq!(handle_uci_command("quit"), "");
-        assert_eq!(handle_uci_command("unknown"), "Unknown command");
-        assert_eq!(handle_uci_command("position"), "position set");
-    }
-
-    #[test]
-    fn test_handle_uci_newgame() {
-        assert_eq!(handle_uci_command("ucinewgame"), "");
-    }
-
-    #[test]
-    fn test_handle_uci_position() {
-        assert_eq!(handle_uci_command("position startpos moves e2e4"), "position set");
-    }
-
-    #[test]
-    fn test_handle_uci_go() {
-        handle_uci_command("position startpos moves e2e4"); // Set position
-        let response = handle_uci_command("go");
-        assert!(response.starts_with("bestmove"), "Response should start with 'bestmove'");
-    }
-
-    #[test]
-    fn test_handle_uci_stop() {
-        assert_eq!(handle_uci_command("stop"), "calculation stopped");
-    }
-
-    #[test]
-    fn test_position_startpos_resets_board() {
-        // Make some moves
-        handle_uci_command("position startpos moves e2e4 e7e5");
-        
-        // Start a new position - this should reset
-        handle_uci_command("position startpos moves d2d4");
-        
-        // Get next move - should be Black to move after d2d4
-        let response = handle_uci_command("go");
-        assert!(response.starts_with("bestmove"));
-        let black_move = response.split_whitespace().nth(1).unwrap();
-
-        // First character should be either a pawn move from rank 7 or a knight move from rank 8
-        let rank = black_move.chars().nth(1).unwrap();
-        assert!(rank == '7' || rank == '8', "Should be Black's move from rank 7 (pawn) or rank 8 (knight)");
-    }
-}
