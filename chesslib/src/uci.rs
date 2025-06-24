@@ -1,4 +1,5 @@
 use crate::board::{Board, get_starting_board};
+use crate::logger::log_to_file;
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
@@ -27,11 +28,11 @@ pub fn handle_uci_command(input: &str) -> String {
                         let moves = moves_str.split_whitespace();
                         for move_str in moves {
                             board.apply_moves_from_strings(std::iter::once(move_str.to_string()));
-                            println!("Position after {}: {}", move_str, board.to_fen());
+                            log_to_file(&format!("Position after {}: {}", move_str, board.to_fen()), true);
                         }
                     } else {
-                        // Print initial position
-                        println!("Initial position: {}", board.to_fen());
+                        // Log initial position
+                        log_to_file(&format!("Initial position: {}", board.to_fen()), true);
                     }
                 }
             } else {
@@ -39,7 +40,7 @@ pub fn handle_uci_command(input: &str) -> String {
                 if board_state.is_none() {
                     *board_state = Some(get_starting_board());
                     if let Some(board) = board_state.as_ref() {
-                        println!("Initial position: {}", board.to_fen());
+                        log_to_file(&format!("Initial position: {}", board.to_fen()), true);
                     }
                 }
             }
@@ -72,4 +73,3 @@ pub fn handle_uci_command(input: &str) -> String {
         _ => "Unknown command".to_string(),
     }
 }
-

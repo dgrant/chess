@@ -1,19 +1,10 @@
 extern crate chesslib;
-use chesslib::handle_uci_command;
-use std::fs::OpenOptions;
+use chesslib::{handle_uci_command, log_to_file};
 use std::io::{self, BufRead, Write};
 
-fn log_to_file(message: &str, append: bool) {
-    let mut file = OpenOptions::new()
-        .create(true)
-        .write(true) // Ensure write mode is enabled
-        .append(append) // Append if true, overwrite otherwise
-        .open("/home/dgrant/git_personal/rust/chess/engine.log")
-        .expect("Failed to open log file");
-    writeln!(file, "{}", message).expect("Failed to write to log file");
-}
-
 fn main() {
+    chesslib::logger::set_log_path("/home/dgrant/git_personal/rust/chess/engine.log");
+    
     let stdin = io::stdin();
     let mut input = String::new();
 
