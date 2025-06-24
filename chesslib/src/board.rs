@@ -92,7 +92,7 @@ impl TryFrom<&str> for Move {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board {
     /// White pieces
     pub white_pawns: u64,
@@ -406,16 +406,27 @@ impl Board {
             possible_moves.extend(self.bitboard_to_moves(self.white_king, moves));
         }
 
+        // Filter the moves to only include legal ones (that get out of check if we're in check)
+        let legal_moves: Vec<String> = possible_moves.into_iter()
+            .filter(|mv_str| {
+                if let Ok(mv) = Move::try_from(mv_str.as_str()) {
+                    self.is_legal_move(&mv)
+                } else {
+                    false
+                }
+            })
+            .collect();
+
         if n == -1 {
-            possible_moves
+            legal_moves
         } else {
             let n = n as usize;
             if n == 0 {
                 Vec::new()
             } else {
                 let mut rng = rand::thread_rng();
-                possible_moves.iter()
-                    .choose_multiple(&mut rng, n.min(possible_moves.len()))
+                legal_moves.iter()
+                    .choose_multiple(&mut rng, n.min(legal_moves.len()))
                     .into_iter()
                     .cloned()
                     .collect()
@@ -556,6 +567,30 @@ impl Board {
         // Check if either king is under attack
         self.white_king_in_check = self.is_square_attacked(white_king_square, Color::Black);
         self.black_king_in_check = self.is_square_attacked(black_king_square, Color::White);
+    }
+
+    fn is_legal_move(&self, mv: &Move) -> bool {
+        // If we're not in check, all moves are legal (for now - we'll add more restrictions later)
+        if !self.white_king_in_check && !self.black_king_in_check {
+            return true;
+        }
+
+        // At this point we know we are in check.
+
+        // We are in check, so make a copy of the board and try the move
+        let mut test_board = self.clone();
+        test_board.apply_move(mv);
+
+        // The move is legal if it got us out of check
+        if self.white_king_in_check {
+            assert_eq!(self.side_to_move, Color::White, "White king is in check, but side to move is not White");
+            !test_board.white_king_in_check
+        } else {
+            assert!(self.black_king_in_check);
+            assert_eq!(self.side_to_move, Color::Black, "Black king is in check, but side to move is not Black");
+            // Assumed we are in check and moving black
+            !test_board.black_king_in_check
+        }
     }
 }
 
@@ -1213,6 +1248,53 @@ mod tests {
         assert!(queen_test_board.is_square_attacked(Square::H4.to_bit_index(), Color::White)); // Queen attacks horizontally right
 
     }
+
+    #[test]
+    fn test_is_legal_move() {
+        // Test 1: Starting position, any legal move is valid
+        let board = get_starting_board();
+        assert!(board.is_legal_move(&Move { src: Square::E2, target: Square::E4 }));
+    }
+
+    #[test]
+    fn test_is_legal_move_complex() {
+        // Test 2: White king in check by rook on E8
+        let mut check_board = Board {
+            white_king: Square::E1.to_bitboard(),
+            white_queen: Square::D2.to_bitboard(), // Queen in position to block check
+            black_rooks: Square::E8.to_bitboard(),
+            side_to_move: Color::White,
+            white_pawns: 0,
+            white_knights: 0,
+            white_bishops: Square::D7.to_bitboard(), // Bishop in position to capture rook
+            white_rooks: 0,
+            black_pawns: 0,
+            black_knights: 0,
+            black_bishops: 0,
+            black_queen: 0,
+            black_king: Square::G8.to_bitboard(), // Black king safely away
+            any_white: 0,
+            any_black: 0,
+            empty: 0,
+            white_king_in_check: true,
+            black_king_in_check: false,
+        };
+        check_board.update_composite_bitboards();
+        check_board.update_check_state();
+
+        assert!(check_board.white_king_in_check);
+
+        // Legal moves that escape check
+        assert!(check_board.is_legal_move(&Move { src: Square::E1, target: Square::F1 })); // King escapes sideways
+        assert!(check_board.is_legal_move(&Move { src: Square::E1, target: Square::D1 })); // King escapes other way
+        assert!(check_board.is_legal_move(&Move { src: Square::D7, target: Square::E8 })); // Bishop captures rook
+        assert!(check_board.is_legal_move(&Move { src: Square::D2, target: Square::E2 })); // Queen blocks check
+
+        // Illegal moves that don't escape check
+        assert!(!check_board.is_legal_move(&Move { src: Square::D2, target: Square::D3 })); // Queen moves away
+        assert!(!check_board.is_legal_move(&Move { src: Square::E1, target: Square::E2 })); // King moves into check
+    }
+
     //
     // #[test]
     // fn test_is_square_attacked_king() {

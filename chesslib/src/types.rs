@@ -48,8 +48,7 @@ impl TryFrom<&str> for Square {
     }
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Color {
     White,
     Black,
