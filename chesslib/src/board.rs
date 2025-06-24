@@ -1,127 +1,11 @@
-pub static SPACE: &'static str = " ";
-pub static A: &'static str = "a";
-pub static B: &'static str = "b";
-pub static C: &'static str = "c";
-pub static D: &'static str = "d";
-pub static E: &'static str = "e";
-pub static F: &'static str = "f";
-pub static G: &'static str = "g";
-pub static H: &'static str = "h";
-
-use crate::types::{Color, Square};
+use crate::board_utils;
+use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use crate::move_generation::{
     b_pawns_attack_targets, bishop_legal_moves,
     king_legal_moves, knight_legal_moves,
     rook_legal_moves,
     w_pawns_attack_targets,
 };
-
-#[derive(PartialEq, Clone, Copy, Debug)]
-pub enum PieceType {
-    Pawn,
-    Rook,
-    Knight,
-    Bishop,
-    Queen,
-    King,
-}
-
-#[derive(Debug)]
-#[derive(PartialEq)]
-pub enum Piece {
-    WhitePawn,
-    WhiteRook,
-    WhiteKnight,
-    WhiteBishop,
-    WhiteQueen,
-    WhiteKing,
-    BlackPawn,
-    BlackRook,
-    BlackKnight,
-    BlackBishop,
-    BlackQueen,
-    BlackKing,
-}
-
-impl Piece {
-    pub fn to_unicode(&self) -> &'static str {
-        match self {
-            Piece::WhitePawn => "♙",
-            Piece::WhiteRook => "♖",
-            Piece::WhiteKnight => "♘",
-            Piece::WhiteBishop => "♗",
-            Piece::WhiteQueen => "♕",
-            Piece::WhiteKing => "♔",
-            Piece::BlackPawn => "♟",
-            Piece::BlackRook => "♜",
-            Piece::BlackKnight => "♞",
-            Piece::BlackBishop => "♝",
-            Piece::BlackQueen => "♛",
-            Piece::BlackKing => "♚",
-        }
-    }
-
-    pub fn to_fen(&self) -> &'static str {
-        match self {
-            Piece::WhitePawn => "P",
-            Piece::WhiteRook => "R",
-            Piece::WhiteKnight => "N",
-            Piece::WhiteBishop => "B",
-            Piece::WhiteQueen => "Q",
-            Piece::WhiteKing => "K",
-            Piece::BlackPawn => "p",
-            Piece::BlackRook => "r",
-            Piece::BlackKnight => "n",
-            Piece::BlackBishop => "b",
-            Piece::BlackQueen => "q",
-            Piece::BlackKing => "k",
-        }
-    }
-
-    pub fn color(&self) -> Color {
-        match self {
-            Piece::WhitePawn | Piece::WhiteRook | Piece::WhiteKnight |
-            Piece::WhiteBishop | Piece::WhiteQueen | Piece::WhiteKing => Color::White,
-            _ => Color::Black
-        }
-    }
-}
-
-// Define a Move struct using the Square enum.
-#[derive(Debug, PartialEq, Clone, Copy)]
-pub struct Move {
-    pub src: Square,
-    pub target: Square,
-    pub promotion: Option<PieceType>, // Optional promotion piece type
-}
-
-
-// Example conversion of a move string into a Move struct.
-impl TryFrom<&str> for Move {
-    type Error = &'static str;
-    fn try_from(mv: &str) -> Result<Self, Self::Error> {
-        if mv.len() == 5 {
-            // Promotion move, e.g., "e7e8Q"
-            let src = Square::try_from(&mv[0..2])?;
-            let target = Square::try_from(&mv[2..4])?;
-            let promotion_char = mv.chars().nth(4).unwrap();
-            let promotion = match promotion_char {
-                'q' => Some(PieceType::Queen),
-                'r' => Some(PieceType::Rook),
-                'b' => Some(PieceType::Bishop),
-                'n' => Some(PieceType::Knight),
-                _ => return Err("Invalid promotion piece type"),
-            };
-            return Ok(Move { src, target, promotion })
-        }
-        else if mv.len() != 4 {
-            return Err("Move string must be exactly 4 characters long unless it's a promotion move");
-        }
-        let src = Square::try_from(&mv[0..2])?;
-        let target = Square::try_from(&mv[2..4])?;
-        Ok(Move { src, target, promotion: None })
-    }
-}
 
 
 #[derive(Debug, Clone)]
@@ -180,29 +64,29 @@ impl Board {
     }
 
     fn get_piece_at_square(&self, square_index: u8) -> Option<Piece> {
-        if is_bit_set(self.white_pawns, square_index) {
+        if board_utils::is_bit_set(self.white_pawns, square_index) {
             Some(Piece::WhitePawn)
-        } else if is_bit_set(self.black_pawns, square_index) {
+        } else if board_utils::is_bit_set(self.black_pawns, square_index) {
             Some(Piece::BlackPawn)
-        } else if is_bit_set(self.white_knights, square_index) {
+        } else if board_utils::is_bit_set(self.white_knights, square_index) {
             Some(Piece::WhiteKnight)
-        } else if is_bit_set(self.black_knights, square_index) {
+        } else if board_utils::is_bit_set(self.black_knights, square_index) {
             Some(Piece::BlackKnight)
-        } else if is_bit_set(self.white_bishops, square_index) {
+        } else if board_utils::is_bit_set(self.white_bishops, square_index) {
             Some(Piece::WhiteBishop)
-        } else if is_bit_set(self.black_bishops, square_index) {
+        } else if board_utils::is_bit_set(self.black_bishops, square_index) {
             Some(Piece::BlackBishop)
-        } else if is_bit_set(self.white_rooks, square_index) {
+        } else if board_utils::is_bit_set(self.white_rooks, square_index) {
             Some(Piece::WhiteRook)
-        } else if is_bit_set(self.black_rooks, square_index) {
+        } else if board_utils::is_bit_set(self.black_rooks, square_index) {
             Some(Piece::BlackRook)
-        } else if is_bit_set(self.white_queen, square_index) {
+        } else if board_utils::is_bit_set(self.white_queen, square_index) {
             Some(Piece::WhiteQueen)
-        } else if is_bit_set(self.black_queen, square_index) {
+        } else if board_utils::is_bit_set(self.black_queen, square_index) {
             Some(Piece::BlackQueen)
-        } else if is_bit_set(self.white_king, square_index) {
+        } else if board_utils::is_bit_set(self.white_king, square_index) {
             Some(Piece::WhiteKing)
-        } else if is_bit_set(self.black_king, square_index) {
+        } else if board_utils::is_bit_set(self.black_king, square_index) {
             Some(Piece::BlackKing)
         } else {
             None
@@ -335,6 +219,7 @@ impl Board {
                                    knight_legal_moves, bishop_legal_moves, rook_legal_moves,
                                    queen_legal_moves, king_legal_moves};
         use rand::seq::IteratorRandom;
+        use crate::board_utils;
 
         let mut possible_moves = Vec::new();
 
@@ -344,9 +229,9 @@ impl Board {
             let double_moveable_pawns = b_pawns_able_to_double_push(self.black_pawns, self.empty);
             let attacking_pawns = b_pawns_attack_targets(self.black_pawns, self.any_white);
 
-            possible_moves.extend(bitboard_to_pawn_single_moves(moveable_pawns, true));
-            possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, true));
-            possible_moves.extend(bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
+            possible_moves.extend(board_utils::bitboard_to_pawn_single_moves(moveable_pawns, true));
+            possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, true));
+            possible_moves.extend(board_utils::bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
 
             // Process each black knight separately
             let mut working_knights = self.black_knights;
@@ -403,9 +288,9 @@ impl Board {
             let double_moveable_pawns = w_pawns_able_to_double_push(self.white_pawns, self.empty);
             let attacking_pawns = w_pawns_attack_targets(self.white_pawns, self.any_black);
 
-            possible_moves.extend(bitboard_to_pawn_single_moves(moveable_pawns, false));
-            possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, false));
-            possible_moves.extend(bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
+            possible_moves.extend(board_utils::bitboard_to_pawn_single_moves(moveable_pawns, false));
+            possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, false));
+            possible_moves.extend(board_utils::bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
 
             // Process each white knight separately
             let mut working_knights = self.white_knights;
@@ -515,9 +400,9 @@ impl Board {
                 current_targets &= current_targets - 1;  // Clear the processed bit
 
                 // Convert to algebraic notation
-                let from_file = int_file_to_string(from_square % 8);
+                let from_file = board_utils::int_file_to_string(from_square % 8);
                 let from_rank = (from_square / 8 + 1).to_string();
-                let to_file = int_file_to_string(to_square % 8);
+                let to_file = board_utils::int_file_to_string(to_square % 8);
                 let to_rank = (to_square / 8 + 1).to_string();
 
                 moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
@@ -655,216 +540,4 @@ impl Board {
     }
 }
 
-
-pub fn get_empty_board() -> Board {
-    let white_pawns = 0;
-    let white_knights = 0;
-    let white_bishops = 0;
-    let white_rooks = 0;
-    let white_queen = 0;
-    let white_king = 0;
-    let black_pawns = 0;
-    let black_knights = 0;
-    let black_bishops = 0;
-    let black_rooks = 0;
-    let black_queen = 0;
-    let black_king = 0;
-
-    let mut board = Board {
-        white_pawns,
-        white_knights,
-        white_bishops,
-        white_rooks,
-        white_queen,
-        white_king,
-        black_pawns,
-        black_knights,
-        black_bishops,
-        black_rooks,
-        black_queen,
-        black_king,
-        any_white: 0,
-        any_black: 0,
-        empty: 0,
-        side_to_move: Color::White,
-        white_king_in_check: false,
-        black_king_in_check: false,
-    };
-    board.update_composite_bitboards();
-    board
-}
-
-pub fn get_starting_board() -> Board {
-    let white_pawns = (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) +
-                     (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7));
-    let white_knights = (1 << (0 + 1)) + (1 << (0 + 6));
-    let white_bishops = (1 << (0 + 2)) + (1 << (0 + 5));
-    let white_rooks = (1 << (0 + 0)) + (1 << (0 + 7));
-    let white_queen = 1 << (0 + 3);
-    let white_king = 1 << (0 + 4);
-    let black_pawns = (1 << (6 * 8 + 0)) + (1 << (6 * 8 + 1)) + (1 << (6 * 8 + 2)) +
-                     (1 << (6 * 8 + 3)) + (1 << (6 * 8 + 4)) + (1 << (6 * 8 + 5)) +
-                     (1 << (6 * 8 + 6)) + (1 << (6 * 8 + 7));
-    let black_knights = (1 << (7 * 8 + 1)) + (1 << (7 * 8 + 6));
-    let black_bishops = (1 << (7 * 8 + 2)) + (1 << (7 * 8 + 5));
-    let black_rooks = (1 << (7 * 8 + 0)) + (1 << (7 * 8 + 7));
-    let black_queen = 1 << (7 * 8 + 3);
-    let black_king = 1 << (7 * 8 + 4);
-
-    let mut board = Board {
-        white_pawns,
-        white_knights,
-        white_bishops,
-        white_rooks,
-        white_queen,
-        white_king,
-        black_pawns,
-        black_knights,
-        black_bishops,
-        black_rooks,
-        black_queen,
-        black_king,
-        any_white: 0,
-        any_black: 0,
-        empty: 0,
-        side_to_move: Color::White,
-        white_king_in_check: false,
-        black_king_in_check: false,
-    };
-    board.update_composite_bitboards();
-    board
-}
-
-pub fn int_file_to_string(file: u8) -> &'static str {
-    match file {
-        0 => A,
-        1 => B,
-        2 => C,
-        3 => D,
-        4 => E,
-        5 => F,
-        6 => G,
-        7 => H,
-//        TODO(dgrant): Handle this differently
-        _ => SPACE
-    }
-}
-
-pub fn is_bit_set(bitboard: u64, bit: u8) -> bool {
-    (1 << bit) & bitboard != 0
-}
-
-pub fn bitboard_to_string(bitboard: u64) -> String {
-    let mut result = String::new();
-    for rank in (0..8).rev() {
-        for file in 0..8 {
-            let square = 1 << (rank * 8 + file);
-            if bitboard & square != 0 {
-                result.push('1'); // Occupied square
-            } else {
-                result.push('.'); // Empty square
-            }
-        }
-        result.push('\n'); // Newline after each rank
-    }
-    result
-}
-
-pub fn bitboard_to_pawn_single_moves(bitboard: u64, is_black: bool) -> Vec<String> {
-    let mut moves = Vec::new();
-    for rank in 0..8 {
-        for file in 0..8 {
-            let square = 1 << (rank * 8 + file);
-            if bitboard & square != 0 {
-                let to_rank = if is_black {
-                    rank - 1 // Black pawns move downward by decreasing rank
-                } else {
-                    rank + 1 // White pawns move upward by increasing rank
-                };
-                let from = format!("{}{}", int_file_to_string(file), rank + 1);
-                let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
-                if (is_black && to_rank == 0) || (!is_black && to_rank == 7) {
-                    moves.push(format!("{}{}q", from, to));
-                    moves.push(format!("{}{}r", from, to));
-                    moves.push(format!("{}{}b", from, to));
-                    moves.push(format!("{}{}n", from, to));
-                } else {
-                    moves.push(format!("{}{}", from, to));
-                };
-            }
-        }
-    }
-    moves
-}
-
-pub fn bitboard_to_pawn_double_moves(bitboard: u64, is_black: bool) -> Vec<String> {
-    let mut moves = Vec::new();
-    for rank in 0..8 {
-        for file in 0..8 {
-            let square = 1 << (rank * 8 + file);
-            if bitboard & square != 0 {
-                let from = format!("{}{}", int_file_to_string(file), rank + 1);
-                let to_rank = if is_black {
-                    rank - 2 // Black pawns move down two ranks
-                } else {
-                    rank + 2 // White pawns move up two ranks
-                };
-                let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
-                moves.push(format!("{}{}", from, to));
-            }
-        }
-    }
-    moves
-}
-
-pub fn bitboard_to_pawn_capture_moves(from_bitboard: u64, target_bitboard: u64, is_black: bool) -> Vec<String> {
-    let mut moves = Vec::new();
-    let mut working_board = target_bitboard;
-
-    while working_board != 0 {
-        // Get the target square (least significant 1-bit)
-        let to_square = working_board.trailing_zeros() as u8;
-        // Clear the processed bit
-        working_board &= working_board - 1;
-
-        // Find the source pawn that can attack this square
-        let from_square = if is_black {
-            // Check both possible source squares for black pawns (one rank up, one file left or right)
-            let possible_from_east = to_square + 7;
-            let possible_from_west = to_square + 9;
-            if from_bitboard & (1 << possible_from_east) != 0 {
-                possible_from_east
-            } else {
-                possible_from_west
-            }
-        } else {
-            // Check both possible source squares for white pawns (one rank down, one file left or right)
-            let possible_from_east = to_square - 9;
-            let possible_from_west = to_square - 7;
-            if from_bitboard & (1 << possible_from_east) != 0 {
-                possible_from_east
-            } else {
-                possible_from_west
-            }
-        };
-
-        // Convert to algebraic notation
-        // TODO: Clean up the 0-indexing here or 1-indexing here
-        let from_file = int_file_to_string(from_square % 8);
-        let from_rank = (from_square / 8 + 1).to_string();
-        let to_file = int_file_to_string(to_square % 8);
-        let to_rank_int = to_square / 8 + 1;
-        let to_rank = to_rank_int.to_string();
-
-        if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
-            moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
-        } else {
-            moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
-        }
-    }
-    moves
-}
 

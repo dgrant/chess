@@ -1,4 +1,4 @@
-use chesslib::board::{get_starting_board};
+use chesslib::board_utils::get_starting_board;
 
 #[test]
 fn test_starting_position_fen() {

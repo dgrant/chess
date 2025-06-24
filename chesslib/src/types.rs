@@ -53,3 +53,180 @@ pub enum Color {
     White,
     Black,
 }
+
+/// Represents the castling rights for both players
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CastlingRights {
+    /// White kingside castling right (h1 rook)
+    pub white_kingside: bool,
+    /// White queenside castling right (a1 rook)
+    pub white_queenside: bool,
+    /// Black kingside castling right (h8 rook)
+    pub black_kingside: bool,
+    /// Black queenside castling right (a8 rook)
+    pub black_queenside: bool,
+}
+
+impl Default for CastlingRights {
+    fn default() -> Self {
+        // At the start of a game, all castling is allowed
+        Self {
+            white_kingside: true,
+            white_queenside: true,
+            black_kingside: true,
+            black_queenside: true,
+        }
+    }
+}
+
+impl CastlingRights {
+    /// Creates a new CastlingRights with all castling allowed
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Remove castling rights for a given color's kingside
+    pub fn remove_kingside(&mut self, is_white: bool) {
+        if is_white {
+            self.white_kingside = false;
+        } else {
+            self.black_kingside = false;
+        }
+    }
+
+    /// Remove castling rights for a given color's queenside
+    pub fn remove_queenside(&mut self, is_white: bool) {
+        if is_white {
+            self.white_queenside = false;
+        } else {
+            self.black_queenside = false;
+        }
+    }
+
+    /// Remove all castling rights for a given color
+    pub fn remove_all_for_color(&mut self, is_white: bool) {
+        if is_white {
+            self.white_kingside = false;
+            self.white_queenside = false;
+        } else {
+            self.black_kingside = false;
+            self.black_queenside = false;
+        }
+    }
+}
+
+pub static SPACE: &'static str = " ";
+pub static A: &'static str = "a";
+pub static B: &'static str = "b";
+pub static C: &'static str = "c";
+pub static D: &'static str = "d";
+pub static E: &'static str = "e";
+pub static F: &'static str = "f";
+pub static G: &'static str = "g";
+pub static H: &'static str = "h";
+
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub enum PieceType {
+    Pawn,
+    Rook,
+    Knight,
+    Bishop,
+    Queen,
+    King,
+}
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum Piece {
+    WhitePawn,
+    WhiteRook,
+    WhiteKnight,
+    WhiteBishop,
+    WhiteQueen,
+    WhiteKing,
+    BlackPawn,
+    BlackRook,
+    BlackKnight,
+    BlackBishop,
+    BlackQueen,
+    BlackKing,
+}
+
+impl Piece {
+    pub fn to_unicode(&self) -> &'static str {
+        match self {
+            Piece::WhitePawn => "♙",
+            Piece::WhiteRook => "♖",
+            Piece::WhiteKnight => "♘",
+            Piece::WhiteBishop => "♗",
+            Piece::WhiteQueen => "♕",
+            Piece::WhiteKing => "♔",
+            Piece::BlackPawn => "♟",
+            Piece::BlackRook => "♜",
+            Piece::BlackKnight => "♞",
+            Piece::BlackBishop => "♝",
+            Piece::BlackQueen => "♛",
+            Piece::BlackKing => "♚",
+        }
+    }
+
+    pub fn to_fen(&self) -> &'static str {
+        match self {
+            Piece::WhitePawn => "P",
+            Piece::WhiteRook => "R",
+            Piece::WhiteKnight => "N",
+            Piece::WhiteBishop => "B",
+            Piece::WhiteQueen => "Q",
+            Piece::WhiteKing => "K",
+            Piece::BlackPawn => "p",
+            Piece::BlackRook => "r",
+            Piece::BlackKnight => "n",
+            Piece::BlackBishop => "b",
+            Piece::BlackQueen => "q",
+            Piece::BlackKing => "k",
+        }
+    }
+
+    pub fn color(&self) -> Color {
+        match self {
+            Piece::WhitePawn | Piece::WhiteRook | Piece::WhiteKnight |
+            Piece::WhiteBishop | Piece::WhiteQueen | Piece::WhiteKing => Color::White,
+            _ => Color::Black
+        }
+    }
+}
+
+// Define a Move struct using the Square enum.
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub struct Move {
+    pub src: Square,
+    pub target: Square,
+    pub promotion: Option<PieceType>, // Optional promotion piece type
+}
+
+// Example conversion of a move string into a Move struct.
+impl TryFrom<&str> for Move {
+    type Error = &'static str;
+    fn try_from(mv: &str) -> Result<Self, Self::Error> {
+        if mv.len() == 5 {
+            // Promotion move, e.g., "e7e8Q"
+            let src = Square::try_from(&mv[0..2])?;
+            let target = Square::try_from(&mv[2..4])?;
+            let promotion_char = mv.chars().nth(4).unwrap();
+            let promotion = match promotion_char {
+                'q' => Some(PieceType::Queen),
+                'r' => Some(PieceType::Rook),
+                'b' => Some(PieceType::Bishop),
+                'n' => Some(PieceType::Knight),
+                _ => return Err("Invalid promotion piece type"),
+            };
+            return Ok(Move { src, target, promotion })
+        }
+        else if mv.len() != 4 {
+            return Err("Move string must be exactly 4 characters long unless it's a promotion move");
+        }
+        let src = Square::try_from(&mv[0..2])?;
+        let target = Square::try_from(&mv[2..4])?;
+        Ok(Move { src, target, promotion: None })
+    }
+}

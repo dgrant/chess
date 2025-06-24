@@ -1,10 +1,10 @@
 extern crate chesslib;
-use chesslib::board::{bitboard_to_pawn_single_moves, bitboard_to_string, get_empty_board, get_starting_board, is_bit_set, PieceType};
 use chesslib::move_generation::{b_pawns_able_to_double_push, b_pawns_able_to_push, w_pawns_able_to_double_push, w_pawns_able_to_push};
 use chesslib::Square;
-use chesslib::types::Color;
+use chesslib::types::{Color, Move, PieceType};
 
-use chesslib::board::{Board, Move};
+use chesslib::board::Board;
+use chesslib::board_utils::{bitboard_to_pawn_single_moves, bitboard_to_string, get_empty_board, get_starting_board, is_bit_set};
 
 #[test]
 fn test_initial_board_pawns() {
@@ -801,33 +801,37 @@ fn test_pawn_promotion_moves() {
     white_promotion_board.update_composite_bitboards();
     let white_moves = white_promotion_board.get_next_moves(-1);  // Get all possible moves
     // Remove white moves that start with "a1"
-    let white_moves: Vec<String> = white_moves.into_iter()
+    let white_moves_filtered: Vec<String> = white_moves.into_iter()
         .filter(|m| !m.starts_with("a1"))
         .collect();
     let expected_promotions = vec![
         "e7e8q", "e7e8r", "e7e8b", "e7e8n"  // All possible promotion moves
     ];
-    assert_eq!(white_moves.len(), 4);
+    assert_eq!(white_moves_filtered.len(), 4);
     for move_str in expected_promotions {
-        assert!(white_moves.contains(&move_str.to_string()),
+        assert!(white_moves_filtered.contains(&move_str.to_string()),
                 "Missing expected promotion move: {}", move_str);
     }
 
     // Test black pawn promotion
     let mut black_promotion_board = Board {
         black_pawns: Square::E2.to_bitboard(),  // Black pawn ready to promote
+        black_king: Square::H8.to_bitboard(), // Black king out of the way
         white_king: Square::A1.to_bitboard(),   // Place white king away from promotion square
         side_to_move: Color::Black,  // Set side to move to Black
-        ..get_starting_board()
+        ..get_empty_board()
     };
     black_promotion_board.update_composite_bitboards();
     let black_moves = black_promotion_board.get_next_moves(-1);  // Get all possible moves
+    let black_moves_filtered: Vec<String> = black_moves.into_iter()
+        .filter(|m| !m.starts_with("h8"))
+        .collect();
     let expected_black_promotions = vec![
         "e2e1q", "e2e1r", "e2e1b", "e2e1n"  // All possible promotion moves
     ];
-    assert_eq!(black_moves.len(), 4, "Should have 4 promotion moves for black");
+    assert_eq!(black_moves_filtered.len(), 4, "Should have 4 promotion moves for black");
     for move_str in expected_black_promotions {
-        assert!(black_moves.contains(&move_str.to_string()),
+        assert!(black_moves_filtered.contains(&move_str.to_string()),
                 "Missing expected promotion move: {}", move_str);
     }
 

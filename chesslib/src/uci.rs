@@ -1,8 +1,9 @@
-use crate::board::{Board, get_starting_board};
+use crate::board::Board;
 use crate::logger::log_to_file;
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
+use crate::board_utils::get_starting_board;
 
 lazy_static! {
     static ref BOARD_STATE: Mutex<Option<Board>> = Mutex::new(None);
