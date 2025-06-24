@@ -534,7 +534,7 @@ mod tests {
     }
 
     #[test]
-    fn test_rook_legal_moves_with_friendlies() {
+    fn test_rook_legal_moves_with_friendlies_going_left() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
@@ -544,6 +544,48 @@ mod tests {
         let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
 
         let expected_legal = Square::C4.to_bitboard() | Square::B4.to_bitboard() | Square::A4.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_rook_legal_moves_with_friendlies_going_right() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and e4 and c4
+        let friendly_pieces = Square::C4.to_bitboard() | Square::D3.to_bitboard() | Square::D5.to_bitboard();
+
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+
+        let expected_legal = Square::E4.to_bitboard() | Square::F4.to_bitboard() | Square::G4.to_bitboard() | Square::H4.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_rook_legal_moves_with_friendlies_going_up() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and e4 and c4
+        let friendly_pieces = Square::C4.to_bitboard() | Square::D3.to_bitboard() | Square::E4.to_bitboard();
+
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+
+        let expected_legal = Square::D5.to_bitboard() | Square::D6.to_bitboard() | Square::D7.to_bitboard() | Square::D8.to_bitboard();
+        assert_eq!(legal_moves, expected_legal);
+    }
+
+    #[test]
+    fn test_rook_legal_moves_with_friendlies_going_down() {
+        // Rook on d4
+        let rook = Square::D4.to_bitboard();
+
+        // Friendly pieces on d5 and e4 and c4
+        let friendly_pieces = Square::C4.to_bitboard() | Square::D5.to_bitboard() | Square::E4.to_bitboard();
+
+        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+
+        let expected_legal = Square::D3.to_bitboard() | Square::D2.to_bitboard() | Square::D1.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
