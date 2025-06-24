@@ -279,7 +279,8 @@ impl Board {
         use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
                                    w_pawns_attack_targets, b_pawns_attack_targets,
-                                   knight_legal_moves};
+                                   knight_legal_moves, bishop_legal_moves, rook_legal_moves,
+                                   queen_legal_moves, king_legal_moves};
         use rand::seq::IteratorRandom;
 
         let mut possible_moves = Vec::new();
@@ -305,6 +306,44 @@ impl Board {
                 let moves = knight_legal_moves(single_knight, self.any_black);
                 possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
             }
+
+            // Process each black bishop separately
+            let mut working_bishops = self.black_bishops;
+            while working_bishops != 0 {
+                let bishop_pos = working_bishops.trailing_zeros() as u8;
+                working_bishops &= working_bishops - 1;
+
+                let single_bishop = 1u64 << bishop_pos;
+                let moves = bishop_legal_moves(single_bishop, self.any_black, self.any_white);
+                possible_moves.extend(self.bitboard_to_moves(single_bishop, moves));
+            }
+
+            // Process each black rook separately
+            let mut working_rooks = self.black_rooks;
+            while working_rooks != 0 {
+                let rook_pos = working_rooks.trailing_zeros() as u8;
+                working_rooks &= working_rooks - 1;
+
+                let single_rook = 1u64 << rook_pos;
+                let moves = rook_legal_moves(single_rook, self.any_black, self.any_white);
+                possible_moves.extend(self.bitboard_to_moves(single_rook, moves));
+            }
+
+            // Process each black queen separately (usually just one)
+            let mut working_queens = self.black_queen;
+            while working_queens != 0 {
+                let queen_pos = working_queens.trailing_zeros() as u8;
+                working_queens &= working_queens - 1;
+
+                let single_queen = 1u64 << queen_pos;
+                let moves = queen_legal_moves(single_queen, self.any_black, self.any_white);
+                possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
+            }
+
+            // Process black king (only one)
+            let moves = king_legal_moves(self.black_king, self.any_black);
+            possible_moves.extend(self.bitboard_to_moves(self.black_king, moves));
+
         } else {
             // Get all possible pawn moves
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
@@ -326,6 +365,43 @@ impl Board {
                 let moves = knight_legal_moves(single_knight, self.any_white);
                 possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
             }
+
+            // Process each white bishop separately
+            let mut working_bishops = self.white_bishops;
+            while working_bishops != 0 {
+                let bishop_pos = working_bishops.trailing_zeros() as u8;
+                working_bishops &= working_bishops - 1;
+
+                let single_bishop = 1u64 << bishop_pos;
+                let moves = bishop_legal_moves(single_bishop, self.any_white, self.any_black);
+                possible_moves.extend(self.bitboard_to_moves(single_bishop, moves));
+            }
+
+            // Process each white rook separately
+            let mut working_rooks = self.white_rooks;
+            while working_rooks != 0 {
+                let rook_pos = working_rooks.trailing_zeros() as u8;
+                working_rooks &= working_rooks - 1;
+
+                let single_rook = 1u64 << rook_pos;
+                let moves = rook_legal_moves(single_rook, self.any_white, self.any_black);
+                possible_moves.extend(self.bitboard_to_moves(single_rook, moves));
+            }
+
+            // Process each white queen separately (usually just one)
+            let mut working_queens = self.white_queen;
+            while working_queens != 0 {
+                let queen_pos = working_queens.trailing_zeros() as u8;
+                working_queens &= working_queens - 1;
+
+                let single_queen = 1u64 << queen_pos;
+                let moves = queen_legal_moves(single_queen, self.any_white, self.any_black);
+                possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
+            }
+
+            // Process white king (only one)
+            let moves = king_legal_moves(self.white_king, self.any_white);
+            possible_moves.extend(self.bitboard_to_moves(self.white_king, moves));
         }
 
         if n == -1 {
@@ -751,13 +827,25 @@ mod tests {
 
         // Get next move - should suggest a black move
         let next_move = board.get_next_move();
-        // Now allow for both pawn and knight moves
-        assert!(next_move.starts_with("a7") || next_move.starts_with("b7") ||
-               next_move.starts_with("c7") || next_move.starts_with("d6") ||
-               next_move.starts_with("e7") || next_move.starts_with("f7") ||
-               next_move.starts_with("g7") || next_move.starts_with("h7") ||
-               next_move.starts_with("b8") || next_move.starts_with("g8"),
-               "Move {} should be a black pawn or knight move", next_move);
+        // Check if move starts with a valid black piece position
+        assert!(
+            // Pawns
+            next_move.starts_with("a7") || next_move.starts_with("b7") ||
+            next_move.starts_with("c7") || next_move.starts_with("d6") ||
+            next_move.starts_with("e7") || next_move.starts_with("f7") ||
+            next_move.starts_with("g7") || next_move.starts_with("h7") ||
+            // Knights
+            next_move.starts_with("b8") || next_move.starts_with("g8") ||
+            // Bishops
+            next_move.starts_with("c8") || next_move.starts_with("f8") ||
+            // Rooks
+            next_move.starts_with("a8") || next_move.starts_with("h8") ||
+            // Queen
+            next_move.starts_with("d8") ||
+            // King
+            next_move.starts_with("e8"),
+            "Move {} should be a valid black piece move", next_move
+        );
     }
 
     #[test]
