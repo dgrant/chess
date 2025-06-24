@@ -572,7 +572,17 @@ impl Board {
     fn is_legal_move(&self, mv: &Move) -> bool {
         // If we're not in check, all moves are legal (for now - we'll add more restrictions later)
         if !self.white_king_in_check && !self.black_king_in_check {
-            return true;
+            let mut test_board = self.clone();
+            test_board.apply_move(mv);
+            if self.side_to_move == Color::White {
+                assert!(!self.white_king_in_check);
+                // If the move doesn't put the white king in check, it's legal
+                return !test_board.white_king_in_check;
+            } else {
+                assert!(!self.black_king_in_check);
+                // If the move doesn't put the black king in check, it's legal
+                return !test_board.black_king_in_check;
+            }
         }
 
         // At this point we know we are in check.
