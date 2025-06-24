@@ -8,14 +8,13 @@ pub static F: &'static str = "f";
 pub static G: &'static str = "g";
 pub static H: &'static str = "h";
 
-use crate::types::Square;
-
-#[derive(Debug)]
-#[derive(PartialEq)]
-pub enum Color {
-    White,
-    Black,
-}
+use crate::types::{Color, Square};
+use crate::move_generation::{
+    b_pawns_attack_targets, bishop_legal_moves,
+    king_legal_moves, knight_legal_moves,
+    rook_legal_moves,
+    w_pawns_attack_targets,
+};
 
 #[derive(PartialEq)]
 pub enum PieceType {
@@ -115,7 +114,9 @@ pub struct Board {
     pub any_white: u64,
     pub any_black: u64,
     pub empty: u64,
-    pub side_to_move: Color
+    pub side_to_move: Color,
+    pub white_king_in_check: bool,
+    pub black_king_in_check: bool,
 }
 
 impl Board {
@@ -233,6 +234,7 @@ impl Board {
             *piece_bitboard |= to_bit;    // Set the target square
 
             self.update_composite_bitboards();
+            self.update_check_state();
             self.side_to_move = match self.side_to_move {
                 Color::White => Color::Black,
                 Color::Black => Color::White,
@@ -462,6 +464,99 @@ impl Board {
 
         moves
     }
+
+    fn is_square_attacked(&self, square: u8, attacked_by_color: Color) -> bool {
+        let square_bb = 1u64 << square;
+
+        if let Some(piece) = self.get_piece_at_square(square) {
+            if piece.color() == attacked_by_color {
+                // If the square is occupied by a piece of the same color we are looking for
+                // attacks BY, then it cannot be attacked
+                return false;
+            }
+        }
+
+        // At this point, we know the square is empty or occupied by a piece of the opposite color
+
+        if attacked_by_color == Color::White {
+            // At this point we know the square is empty or occupied by a black piece
+            // Check for pawn attacks
+            let pawn_attacks = w_pawns_attack_targets(self.white_pawns, square_bb);
+            if pawn_attacks != 0 {
+                return true;
+            }
+
+            // For knight attacks, we need to check if any knights can move to this square
+            // Get all squares a knight could attack this square from
+            let attacking_squares = knight_legal_moves(square_bb, 0);
+            if attacking_squares & self.white_knights != 0 {
+                return true;
+            }
+
+            // Check for bishop/diagonal queen attacks
+            let bishop_moves = bishop_legal_moves(square_bb, self.any_black, self.any_white);
+            if bishop_moves & (self.white_bishops | self.white_queen) != 0 {
+                return true;
+            }
+
+            // Check for rook/straight queen attacks
+            let rook_moves = rook_legal_moves(square_bb, self.any_black, self.any_white);
+            if rook_moves & (self.white_rooks | self.white_queen) != 0 {
+                return true;
+            }
+
+            // Check for king attacks
+            let king_moves = king_legal_moves(square_bb, self.any_white);
+            if king_moves & self.white_king != 0 {
+                return true;
+            }
+        } else {
+            // At this point we know the square is empty or occupied by a white piece
+
+            // Check for pawn attacks
+            let pawn_attacks = b_pawns_attack_targets(self.black_pawns, square_bb);
+            if pawn_attacks != 0 {
+                return true;
+            }
+
+            // For knight attacks, we need to check if any knights can move to this square
+            let attacking_squares = knight_legal_moves(square_bb, 0);
+            if attacking_squares & self.black_knights != 0 {
+                return true;
+            }
+
+            // Check for bishop/diagonal queen attacks
+            let bishop_moves = bishop_legal_moves(square_bb, self.any_white, self.any_black);
+            if bishop_moves & (self.black_bishops | self.black_queen) != 0 {
+                return true;
+            }
+
+            // Check for rook/straight queen attacks
+            let rook_moves = rook_legal_moves(square_bb, self.any_white, self.any_black);
+            if rook_moves & (self.black_rooks | self.black_queen) != 0 {
+                return true;
+            }
+
+            // Check for king attacks
+            let king_moves = king_legal_moves(square_bb, self.any_black);
+            if king_moves & self.black_king != 0 {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn update_check_state(&mut self) {
+        // Find white king square
+        let white_king_square = self.white_king.trailing_zeros() as u8;
+        // Find black king square
+        let black_king_square = self.black_king.trailing_zeros() as u8;
+
+        // Check if either king is under attack
+        self.white_king_in_check = self.is_square_attacked(white_king_square, Color::Black);
+        self.black_king_in_check = self.is_square_attacked(black_king_square, Color::White);
+    }
 }
 
 
@@ -498,7 +593,9 @@ pub fn get_starting_board() -> Board {
         any_white: 0,
         any_black: 0,
         empty: 0,
-        side_to_move: Color::White
+        side_to_move: Color::White,
+        white_king_in_check: false,
+        black_king_in_check: false,
     };
     board.update_composite_bitboards();
     board
@@ -1013,4 +1110,120 @@ mod tests {
         // So we expect exactly 20 possible moves
         assert_eq!(all_moves.len(), 20, "Starting position should have exactly 20 possible moves");
     }
+
+    #[test]
+    fn test_hello_world() {
+        println!("hello world");
+    }
+
+    #[test]
+    fn test_is_square_attacked_pawns() {
+        let mut board = get_starting_board();
+
+        // In starting position, no center squares are attacked
+        assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::White));
+        assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::Black));
+
+        // After 1.e4, e4 is not attacked by any pieces
+        board.apply_move(&Move { src: Square::E2, target: Square::E4 });
+        assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::White)); // This is false because white pieces can't attack squares occupied by white pieces
+        assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::Black)); // This is false because the pawn on e4 isn't attacked by any black pieces yet.
+
+        // Black responds with pawn to d5
+        board.apply_move(&Move { src: Square::D7, target: Square::D5 });
+        // d5 is attacked by white pawn on e4
+        assert!(board.is_square_attacked(Square::D5.to_bit_index(), Color::White));
+        assert!(!board.is_square_attacked(Square::D5.to_bit_index(), Color::Black)); // Just double-check make sure that black can't attack black's own pawn
+        // e4 is attacked by black pawn on d5
+        assert!(board.is_square_attacked(Square::E4.to_bit_index(), Color::Black));
+        assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::White)); // Just double-check make sure that white can't attack white's own pawn
+    }
+
+    #[test]
+    fn test_is_square_attacked_knights() {
+        let mut board = get_starting_board();
+        board.apply_move(&Move { src: Square::E2, target: Square::E4 });
+        board.apply_move(&Move { src: Square::D7, target: Square::D5 });
+
+        // Test knight attacks
+        board.apply_move(&Move { src: Square::B1, target: Square::C3 });
+        // Just a dummy move for black
+        board.apply_move(&Move { src: Square::H7, target: Square::H6 });
+        // move the e pawn up so it's not being attacked, or attacking the D pawn anymore:
+        board.apply_move(&Move { src: Square::E4, target: Square::E5 });
+        assert!(board.is_square_attacked(Square::D5.to_bit_index(), Color::White)); // White knight attacks black pawn on d5
+        assert!(board.is_square_attacked(Square::E4.to_bit_index(), Color::Black)); // E4 is empty but is being attacked by the black pawn on d5
+    }
+
+    #[test]
+    fn test_is_square_attacked_bishops() {
+        // Test bishop attacks
+        let mut attack_test_board = Board {
+            white_bishops: Square::C4.to_bitboard(),
+            black_queen: Square::F7.to_bitboard(), // Add a piece to block diagonal
+            ..get_starting_board()
+        };
+        attack_test_board.update_composite_bitboards();
+        assert!(attack_test_board.is_square_attacked(Square::D5.to_bit_index(), Color::White)); // Bishop attacks e6
+        assert!(attack_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // Bishop attacks e6
+        assert!(attack_test_board.is_square_attacked(Square::F7.to_bit_index(), Color::White)); // Bishop attacks e6
+        assert!(!attack_test_board.is_square_attacked(Square::G8.to_bit_index(), Color::White)); // Bishop attack blocked by queen
+
+        // TODO: Add more bishop tests for different positions
+    }
+
+    #[test]
+    fn test_is_square_attacked_rooks() {
+        // Test rook attacks
+        let mut rook_test_board = Board {
+            white_rooks: Square::E4.to_bitboard(),
+            black_pawns: Square::E6.to_bitboard(), // Add a piece to block file
+            ..get_starting_board()
+        };
+        rook_test_board.update_composite_bitboards();
+        assert!(rook_test_board.is_square_attacked(Square::E5.to_bit_index(), Color::White)); // Rook attacks e5
+        assert!(rook_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // Rook attacks e5
+        assert!(!rook_test_board.is_square_attacked(Square::E7.to_bit_index(), Color::White)); // Rook attack blocked by pawn
+        assert!(!rook_test_board.is_square_attacked(Square::E8.to_bit_index(), Color::White)); // Rook attack blocked by pawn
+    }
+
+    #[test]
+    fn test_is_square_attacked_queen() {
+        // Test queen attacks
+        let mut queen_test_board = Board {
+            white_queen: Square::D4.to_bitboard(),
+            ..get_starting_board()
+        };
+        queen_test_board.update_composite_bitboards();
+        assert!(!queen_test_board.is_square_attacked(Square::D2.to_bit_index(), Color::White)); // Not an attack, it's our own pawn
+        assert!(queen_test_board.is_square_attacked(Square::D3.to_bit_index(), Color::White)); // Queen attacks vertically down
+        assert!(queen_test_board.is_square_attacked(Square::D5.to_bit_index(), Color::White)); // Queen attacks vertically up
+        assert!(queen_test_board.is_square_attacked(Square::D6.to_bit_index(), Color::White)); // Queen attacks vertically up
+        assert!(queen_test_board.is_square_attacked(Square::D7.to_bit_index(), Color::White)); // Queen attacks vertically up
+        assert!(queen_test_board.is_square_attacked(Square::E5.to_bit_index(), Color::White)); // Queen attacks diagonally north-east
+        assert!(queen_test_board.is_square_attacked(Square::F6.to_bit_index(), Color::White)); // Queen attacks diagonally north-east
+        assert!(queen_test_board.is_square_attacked(Square::G7.to_bit_index(), Color::White)); // Queen attacks diagonally north-east
+        assert!(!queen_test_board.is_square_attacked(Square::H8.to_bit_index(), Color::White)); // Queen attack blocked by G7
+        assert!(queen_test_board.is_square_attacked(Square::A4.to_bit_index(), Color::White)); // Queen attacks horizontally left
+        assert!(queen_test_board.is_square_attacked(Square::B4.to_bit_index(), Color::White)); // Queen attacks horizontally left
+        assert!(queen_test_board.is_square_attacked(Square::C4.to_bit_index(), Color::White)); // Queen attacks horizontally left
+        assert!(queen_test_board.is_square_attacked(Square::E4.to_bit_index(), Color::White)); // Queen attacks horizontally right
+        assert!(queen_test_board.is_square_attacked(Square::F4.to_bit_index(), Color::White)); // Queen attacks horizontally right
+        assert!(queen_test_board.is_square_attacked(Square::G4.to_bit_index(), Color::White)); // Queen attacks horizontally right
+        assert!(queen_test_board.is_square_attacked(Square::H4.to_bit_index(), Color::White)); // Queen attacks horizontally right
+
+    }
+    //
+    // #[test]
+    // fn test_is_square_attacked_king() {
+    //     // Test king attacks
+    //     let mut king_test_board = Board {
+    //         white_king: Square::E4.to_bitboard(),
+    //         ..get_starting_board()
+    //     };
+    //     king_test_board.update_composite_bitboards();
+    //     assert!(king_test_board.is_square_attacked(Square::E5.to_bit_index(), Color::White)); // King attacks adjacent
+    //     assert!(king_test_board.is_square_attacked(Square::F4.to_bit_index(), Color::White)); // King attacks adjacent
+    //     assert!(!king_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // King can't attack 2 squares away
+    // }
 }

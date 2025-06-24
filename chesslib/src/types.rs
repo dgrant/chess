@@ -47,3 +47,10 @@ impl TryFrom<&str> for Square {
         }
     }
 }
+
+#[derive(Debug)]
+#[derive(PartialEq)]
+pub enum Color {
+    White,
+    Black,
+}

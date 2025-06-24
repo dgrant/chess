@@ -1,7 +1,8 @@
 extern crate chesslib;
-use chesslib::board::{get_starting_board, is_bit_set, bitboard_to_string, Color, bitboard_to_pawn_single_moves};
-use chesslib::move_generation::{w_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_able_to_double_push};
+use chesslib::board::{bitboard_to_pawn_single_moves, bitboard_to_string, get_starting_board, is_bit_set};
+use chesslib::move_generation::{b_pawns_able_to_double_push, b_pawns_able_to_push, w_pawns_able_to_double_push, w_pawns_able_to_push};
 use chesslib::Square;
+use chesslib::types::Color;
 
 #[test]
 fn test_initial_board_pawns() {

@@ -919,4 +919,9 @@ mod tests {
         let expected_legal = king_moves(king) & !friendly_pieces;
         assert_eq!(legal_moves, expected_legal);
     }
+
+    #[test]
+    fn test_hello_world() {
+        println!("hello world");
+    }
 }
