@@ -1,6 +1,7 @@
 extern crate chesslib;
-use chesslib::board::{get_starting_board, convert_coordinate_to_bitboard_index, is_bit_set, bitboard_to_string, Color, bitboard_to_pawn_single_moves};
+use chesslib::board::{get_starting_board, is_bit_set, bitboard_to_string, Color, bitboard_to_pawn_single_moves};
 use chesslib::move_generation::{w_pawns_able_to_push, w_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_able_to_double_push};
+use chesslib::Square;
 
 #[test]
 fn test_initial_board_pawns() {
@@ -8,24 +9,46 @@ fn test_initial_board_pawns() {
 
     // Test white pawns are in correct position (second rank)
     for file in 0..8 {
-        let index = convert_coordinate_to_bitboard_index(&format!("{}{}", ('a' as u8 + file) as char, 2));
-        assert!(is_bit_set(board.white_pawns, index), "White pawn should be present at {}{}", ('a' as u8 + file) as char, 2);
+        let square = match file {
+            0 => Square::A2,
+            1 => Square::B2,
+            2 => Square::C2,
+            3 => Square::D2,
+            4 => Square::E2,
+            5 => Square::F2,
+            6 => Square::G2,
+            7 => Square::H2,
+            _ => unreachable!()
+        };
+        assert!(is_bit_set(board.white_pawns, square.to_bit_index()), 
+            "White pawn should be present at {}{}", ('a' as u8 + file) as char, 2);
     }
 
     // Test black pawns are in correct position (seventh rank)
     for file in 0..8 {
-        let index = convert_coordinate_to_bitboard_index(&format!("{}{}", ('a' as u8 + file) as char, 7));
-        assert!(is_bit_set(board.black_pawns, index), "Black pawn should be present at {}{}", ('a' as u8 + file) as char, 7);
+        let square = match file {
+            0 => Square::A7,
+            1 => Square::B7,
+            2 => Square::C7,
+            3 => Square::D7,
+            4 => Square::E7,
+            5 => Square::F7,
+            6 => Square::G7,
+            7 => Square::H7,
+            _ => unreachable!()
+        };
+        assert!(is_bit_set(board.black_pawns, square.to_bit_index()),
+            "Black pawn should be present at {}{}", ('a' as u8 + file) as char, 7);
     }
 }
 
 #[test]
 fn test_coordinate_conversion() {
-    assert_eq!(convert_coordinate_to_bitboard_index("a1"), 0);
-    assert_eq!(convert_coordinate_to_bitboard_index("h1"), 7);
-    assert_eq!(convert_coordinate_to_bitboard_index("a8"), 56);
-    assert_eq!(convert_coordinate_to_bitboard_index("h8"), 63);
-    assert_eq!(convert_coordinate_to_bitboard_index("e4"), 28);
+    assert_eq!(Square::A1.to_bit_index(), 0);
+    assert_eq!(Square::H1.to_bit_index(), 7);
+    assert_eq!(Square::A8.to_bit_index(), 56);
+    assert_eq!(Square::H8.to_bit_index(), 63);
+    assert_eq!(Square::E4.to_bit_index(), 28);
 }
 
 
@@ -182,4 +205,3 @@ fn test_invalid_black_move() {
 
     assert!(!possible_moves.is_empty(), "No moves were generated for black");
 }
-

@@ -61,6 +61,14 @@ impl Piece {
             Piece::BlackKing => "♚",
         }
     }
+
+    pub fn color(&self) -> Color {
+        match self {
+            Piece::WhitePawn | Piece::WhiteRook | Piece::WhiteKnight |
+            Piece::WhiteBishop | Piece::WhiteQueen | Piece::WhiteKing => Color::White,
+            _ => Color::Black
+        }
+    }
 }
 
 // Define a Move struct using the Square enum.
@@ -134,7 +142,7 @@ impl Board {
     /// assert_eq!(board.get_piece_at_coordinate("e4"), " "); // Empty square
     /// ```
     pub fn get_piece_at_coordinate(&self, coordinate: &str) -> &'static str {
-        let bitboard_index = convert_coordinate_to_bitboard_index(coordinate);
+        let bitboard_index = Square::try_from(coordinate).unwrap().to_bit_index();
         match self.get_piece_at_square(bitboard_index) {
             Some(piece) => piece.to_unicode(),
             None => SPACE
@@ -181,6 +189,12 @@ impl Board {
         let piece = self.get_piece_at_square(src_idx);
 
         if let Some(piece) = piece {
+            // Validate that the piece being moved belongs to the side that has the turn
+            if piece.color() != self.side_to_move {
+                panic!("Attempted to move a {:?} piece during {:?}'s turn",
+                    piece.color(), self.side_to_move);
+            }
+
             // First, if there's a piece on the target square, remove it from its bitboard
             if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
                 let captured_bitboard = match captured_piece {
@@ -400,21 +414,6 @@ pub fn get_starting_board() -> Board {
     board
 }
 
-pub fn file_name_to_int(file: &str) -> u8 {
-    match file {
-        "a" => 0,
-        "b" => 1,
-        "c" => 2,
-        "d" => 3,
-        "e" => 4,
-        "f" => 5,
-        "g" => 6,
-        "h" => 7,
-//        TODO(dgrant): Handle this differently
-        _ => 0
-    }
-}
-
 pub fn int_file_to_string(file: u8) -> &'static str {
     match file {
         0 => A,
@@ -428,17 +427,6 @@ pub fn int_file_to_string(file: u8) -> &'static str {
 //        TODO(dgrant): Handle this differently
         _ => SPACE
     }
-}
-
-/// Converts a coordinate like a1 into a bitboard index. ie. a1->0, h8->63
-///
-/// # Arguments
-/// * `coordinate` - a chess board coordinate like f6
-pub fn convert_coordinate_to_bitboard_index(coordinate: &str) -> u8 {
-    let file = &coordinate[0..1];
-    let file_number = file_name_to_int(file);
-    let rank: u8 = (&coordinate[1..2]).parse().unwrap();
-    return (rank - 1) * 8 + file_number;
 }
 
 pub fn is_bit_set(bitboard: u64, bit: u8) -> bool {
@@ -633,23 +621,23 @@ mod tests {
     #[test]
     fn test_coordinate_conversion() {
         // a file
-        assert_eq!(convert_coordinate_to_bitboard_index("a1"), 0);
-        assert_eq!(convert_coordinate_to_bitboard_index("a2"), 8);
-        assert_eq!(convert_coordinate_to_bitboard_index("a3"), 16);
-        assert_eq!(convert_coordinate_to_bitboard_index("a4"), 24);
-        assert_eq!(convert_coordinate_to_bitboard_index("a5"), 32);
-        assert_eq!(convert_coordinate_to_bitboard_index("a6"), 40);
-        assert_eq!(convert_coordinate_to_bitboard_index("a7"), 48);
-        assert_eq!(convert_coordinate_to_bitboard_index("a8"), 56);
+        assert_eq!(Square::A1.to_bit_index(), 0);
+        assert_eq!(Square::A2.to_bit_index(), 8);
+        assert_eq!(Square::A3.to_bit_index(), 16);
+        assert_eq!(Square::A4.to_bit_index(), 24);
+        assert_eq!(Square::A5.to_bit_index(), 32);
+        assert_eq!(Square::A6.to_bit_index(), 40);
+        assert_eq!(Square::A7.to_bit_index(), 48);
+        assert_eq!(Square::A8.to_bit_index(), 56);
 
         // Center squares
-        assert_eq!(convert_coordinate_to_bitboard_index("d4"), 27);
-        assert_eq!(convert_coordinate_to_bitboard_index("e4"), 28);
-        assert_eq!(convert_coordinate_to_bitboard_index("d5"), 35);
-        assert_eq!(convert_coordinate_to_bitboard_index("e5"), 36);
+        assert_eq!(Square::D4.to_bit_index(), 27);
+        assert_eq!(Square::E4.to_bit_index(), 28);
+        assert_eq!(Square::D5.to_bit_index(), 35);
+        assert_eq!(Square::E5.to_bit_index(), 36);
 
         // h file
-        assert_eq!(convert_coordinate_to_bitboard_index("h8"), 63);
+        assert_eq!(Square::H8.to_bit_index(), 63);
     }
 
     #[test]
@@ -694,12 +682,12 @@ mod tests {
         // according to the Wisconsin CS page convention
 
         // Test rank-by-rank layout (8 bits per rank)
-        assert_eq!(convert_coordinate_to_bitboard_index("a1"), 0);
-        assert_eq!(convert_coordinate_to_bitboard_index("h1"), 7);
-        assert_eq!(convert_coordinate_to_bitboard_index("a2"), 8);
-        assert_eq!(convert_coordinate_to_bitboard_index("h2"), 15);
-        assert_eq!(convert_coordinate_to_bitboard_index("a8"), 56);
-        assert_eq!(convert_coordinate_to_bitboard_index("h8"), 63);
+        assert_eq!(Square::A1.to_bit_index(), 0);
+        assert_eq!(Square::H1.to_bit_index(), 7);
+        assert_eq!(Square::A2.to_bit_index(), 8);
+        assert_eq!(Square::H2.to_bit_index(), 15);
+        assert_eq!(Square::A8.to_bit_index(), 56);
+        assert_eq!(Square::H8.to_bit_index(), 63);
 
         // Verify specific squares from the Wisconsin CS page examples
         // These are the bit positions as shown in their diagrams
@@ -718,13 +706,13 @@ mod tests {
 
         // Test moving a white pawn from e2 to e4
         board.apply_move(&Move { src: Square::E2, target: Square::E4 });
-        assert!(is_bit_set(board.white_pawns, convert_coordinate_to_bitboard_index("e4")));
-        assert!(!is_bit_set(board.white_pawns, convert_coordinate_to_bitboard_index("e2")));
+        assert!(is_bit_set(board.white_pawns, Square::E4.to_bit_index()));
+        assert!(!is_bit_set(board.white_pawns, Square::E2.to_bit_index()));
 
         // Test moving a black pawn from d7 to d5
         board.apply_move(&Move { src: Square::D7, target: Square::D5 });
-        assert!(is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d5")));
-        assert!(!is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d7")));
+        assert!(is_bit_set(board.black_pawns, Square::D5.to_bit_index()));
+        assert!(!is_bit_set(board.black_pawns, Square::D7.to_bit_index()));
 
         // Verify empty squares are updated correctly
         assert_eq!(board.empty, !(board.any_white | board.any_black));
@@ -759,26 +747,40 @@ mod tests {
     }
 
     #[test]
+    #[should_panic(expected = "Attempted to move a White piece during Black's turn")]
+    fn test_apply_move_same_side_twice_fails() {
+        let mut board = get_starting_board();
+
+        // Test moving a white pawn from e2 to e4
+        board.apply_move(&Move { src: Square::E2, target: Square::E4 });
+        assert!(is_bit_set(board.white_pawns, Square::E4.to_bit_index()));
+        assert!(!is_bit_set(board.white_pawns, Square::E2.to_bit_index()));
+
+        // Test moving another white pawn from d2 to d4 - should panic
+        board.apply_move(&Move { src: Square::D2, target: Square::D4 });
+    }
+
+    #[test]
     fn test_knight_moves() {
         let mut board = get_starting_board();
 
         // Move white knight from b1 to c3
         board.apply_move(&Move { src: Square::B1, target: Square::C3 });
-        assert!(is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("c3")));
-        assert!(!is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("b1")));
+        assert!(is_bit_set(board.white_knights, Square::C3.to_bit_index()));
+        assert!(!is_bit_set(board.white_knights, Square::B1.to_bit_index()));
         assert_eq!(board.side_to_move, Color::Black);
 
         // Move black knight from g8 to f6
         board.apply_move(&Move { src: Square::G8, target: Square::F6 });
-        assert!(is_bit_set(board.black_knights, convert_coordinate_to_bitboard_index("f6")));
-        assert!(!is_bit_set(board.black_knights, convert_coordinate_to_bitboard_index("g8")));
+        assert!(is_bit_set(board.black_knights, Square::F6.to_bit_index()));
+        assert!(!is_bit_set(board.black_knights, Square::G8.to_bit_index()));
         assert_eq!(board.side_to_move, Color::White);
 
         // Test a capture: white knight takes black pawn
         board.apply_move(&Move { src: Square::C3, target: Square::D5 });
-        assert!(is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("d5")));
-        assert!(!is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("c3")));
-        assert!(!is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d5")));
+        assert!(is_bit_set(board.white_knights, Square::D5.to_bit_index()));
+        assert!(!is_bit_set(board.white_knights, Square::C3.to_bit_index()));
+        assert!(!is_bit_set(board.black_pawns, Square::D5.to_bit_index()));
     }
 
     #[test]
@@ -786,10 +788,8 @@ mod tests {
         let board = get_starting_board();
 
         // Test with a single source and multiple targets
-        let source = 1u64 << convert_coordinate_to_bitboard_index("e4");  // Knight on e4
-        let targets = (1u64 << convert_coordinate_to_bitboard_index("f6")) |  // Target squares f6, d6, c5
-                     (1u64 << convert_coordinate_to_bitboard_index("d6")) |
-                     (1u64 << convert_coordinate_to_bitboard_index("c5"));
+        let source = Square::E4.to_bitboard();  // Knight on e4
+        let targets = Square::F6.to_bitboard() | Square::D6.to_bitboard() | Square::C5.to_bitboard();
 
         let moves = board.bitboard_to_moves(source, targets);
 
@@ -798,26 +798,42 @@ mod tests {
         assert!(moves.contains(&"e4d6".to_string()));
         assert!(moves.contains(&"e4c5".to_string()));
         assert_eq!(moves.len(), 3);
+    }
+
+    #[test]
+    fn test_bitboard_to_moves2() {
+        let board = get_starting_board();
 
         // Test with a different single source and single target
-        let g1_source = 1u64 << convert_coordinate_to_bitboard_index("g1");  // Knight on g1
-        let f3_target = 1u64 << convert_coordinate_to_bitboard_index("f3");  // Target square f3
+        let source = Square::G1.to_bitboard();  // Knight on g1
+        let target = Square::F3.to_bitboard();  // Target square f3
 
-        let moves = board.bitboard_to_moves(g1_source, f3_target);
+        let moves = board.bitboard_to_moves(source, target);
 
         // Verify move is generated correctly
         assert!(moves.contains(&"g1f3".to_string()));
         assert_eq!(moves.len(), 1);
+    }
+
+    #[test]
+    fn test_bitboard_to_moves3() {
+        let board = get_starting_board();
 
         // Test b1 knight separately
-        let b1_source = 1u64 << convert_coordinate_to_bitboard_index("b1");  // Knight on b1
-        let c3_target = 1u64 << convert_coordinate_to_bitboard_index("c3");  // Target square c3
+        let source = Square::B1.to_bitboard();  // Knight on b1
+        let target = Square::C3.to_bitboard();  // Target square c3
 
-        let moves = board.bitboard_to_moves(b1_source, c3_target);
+        let moves = board.bitboard_to_moves(source, target);
 
         // Verify move is generated correctly
         assert!(moves.contains(&"b1c3".to_string()));
         assert_eq!(moves.len(), 1);
+    }
+
+    #[test]
+    fn test_bitboard_to_moves4() {
+        let board = get_starting_board();
+        let source = Square::E4.to_bitboard();  // Knight on e4
 
         // Test with no target squares (should produce empty move list)
         assert!(board.bitboard_to_moves(source, 0).is_empty());
