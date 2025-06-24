@@ -275,12 +275,14 @@ impl Board {
         moves.map(|mv| Move::try_from(mv.as_str()))
     }
 
-    pub fn get_next_move(&self) -> String {
+    pub fn get_next_moves(&self, n: i32) -> Vec<String> {
         use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
                                    w_pawns_attack_targets, b_pawns_attack_targets,
-                                   knight_legal_moves, knight_attack_targets};
+                                   knight_legal_moves};
         use rand::seq::IteratorRandom;
+
+        let mut possible_moves = Vec::new();
 
         if self.side_to_move == Color::Black {
             // Get all possible pawn moves
@@ -288,7 +290,7 @@ impl Board {
             let double_moveable_pawns = b_pawns_able_to_double_push(self.black_pawns, self.empty);
             let attacking_pawns = b_pawns_attack_targets(self.black_pawns, self.any_white);
 
-            let mut possible_moves = bitboard_to_pawn_single_moves(moveable_pawns, true);
+            possible_moves.extend(bitboard_to_pawn_single_moves(moveable_pawns, true));
             possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, true));
             possible_moves.extend(bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
 
@@ -299,23 +301,17 @@ impl Board {
                 working_knights &= working_knights - 1;  // Clear the processed bit
 
                 let single_knight = 1u64 << knight_pos;
-                // Get legal moves and attacks for this specific knight
+                // Get all legal moves for this knight (including both empty squares and captures)
                 let moves = knight_legal_moves(single_knight, self.any_black);
-                let attacks = knight_attack_targets(single_knight, self.any_white);
-
                 possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
-                possible_moves.extend(self.bitboard_to_moves(single_knight, attacks));
             }
-
-            possible_moves.into_iter().choose(&mut rand::thread_rng())
-                .expect("No moves found for black, which should be impossible in current state")
         } else {
             // Get all possible pawn moves
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
             let double_moveable_pawns = w_pawns_able_to_double_push(self.white_pawns, self.empty);
             let attacking_pawns = w_pawns_attack_targets(self.white_pawns, self.any_black);
 
-            let mut possible_moves = bitboard_to_pawn_single_moves(moveable_pawns, false);
+            possible_moves.extend(bitboard_to_pawn_single_moves(moveable_pawns, false));
             possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, false));
             possible_moves.extend(bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
 
@@ -323,20 +319,38 @@ impl Board {
             let mut working_knights = self.white_knights;
             while working_knights != 0 {
                 let knight_pos = working_knights.trailing_zeros() as u8;
-                working_knights &= working_knights - 1;  // Clear the processed bit
+                working_knights &= working_knights - 1;  // Clear the bit we are processing, the lowest significant bit that is set
 
                 let single_knight = 1u64 << knight_pos;
-                // Get legal moves and attacks for this specific knight
+                // Get all legal moves for this knight (including both empty squares and captures)
                 let moves = knight_legal_moves(single_knight, self.any_white);
-                let attacks = knight_attack_targets(single_knight, self.any_black);
-
                 possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
-                possible_moves.extend(self.bitboard_to_moves(single_knight, attacks));
             }
-
-            possible_moves.into_iter().choose(&mut rand::thread_rng())
-                .expect("No moves found for white, which should be impossible in current state")
         }
+
+        if n == -1 {
+            possible_moves
+        } else {
+            let n = n as usize;
+            if n == 0 {
+                Vec::new()
+            } else {
+                let mut rng = rand::thread_rng();
+                possible_moves.iter()
+                    .choose_multiple(&mut rng, n.min(possible_moves.len()))
+                    .into_iter()
+                    .cloned()
+                    .collect()
+            }
+        }
+    }
+
+    pub fn get_next_move(&self) -> String {
+        // Default to getting one move
+        self.get_next_moves(1)
+            .into_iter()
+            .next()
+            .expect("No moves found, which should be impossible in current state")
     }
 
     // Generic helper function to convert a source bitboard and target bitboard into a list of moves
@@ -837,5 +851,78 @@ mod tests {
 
         // Test with no target squares (should produce empty move list)
         assert!(board.bitboard_to_moves(source, 0).is_empty());
+    }
+
+    #[test]
+    fn test_get_next_move() {
+        let mut board = get_starting_board();
+        assert_eq!(board.side_to_move, Color::White);
+
+        // White's first move should be either a pawn move or knight move
+        let first_move = board.get_next_move();
+        assert!(first_move.starts_with("a2") || first_move.starts_with("b2") ||
+               first_move.starts_with("c2") || first_move.starts_with("d2") ||
+               first_move.starts_with("e2") || first_move.starts_with("f2") ||
+               first_move.starts_with("g2") || first_move.starts_with("h2") ||
+               first_move.starts_with("b1") || first_move.starts_with("g1"),
+               "First move {} should be a white pawn or knight move", first_move);
+
+        // Apply the first move and get a response from black
+        board.apply_move_from_string(&first_move);
+        assert_eq!(board.side_to_move, Color::Black);
+
+        let black_move = board.get_next_move();
+        assert!(black_move.starts_with("a7") || black_move.starts_with("b7") ||
+               black_move.starts_with("c7") || black_move.starts_with("d7") ||
+               black_move.starts_with("e7") || black_move.starts_with("f7") ||
+               black_move.starts_with("g7") || black_move.starts_with("h7") ||
+               black_move.starts_with("b8") || black_move.starts_with("g8"),
+               "Move {} should be a black pawn or knight move", black_move);
+
+        // Apply black's move and get another white move
+        board.apply_move_from_string(&black_move);
+        assert_eq!(board.side_to_move, Color::White);
+
+        // Get another move - make sure it's still valid format
+        let next_move = board.get_next_move();
+        assert_eq!(next_move.len(), 4, "Move should be in format 'e2e4', got {}", next_move);
+        assert!(next_move.chars().all(|c| c.is_ascii_alphanumeric()),
+               "Move should only contain letters and numbers, got {}", next_move);
+    }
+
+    #[test]
+    fn test_get_next_moves() {
+        let board = get_starting_board();
+
+        // Test getting no moves
+        let no_moves = board.get_next_moves(0);
+        assert!(no_moves.is_empty(), "Should return empty vec when n=0");
+
+        // Test getting single move (should be same as get_next_move)
+        let one_move = board.get_next_moves(1);
+        assert_eq!(one_move.len(), 1, "Should return exactly one move when n=1");
+
+        // Test getting multiple moves
+        let five_moves = board.get_next_moves(5);
+        assert!(five_moves.len() <= 5, "Should not return more moves than requested");
+        assert!(!five_moves.is_empty(), "Should return at least one move");
+
+        // Verify all moves are valid white moves from starting position
+        for mv in five_moves {
+            assert!(mv.starts_with("a2") || mv.starts_with("b2") ||
+                   mv.starts_with("c2") || mv.starts_with("d2") ||
+                   mv.starts_with("e2") || mv.starts_with("f2") ||
+                   mv.starts_with("g2") || mv.starts_with("h2") ||
+                   mv.starts_with("b1") || mv.starts_with("g1"),
+                   "Move {} should be a white pawn or knight move", mv);
+        }
+
+        // Test getting all moves (n = -1)
+        let all_moves = board.get_next_moves(-1);
+        assert!(!all_moves.is_empty(), "Should return all possible moves");
+        // In starting position, each pawn can move 1 or 2 squares (16 moves)
+        // and each knight has 2 possible moves (4 moves total)
+        // So we expect exactly 20 possible moves
+        assert_eq!(all_moves.len(), 20, "Starting position should have exactly 20 possible moves");
     }
 }
