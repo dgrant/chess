@@ -630,7 +630,7 @@ mod tests {
     }
 
     #[test]
-    fn test_king_legal_moves_and_attacks() {
+    fn test_king_legal_moves() {
         // King on d4
         let king = Square::D4.to_bitboard();
 
@@ -640,7 +640,9 @@ mod tests {
         let legal_moves = king_legal_moves(king, friendly_pieces);
 
         // Legal moves should exclude d5 and e4
-        let expected_legal = king_moves(king) & !friendly_pieces;
+        let expected_legal = Square::D3.to_bitboard() | Square::C3.to_bitboard() |
+            Square::C4.to_bitboard() | Square::C5.to_bitboard() | Square::E3.to_bitboard() |
+            Square::E5.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 

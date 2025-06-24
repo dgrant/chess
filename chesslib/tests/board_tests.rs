@@ -746,16 +746,28 @@ fn test_is_legal_move_complex() {
     assert!(!check_board.is_legal_move(&Move { src: Square::E1, target: Square::E2 })); // King moves into check
 }
 
-//
-// #[test]
-// fn test_is_square_attacked_king() {
-//     // Test king attacks
-//     let mut king_test_board = Board {
-//         white_king: Square::E4.to_bitboard(),
-//         ..get_starting_board()
-//     };
-//     king_test_board.update_composite_bitboards();
-//     assert!(king_test_board.is_square_attacked(Square::E5.to_bit_index(), Color::White)); // King attacks adjacent
-//     assert!(king_test_board.is_square_attacked(Square::F4.to_bit_index(), Color::White)); // King attacks adjacent
-//     assert!(!king_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // King can't attack 2 squares away
-// }
+
+#[test]
+fn test_is_square_attacked_king() {
+    // Test king attacks
+    let mut king_test_board = Board {
+        white_king: Square::E4.to_bitboard(),
+        ..get_starting_board()
+    };
+    king_test_board.update_composite_bitboards();
+    assert!(king_test_board.is_square_attacked(Square::D5.to_bit_index(), Color::White)); // King attacks above-left
+    assert!(king_test_board.is_square_attacked(Square::E5.to_bit_index(), Color::White)); // King attacks above
+    assert!(king_test_board.is_square_attacked(Square::F5.to_bit_index(), Color::White)); // King attacks above-right
+
+    assert!(king_test_board.is_square_attacked(Square::D4.to_bit_index(), Color::White)); // King attacks left
+    assert!(king_test_board.is_square_attacked(Square::F4.to_bit_index(), Color::White)); // King attacks right
+
+    assert!(king_test_board.is_square_attacked(Square::D3.to_bit_index(), Color::White)); // King attacks below-left
+    assert!(king_test_board.is_square_attacked(Square::E3.to_bit_index(), Color::White)); // King attacks below
+    assert!(king_test_board.is_square_attacked(Square::F3.to_bit_index(), Color::White)); // King attacks below-right
+
+    assert!(!king_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // King can't attack 2 squares away
+    assert!(!king_test_board.is_square_attacked(Square::C4.to_bit_index(), Color::White)); // King can't attack 2 squares away
+    assert!(!king_test_board.is_square_attacked(Square::G4.to_bit_index(), Color::White)); // King can't attack 2 squares away
+    assert!(!king_test_board.is_square_attacked(Square::E2.to_bit_index(), Color::White)); // King can't attack 2 squares away
+}

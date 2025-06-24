@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod tests {
     use chesslib::handle_uci_command;
-    use super::*;
 
     #[test]
     fn test_handle_uci_command() {

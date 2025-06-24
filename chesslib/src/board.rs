@@ -530,8 +530,8 @@ impl Board {
                 return true;
             }
 
-            // Check for king attacks
-            let king_moves = king_legal_moves(square_bb, self.any_white);
+            // Check for king attacks - king can only be blocked by its own pieces
+            let king_moves = king_legal_moves(square_bb, self.any_black);
             if king_moves & self.white_king != 0 {
                 return true;
             }
@@ -562,8 +562,8 @@ impl Board {
                 return true;
             }
 
-            // Check for king attacks
-            let king_moves = king_legal_moves(square_bb, self.any_black);
+            // Check for king attacks - king can only be blocked by its own pieces
+            let king_moves = king_legal_moves(square_bb, self.any_white);
             if king_moves & self.black_king != 0 {
                 return true;
             }
