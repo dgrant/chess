@@ -111,6 +111,9 @@ mod tests {
         let response = handle_uci_command("go");
         assert!(response.starts_with("bestmove"));
         let black_move = response.split_whitespace().nth(1).unwrap();
-        assert!(black_move.chars().nth(1).unwrap() == '7', "Should be Black's move from rank 7");
+
+        // First character should be either a pawn move from rank 7 or a knight move from rank 8
+        let rank = black_move.chars().nth(1).unwrap();
+        assert!(rank == '7' || rank == '8', "Should be Black's move from rank 7 (pawn) or rank 8 (knight)");
     }
 }

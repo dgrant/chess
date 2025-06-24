@@ -180,47 +180,49 @@ impl Board {
         // Get the piece at the source square
         let piece = self.get_piece_at_square(src_idx);
 
-        // Only proceed if it's a pawn
         if let Some(piece) = piece {
-            match piece {
-                Piece::WhitePawn | Piece::BlackPawn => {
-                    // First, if there's a piece on the target square, remove it from its bitboard
-                    if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
-                        let captured_bitboard = match captured_piece {
-                            Piece::WhitePawn => &mut self.white_pawns,
-                            Piece::BlackPawn => &mut self.black_pawns,
-                            // For other piece types, we still need to handle capture but we won't allow them to move
-                            Piece::WhiteRook => &mut self.white_rooks,
-                            Piece::WhiteKnight => &mut self.white_knights,
-                            Piece::WhiteBishop => &mut self.white_bishops,
-                            Piece::WhiteQueen => &mut self.white_queen,
-                            Piece::WhiteKing => &mut self.white_king,
-                            Piece::BlackRook => &mut self.black_rooks,
-                            Piece::BlackKnight => &mut self.black_knights,
-                            Piece::BlackBishop => &mut self.black_bishops,
-                            Piece::BlackQueen => &mut self.black_queen,
-                            Piece::BlackKing => &mut self.black_king,
-                        };
-                        *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
-                    }
-
-                    // Then move the pawn from source to target
-                    let bitboard = match piece {
-                        Piece::WhitePawn => &mut self.white_pawns,
-                        Piece::BlackPawn => &mut self.black_pawns,
-                        _ => unreachable!(), // We already checked it's a pawn
-                    };
-                    *bitboard ^= from_bit;  // Clear the source square
-                    *bitboard |= to_bit;    // Set the target square
-
-                    self.update_composite_bitboards();
-                    self.side_to_move = match self.side_to_move {
-                        Color::White => Color::Black,
-                        Color::Black => Color::White,
-                    };
-                }
-                _ => () // Do nothing for non-pawn pieces
+            // First, if there's a piece on the target square, remove it from its bitboard
+            if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
+                let captured_bitboard = match captured_piece {
+                    Piece::WhitePawn => &mut self.white_pawns,
+                    Piece::BlackPawn => &mut self.black_pawns,
+                    Piece::WhiteRook => &mut self.white_rooks,
+                    Piece::WhiteKnight => &mut self.white_knights,
+                    Piece::WhiteBishop => &mut self.white_bishops,
+                    Piece::WhiteQueen => &mut self.white_queen,
+                    Piece::WhiteKing => &mut self.white_king,
+                    Piece::BlackRook => &mut self.black_rooks,
+                    Piece::BlackKnight => &mut self.black_knights,
+                    Piece::BlackBishop => &mut self.black_bishops,
+                    Piece::BlackQueen => &mut self.black_queen,
+                    Piece::BlackKing => &mut self.black_king,
+                };
+                *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
             }
+
+            // Then move the piece from source to target
+            let piece_bitboard = match piece {
+                Piece::WhitePawn => &mut self.white_pawns,
+                Piece::BlackPawn => &mut self.black_pawns,
+                Piece::WhiteRook => &mut self.white_rooks,
+                Piece::WhiteKnight => &mut self.white_knights,
+                Piece::WhiteBishop => &mut self.white_bishops,
+                Piece::WhiteQueen => &mut self.white_queen,
+                Piece::WhiteKing => &mut self.white_king,
+                Piece::BlackRook => &mut self.black_rooks,
+                Piece::BlackKnight => &mut self.black_knights,
+                Piece::BlackBishop => &mut self.black_bishops,
+                Piece::BlackQueen => &mut self.black_queen,
+                Piece::BlackKing => &mut self.black_king,
+            };
+            *piece_bitboard ^= from_bit;  // Clear the source square
+            *piece_bitboard |= to_bit;    // Set the target square
+
+            self.update_composite_bitboards();
+            self.side_to_move = match self.side_to_move {
+                Color::White => Color::Black,
+                Color::Black => Color::White,
+            };
         }
     }
 
@@ -262,10 +264,12 @@ impl Board {
     pub fn get_next_move(&self) -> String {
         use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
-                                   w_pawns_attack_targets, b_pawns_attack_targets};
+                                   w_pawns_attack_targets, b_pawns_attack_targets,
+                                   knight_legal_moves, knight_attack_targets};
         use rand::seq::IteratorRandom;
 
         if self.side_to_move == Color::Black {
+            // Get all possible pawn moves
             let moveable_pawns = b_pawns_able_to_push(self.black_pawns, self.empty);
             let double_moveable_pawns = b_pawns_able_to_double_push(self.black_pawns, self.empty);
             let attacking_pawns = b_pawns_attack_targets(self.black_pawns, self.any_white);
@@ -274,9 +278,25 @@ impl Board {
             possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, true));
             possible_moves.extend(bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
 
+            // Process each black knight separately
+            let mut working_knights = self.black_knights;
+            while working_knights != 0 {
+                let knight_pos = working_knights.trailing_zeros() as u8;
+                working_knights &= working_knights - 1;  // Clear the processed bit
+
+                let single_knight = 1u64 << knight_pos;
+                // Get legal moves and attacks for this specific knight
+                let moves = knight_legal_moves(single_knight, self.any_black);
+                let attacks = knight_attack_targets(single_knight, self.any_white);
+
+                possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
+                possible_moves.extend(self.bitboard_to_moves(single_knight, attacks));
+            }
+
             possible_moves.into_iter().choose(&mut rand::thread_rng())
                 .expect("No moves found for black, which should be impossible in current state")
         } else {
+            // Get all possible pawn moves
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
             let double_moveable_pawns = w_pawns_able_to_double_push(self.white_pawns, self.empty);
             let attacking_pawns = w_pawns_attack_targets(self.white_pawns, self.any_black);
@@ -285,9 +305,58 @@ impl Board {
             possible_moves.extend(bitboard_to_pawn_double_moves(double_moveable_pawns, false));
             possible_moves.extend(bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
 
+            // Process each white knight separately
+            let mut working_knights = self.white_knights;
+            while working_knights != 0 {
+                let knight_pos = working_knights.trailing_zeros() as u8;
+                working_knights &= working_knights - 1;  // Clear the processed bit
+
+                let single_knight = 1u64 << knight_pos;
+                // Get legal moves and attacks for this specific knight
+                let moves = knight_legal_moves(single_knight, self.any_white);
+                let attacks = knight_attack_targets(single_knight, self.any_black);
+
+                possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
+                possible_moves.extend(self.bitboard_to_moves(single_knight, attacks));
+            }
+
             possible_moves.into_iter().choose(&mut rand::thread_rng())
                 .expect("No moves found for white, which should be impossible in current state")
         }
+    }
+
+    // Generic helper function to convert a source bitboard and target bitboard into a list of moves
+    fn bitboard_to_moves(&self, source_pieces: u64, target_squares: u64) -> Vec<String> {
+        // Assert that source_pieces contains exactly one piece (one bit set)
+        debug_assert_eq!(source_pieces.count_ones(), 1,
+            "bitboard_to_moves should be called with exactly one source piece, got {} pieces",
+            source_pieces.count_ones());
+
+        let mut moves = Vec::new();
+        let mut working_source = source_pieces;
+
+        // For each source piece
+        while working_source != 0 {
+            let from_square = working_source.trailing_zeros() as u8;
+            working_source &= working_source - 1;  // Clear the processed bit
+
+            // For each target square
+            let mut current_targets = target_squares;
+            while current_targets != 0 {
+                let to_square = current_targets.trailing_zeros() as u8;
+                current_targets &= current_targets - 1;  // Clear the processed bit
+
+                // Convert to algebraic notation
+                let from_file = int_file_to_string(from_square % 8);
+                let from_rank = (from_square / 8 + 1).to_string();
+                let to_file = int_file_to_string(to_square % 8);
+                let to_rank = (to_square / 8 + 1).to_string();
+
+                moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+            }
+        }
+
+        moves
     }
 }
 
@@ -680,9 +749,77 @@ mod tests {
 
         // Get next move - should suggest a black move
         let next_move = board.get_next_move();
-        assert!(next_move.starts_with("a7") || next_move.starts_with("b7") || next_move.starts_with("c7") ||
-               next_move.starts_with("d6") || next_move.starts_with("e7") || next_move.starts_with("f7") ||
-               next_move.starts_with("g7") || next_move.starts_with("h7"),
-               "Move {} should be a black pawn move", next_move);
+        // Now allow for both pawn and knight moves
+        assert!(next_move.starts_with("a7") || next_move.starts_with("b7") ||
+               next_move.starts_with("c7") || next_move.starts_with("d6") ||
+               next_move.starts_with("e7") || next_move.starts_with("f7") ||
+               next_move.starts_with("g7") || next_move.starts_with("h7") ||
+               next_move.starts_with("b8") || next_move.starts_with("g8"),
+               "Move {} should be a black pawn or knight move", next_move);
+    }
+
+    #[test]
+    fn test_knight_moves() {
+        let mut board = get_starting_board();
+
+        // Move white knight from b1 to c3
+        board.apply_move(&Move { src: Square::B1, target: Square::C3 });
+        assert!(is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("c3")));
+        assert!(!is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("b1")));
+        assert_eq!(board.side_to_move, Color::Black);
+
+        // Move black knight from g8 to f6
+        board.apply_move(&Move { src: Square::G8, target: Square::F6 });
+        assert!(is_bit_set(board.black_knights, convert_coordinate_to_bitboard_index("f6")));
+        assert!(!is_bit_set(board.black_knights, convert_coordinate_to_bitboard_index("g8")));
+        assert_eq!(board.side_to_move, Color::White);
+
+        // Test a capture: white knight takes black pawn
+        board.apply_move(&Move { src: Square::C3, target: Square::D5 });
+        assert!(is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("d5")));
+        assert!(!is_bit_set(board.white_knights, convert_coordinate_to_bitboard_index("c3")));
+        assert!(!is_bit_set(board.black_pawns, convert_coordinate_to_bitboard_index("d5")));
+    }
+
+    #[test]
+    fn test_bitboard_to_moves() {
+        let board = get_starting_board();
+
+        // Test with a single source and multiple targets
+        let source = 1u64 << convert_coordinate_to_bitboard_index("e4");  // Knight on e4
+        let targets = (1u64 << convert_coordinate_to_bitboard_index("f6")) |  // Target squares f6, d6, c5
+                     (1u64 << convert_coordinate_to_bitboard_index("d6")) |
+                     (1u64 << convert_coordinate_to_bitboard_index("c5"));
+
+        let moves = board.bitboard_to_moves(source, targets);
+
+        // Verify the moves are generated correctly
+        assert!(moves.contains(&"e4f6".to_string()));
+        assert!(moves.contains(&"e4d6".to_string()));
+        assert!(moves.contains(&"e4c5".to_string()));
+        assert_eq!(moves.len(), 3);
+
+        // Test with a different single source and single target
+        let g1_source = 1u64 << convert_coordinate_to_bitboard_index("g1");  // Knight on g1
+        let f3_target = 1u64 << convert_coordinate_to_bitboard_index("f3");  // Target square f3
+
+        let moves = board.bitboard_to_moves(g1_source, f3_target);
+
+        // Verify move is generated correctly
+        assert!(moves.contains(&"g1f3".to_string()));
+        assert_eq!(moves.len(), 1);
+
+        // Test b1 knight separately
+        let b1_source = 1u64 << convert_coordinate_to_bitboard_index("b1");  // Knight on b1
+        let c3_target = 1u64 << convert_coordinate_to_bitboard_index("c3");  // Target square c3
+
+        let moves = board.bitboard_to_moves(b1_source, c3_target);
+
+        // Verify move is generated correctly
+        assert!(moves.contains(&"b1c3".to_string()));
+        assert_eq!(moves.len(), 1);
+
+        // Test with no target squares (should produce empty move list)
+        assert!(board.bitboard_to_moves(source, 0).is_empty());
     }
 }
