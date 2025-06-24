@@ -16,7 +16,7 @@ use crate::move_generation::{
     w_pawns_attack_targets,
 };
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub enum PieceType {
     Pawn,
     Rook,
@@ -92,6 +92,7 @@ impl Piece {
 pub struct Move {
     pub src: Square,
     pub target: Square,
+    pub promotion: Option<PieceType>, // Optional promotion piece type
 }
 
 
@@ -99,12 +100,26 @@ pub struct Move {
 impl TryFrom<&str> for Move {
     type Error = &'static str;
     fn try_from(mv: &str) -> Result<Self, Self::Error> {
-        if mv.len() != 4 {
-            return Err("Invalid move format");
+        if mv.len() == 5 {
+            // Promotion move, e.g., "e7e8Q"
+            let src = Square::try_from(&mv[0..2])?;
+            let target = Square::try_from(&mv[2..4])?;
+            let promotion_char = mv.chars().nth(4).unwrap();
+            let promotion = match promotion_char {
+                'q' => Some(PieceType::Queen),
+                'r' => Some(PieceType::Rook),
+                'b' => Some(PieceType::Bishop),
+                'n' => Some(PieceType::Knight),
+                _ => return Err("Invalid promotion piece type"),
+            };
+            return Ok(Move { src, target, promotion })
+        }
+        else if mv.len() != 4 {
+            return Err("Move string must be exactly 4 characters long unless it's a promotion move");
         }
         let src = Square::try_from(&mv[0..2])?;
         let target = Square::try_from(&mv[2..4])?;
-        Ok(Move { src, target })
+        Ok(Move { src, target, promotion: None })
     }
 }
 
@@ -246,6 +261,28 @@ impl Board {
             };
             *piece_bitboard ^= from_bit;  // Clear the source square
             *piece_bitboard |= to_bit;    // Set the target square
+
+            if mv.promotion.is_some() {
+                assert!(piece == Piece::WhitePawn || piece == Piece::BlackPawn, "Promotion can only be applied to a white pawn in this function");
+                // Handle promotion
+                let promotion_piece = match mv.promotion.unwrap() {
+                    PieceType::Queen => Piece::WhiteQueen,
+                    PieceType::Rook => Piece::WhiteRook,
+                    PieceType::Bishop => Piece::WhiteBishop,
+                    PieceType::Knight => Piece::WhiteKnight,
+                    _ => panic!("Invalid promotion piece type: {:?}", mv.promotion),
+                };
+                // Remove the pawn from the board
+                *piece_bitboard ^= to_bit;
+                // Add the promoted piece to the target square
+                match promotion_piece {
+                    Piece::WhiteQueen => self.white_queen |= to_bit,
+                    Piece::WhiteRook => self.white_rooks |= to_bit,
+                    Piece::WhiteBishop => self.white_bishops |= to_bit,
+                    Piece::WhiteKnight => self.white_knights |= to_bit,
+                    _ => panic!("Promotion piece must be white for this function"),
+                }
+            }
 
             self.update_composite_bitboards();
             self.update_check_state();
@@ -619,6 +656,44 @@ impl Board {
 }
 
 
+pub fn get_empty_board() -> Board {
+    let white_pawns = 0;
+    let white_knights = 0;
+    let white_bishops = 0;
+    let white_rooks = 0;
+    let white_queen = 0;
+    let white_king = 0;
+    let black_pawns = 0;
+    let black_knights = 0;
+    let black_bishops = 0;
+    let black_rooks = 0;
+    let black_queen = 0;
+    let black_king = 0;
+
+    let mut board = Board {
+        white_pawns,
+        white_knights,
+        white_bishops,
+        white_rooks,
+        white_queen,
+        white_king,
+        black_pawns,
+        black_knights,
+        black_bishops,
+        black_rooks,
+        black_queen,
+        black_king,
+        any_white: 0,
+        any_black: 0,
+        empty: 0,
+        side_to_move: Color::White,
+        white_king_in_check: false,
+        black_king_in_check: false,
+    };
+    board.update_composite_bitboards();
+    board
+}
+
 pub fn get_starting_board() -> Board {
     let white_pawns = (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) +
                      (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7));
@@ -708,7 +783,14 @@ pub fn bitboard_to_pawn_single_moves(bitboard: u64, is_black: bool) -> Vec<Strin
                 };
                 let from = format!("{}{}", int_file_to_string(file), rank + 1);
                 let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
-                moves.push(format!("{}{}", from, to));
+                if (is_black && to_rank == 0) || (!is_black && to_rank == 7) {
+                    moves.push(format!("{}{}q", from, to));
+                    moves.push(format!("{}{}r", from, to));
+                    moves.push(format!("{}{}b", from, to));
+                    moves.push(format!("{}{}n", from, to));
+                } else {
+                    moves.push(format!("{}{}", from, to));
+                };
             }
         }
     }
@@ -767,12 +849,21 @@ pub fn bitboard_to_pawn_capture_moves(from_bitboard: u64, target_bitboard: u64, 
         };
 
         // Convert to algebraic notation
+        // TODO: Clean up the 0-indexing here or 1-indexing here
         let from_file = int_file_to_string(from_square % 8);
         let from_rank = (from_square / 8 + 1).to_string();
         let to_file = int_file_to_string(to_square % 8);
-        let to_rank = (to_square / 8 + 1).to_string();
+        let to_rank_int = to_square / 8 + 1;
+        let to_rank = to_rank_int.to_string();
 
-        moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+        if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
+            moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
+            moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
+            moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
+            moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
+        } else {
+            moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+        }
     }
     moves
 }
