@@ -142,9 +142,14 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     result
 }
 
-/// Convert a bitboard of pawn single moves into a list of move strings
 pub fn bitboard_to_pawn_single_moves(moveable_pawns: u64, is_black: bool) -> Vec<String> {
     let mut moves = Vec::new();
+    bitboard_to_pawn_single_moves_append(&mut moves, moveable_pawns, is_black);
+    moves
+}
+
+/// Convert a bitboard of pawn single moves into a list of move strings
+pub fn bitboard_to_pawn_single_moves_append(possible_moves: &mut Vec<String>, moveable_pawns: u64, is_black: bool) {
     let mut working_pawns = moveable_pawns;
 
     while working_pawns != 0 {
@@ -157,24 +162,34 @@ pub fn bitboard_to_pawn_single_moves(moveable_pawns: u64, is_black: bool) -> Vec
             from_square + 8  // White pawns move up
         };
 
-        // Convert to algebraic notation
-        let from_file = int_file_to_string(from_square % 8);
-        let from_rank = (from_square / 8 + 1).to_string();
-        let to_file = int_file_to_string(to_square % 8);
-        let to_rank_int = to_square / 8 + 1;
-        let to_rank = to_rank_int.to_string();
+        // Convert indices to coordinates (0-7)
+        let (from_file, from_rank) = (from_square & 7, from_square >> 3);
+        let (to_file, to_rank) = (to_square & 7, to_square >> 3);
 
-        if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
-            moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
+        if (is_black && to_rank == 0) || (!is_black && to_rank == 7) {
+            // Pre-allocate string with enough capacity for longest possible move
+            let mut move_str = String::with_capacity(5);
+            move_str.push_str(int_file_to_string(from_file));
+            move_str.push((from_rank + b'1') as char);
+            move_str.push_str(int_file_to_string(to_file));
+            move_str.push((to_rank + b'1') as char);
+
+            // Reuse the base move string for all promotions
+            for promotion in ['q', 'r', 'b', 'n'] {
+                let mut promoted = move_str.clone();
+                promoted.push(promotion);
+                possible_moves.push(promoted);
+            }
         } else {
-            moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
-        };
+            let mut move_str = String::with_capacity(4);
+            move_str.push_str(int_file_to_string(from_file));
+            move_str.push((from_rank + b'1') as char);
+            move_str.push_str(int_file_to_string(to_file));
+            move_str.push((to_rank + b'1') as char);
+            possible_moves.push(move_str);
+        }
     }
 
-    moves
 }
 
 /// Convert a bitboard of pawn double moves into a list of move strings

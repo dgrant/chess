@@ -112,7 +112,7 @@ mod perft_tests {
     }
     
     #[test]
-    fn test_perft_dept_5() {
+    fn test_perft_depth_5() {
         eprintln!("\nNow attempting depth 5...");
         let mut board = get_starting_board();
     

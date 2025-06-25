@@ -449,7 +449,7 @@ impl Board {
                 }
             }
 
-            possible_moves.extend(board_utils::bitboard_to_pawn_single_moves(moveable_pawns, true));
+            board_utils::bitboard_to_pawn_single_moves_append(&mut possible_moves, moveable_pawns, true);
             possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, true));
             possible_moves.extend(board_utils::bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
 
@@ -533,7 +533,7 @@ impl Board {
                 }
             }
 
-            possible_moves.extend(board_utils::bitboard_to_pawn_single_moves(moveable_pawns, false));
+            board_utils::bitboard_to_pawn_single_moves_append(&mut possible_moves, moveable_pawns, false);
             possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, false));
             possible_moves.extend(board_utils::bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
 
