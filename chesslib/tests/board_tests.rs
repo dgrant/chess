@@ -99,7 +99,7 @@ fn test_w_pawns_able_to_push() {
     let white_pawns_push = w_pawns_able_to_push(board.white_pawns, board.empty);
     let expected_white_pawns_push = 0x000000000000FF00;
     let diff_white_pawns_push = white_pawns_push ^ expected_white_pawns_push;
-    assert!(diff_white_pawns_push == 0, "White pawns able to push mismatch: diff = {:064b}", diff_white_pawns_push);
+    assert_eq!(diff_white_pawns_push, 0, "White pawns able to push mismatch: diff = {:064b}", diff_white_pawns_push);
 }
 
 #[test]
@@ -110,7 +110,7 @@ fn test_w_pawns_able_to_double_push() {
     let white_pawns_double_push = w_pawns_able_to_double_push(board.white_pawns, board.empty);
     let expected_white_pawns_double_push = 0x000000000000FF00; // Adjusted expected value
     let diff_white_pawns_double_push = white_pawns_double_push ^ expected_white_pawns_double_push;
-    assert!(diff_white_pawns_double_push == 0, "White pawns able to double push mismatch: diff = {:064b}", diff_white_pawns_double_push);
+    assert_eq!(diff_white_pawns_double_push, 0, "White pawns able to double push mismatch: diff = {:064b}", diff_white_pawns_double_push);
 }
 
 #[test]
@@ -121,7 +121,7 @@ fn test_b_pawns_able_to_push() {
     let black_pawns_push = b_pawns_able_to_push(board.black_pawns, board.empty);
     let expected_black_pawns_push = 0x00FF000000000000;
     let diff_black_pawns_push = black_pawns_push ^ expected_black_pawns_push;
-    assert!(diff_black_pawns_push == 0, "Black pawns able to push mismatch: diff = {:064b}", diff_black_pawns_push);
+    assert_eq!(diff_black_pawns_push, 0, "Black pawns able to push mismatch: diff = {:064b}", diff_black_pawns_push);
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn test_b_pawns_able_to_double_push() {
     let black_pawns_double_push = b_pawns_able_to_double_push(board.black_pawns, board.empty);
     let expected_black_pawns_double_push = 0x00FF000000000000; // Adjusted expected value
     let diff_black_pawns_double_push = black_pawns_double_push ^ expected_black_pawns_double_push;
-    assert!(diff_black_pawns_double_push == 0, "Black pawns able to double push mismatch: diff = {:064b}", diff_black_pawns_double_push);
+    assert_eq!(diff_black_pawns_double_push, 0, "Black pawns able to double push mismatch: diff = {:064b}", diff_black_pawns_double_push);
 }
 
 #[test]
@@ -436,7 +436,7 @@ fn test_side_to_move_after_sequence() {
 }
 
 #[test]
-#[should_panic(expected = "Attempted to move a White piece during Black's turn")]
+#[should_panic(expected = "Piece at source square d2 does not match side to move: Black")]
 fn test_apply_move_same_side_twice_fails() {
     let mut board = get_starting_board();
 

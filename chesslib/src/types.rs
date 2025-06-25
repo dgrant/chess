@@ -53,6 +53,19 @@ impl TryFrom<&str> for Square {
     }
 }
 
+impl std::fmt::Display for Square {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Convert square to algebraic notation (e.g. "e4")
+        let file = match self.to_bit_index() % 8 {
+            0 => "a", 1 => "b", 2 => "c", 3 => "d",
+            4 => "e", 5 => "f", 6 => "g", 7 => "h",
+            _ => unreachable!(),
+        };
+        let rank = (self.to_bit_index() / 8 + 1).to_string();
+        write!(f, "{}{}", file, rank)
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Color {
     White,
@@ -140,6 +153,19 @@ pub enum PieceType {
     King,
 }
 
+impl PieceType {
+    pub fn to_char(&self) -> char {
+        match self {
+            PieceType::Pawn => 'p',
+            PieceType::Rook => 'r',
+            PieceType::Knight => 'n',
+            PieceType::Bishop => 'b',
+            PieceType::Queen => 'q',
+            PieceType::King => 'k',
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Piece {
     WhitePawn,
@@ -206,6 +232,18 @@ pub struct Move {
     pub src: Square,
     pub target: Square,
     pub promotion: Option<PieceType>, // Optional promotion piece type
+}
+
+impl std::fmt::Display for Move {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(promotion) = self.promotion {
+            // For promotion moves, append the piece type (e.g. e7e8q)
+            write!(f, "{}{}{}", self.src, self.target, promotion.to_char().to_lowercase())
+        } else {
+            // For normal moves, just show source and target squares (e.g. e2e4)
+            write!(f, "{}{}", self.src, self.target)
+        }
+    }
 }
 
 // Example conversion of a move string into a Move struct.
