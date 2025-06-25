@@ -23,6 +23,16 @@ impl Square {
         // Safety: we know all possible values 0-63 map to valid squares
         unsafe { std::mem::transmute(idx) }
     }
+    
+    /// Returns the rank (row) of the square, 0-based (0-7)
+    pub fn get_rank(&self) -> u8 {
+        self.to_bit_index() / 8
+    }
+    
+    /// Returns the file (column) of the square, 0-based (0-7)
+    pub fn get_file(&self) -> u8 {
+        self.to_bit_index() % 8
+    }
 }
 
 // Implement a conversion from a string coordinate (e.g., "a1") to a Square.
@@ -61,7 +71,7 @@ impl std::fmt::Display for Square {
             4 => "e", 5 => "f", 6 => "g", 7 => "h",
             _ => unreachable!(),
         };
-        let rank = (self.to_bit_index() / 8 + 1).to_string();
+        let rank = (self.get_rank() + 1).to_string();
         write!(f, "{}{}", file, rank)
     }
 }

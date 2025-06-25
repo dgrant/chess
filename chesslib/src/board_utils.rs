@@ -1,5 +1,5 @@
 use crate::board::Board;
-use crate::types::{Color, A, B, C, D, E, F, G, H};
+use crate::types::{Color, Move, Square, PieceType, A, B, C, D, E, F, G, H};
 
 pub fn int_file_to_string(file: u8) -> &'static str {
     match file {
@@ -15,19 +15,16 @@ pub fn int_file_to_string(file: u8) -> &'static str {
     }
 }
 
-/// Convert a source and target bitboard (each with exactly one bit set) to a move string
-pub fn bitboard_squares_to_move(src: u64, target: u64) -> String {
+/// Convert a source and target bitboard (each with exactly one bit set) to a move
+pub fn bitboard_squares_to_move(src: u64, target: u64) -> Move {
     // Get indices
     let src_idx = src.trailing_zeros() as u8;
     let target_idx = target.trailing_zeros() as u8;
-
-    // Convert to algebraic notation
-    let from_file = int_file_to_string(src_idx % 8);
-    let from_rank = (src_idx / 8 + 1).to_string();
-    let to_file = int_file_to_string(target_idx % 8);
-    let to_rank = (target_idx / 8 + 1).to_string();
-
-    format!("{}{}{}{}", from_file, from_rank, to_file, to_rank)
+    Move {
+        src: Square::from_bit_index(src_idx),
+        target: Square::from_bit_index(target_idx),
+        promotion: None,
+    }
 }
 
 pub fn get_empty_board() -> Board {
@@ -68,7 +65,7 @@ pub fn get_empty_board() -> Board {
         black_kingside_castle_rights: false,
         black_queenside_castle_rights: false,
         en_passant_target: None,
-        move_history: Vec::new(),
+        move_history: Vec::with_capacity(10),
     };
     board.update_composite_bitboards();
     board
@@ -130,7 +127,7 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     let mut result = String::new();
     for rank in (0..8).rev() {
         for file in 0..8 {
-            let square = 1 << (rank * 8 + file);
+            let square = 1u64 << (rank * 8 + file);  // Use 1u64 to ensure 64-bit shift
             if bitboard & square != 0 {
                 result.push('1'); // Occupied square
             } else {
@@ -142,14 +139,14 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     result
 }
 
-pub fn bitboard_to_pawn_single_moves(moveable_pawns: u64, is_black: bool) -> Vec<String> {
+pub fn bitboard_to_pawn_single_moves(moveable_pawns: u64, is_black: bool) -> Vec<Move> {
     let mut moves = Vec::new();
     bitboard_to_pawn_single_moves_append(&mut moves, moveable_pawns, is_black);
     moves
 }
 
 /// Convert a bitboard of pawn single moves into a list of move strings
-pub fn bitboard_to_pawn_single_moves_append(possible_moves: &mut Vec<String>, moveable_pawns: u64, is_black: bool) {
+pub fn bitboard_to_pawn_single_moves_append(possible_moves: &mut Vec<Move>, moveable_pawns: u64, is_black: bool) {
     let mut working_pawns = moveable_pawns;
 
     while working_pawns != 0 {
@@ -162,39 +159,41 @@ pub fn bitboard_to_pawn_single_moves_append(possible_moves: &mut Vec<String>, mo
             from_square + 8  // White pawns move up
         };
 
-        // Convert indices to coordinates (0-7)
-        let (from_file, from_rank) = (from_square & 7, from_square >> 3);
-        let (to_file, to_rank) = (to_square & 7, to_square >> 3);
+        let to_rank = to_square / 8;
 
+        // Handle promotion
         if (is_black && to_rank == 0) || (!is_black && to_rank == 7) {
-            // Pre-allocate string with enough capacity for longest possible move
-            let mut move_str = String::with_capacity(5);
-            move_str.push_str(int_file_to_string(from_file));
-            move_str.push((from_rank + b'1') as char);
-            move_str.push_str(int_file_to_string(to_file));
-            move_str.push((to_rank + b'1') as char);
+            let base_mv = Move {
+                src: Square::from_bit_index(from_square),
+                target: Square::from_bit_index(to_square),
+                promotion: None,
+            };
 
-            // Reuse the base move string for all promotions
-            for promotion in ['q', 'r', 'b', 'n'] {
-                let mut promoted = move_str.clone();
-                promoted.push(promotion);
-                possible_moves.push(promoted);
+            for promotion in [PieceType::Bishop, PieceType::Knight, PieceType::Rook, PieceType::Queen] {
+                possible_moves.push(Move {
+                    promotion: Some(promotion),
+                    ..base_mv.clone()
+                });
             }
         } else {
-            let mut move_str = String::with_capacity(4);
-            move_str.push_str(int_file_to_string(from_file));
-            move_str.push((from_rank + b'1') as char);
-            move_str.push_str(int_file_to_string(to_file));
-            move_str.push((to_rank + b'1') as char);
-            possible_moves.push(move_str);
+            possible_moves.push(Move {
+                src: Square::from_bit_index(from_square),
+                target: Square::from_bit_index(to_square),
+                promotion: None,
+            });
         }
     }
 
 }
 
 /// Convert a bitboard of pawn double moves into a list of move strings
-pub fn bitboard_to_pawn_double_moves(moveable_pawns: u64, is_black: bool) -> Vec<String> {
+pub fn bitboard_to_pawn_double_moves(moveable_pawns: u64, is_black: bool) -> Vec<Move> {
     let mut moves = Vec::new();
+    bitboard_to_pawn_double_moves_append(&mut moves, moveable_pawns, is_black);
+    moves
+}
+
+pub fn bitboard_to_pawn_double_moves_append(moves: &mut Vec<Move>, moveable_pawns: u64, is_black: bool) {
     let mut working_pawns = moveable_pawns;
 
     while working_pawns != 0 {
@@ -207,21 +206,24 @@ pub fn bitboard_to_pawn_double_moves(moveable_pawns: u64, is_black: bool) -> Vec
             from_square + 16  // White pawns move up two squares
         };
 
-        // Convert to algebraic notation
-        let from_file = int_file_to_string(from_square % 8);
-        let from_rank = (from_square / 8 + 1).to_string();
-        let to_file = int_file_to_string(to_square % 8);
-        let to_rank = (to_square / 8 + 1).to_string();
-
-        moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+        moves.push(
+            Move {
+                src: Square::from_bit_index(from_square),
+                target: Square::from_bit_index(to_square),
+                promotion: None,
+            });
     }
+}
 
+
+pub fn bitboard_to_pawn_capture_moves(source_pawns: u64, target_squares: u64, is_black: bool) -> Vec<Move> {
+    let mut moves = Vec::new();
+    bitboard_to_pawn_capture_moves_append(&mut moves, source_pawns, target_squares, is_black);
     moves
 }
 
 /// Convert a bitboard of pawn capture moves into a list of move strings
-pub fn bitboard_to_pawn_capture_moves(source_pawns: u64, target_squares: u64, is_black: bool) -> Vec<String> {
-    let mut moves = Vec::new();
+pub fn bitboard_to_pawn_capture_moves_append(moves: &mut Vec<Move>, source_pawns: u64, target_squares: u64, is_black: bool) {
     let mut working_pawns = source_pawns;
 
     // For each pawn
@@ -243,22 +245,29 @@ pub fn bitboard_to_pawn_capture_moves(source_pawns: u64, target_squares: u64, is
             captures &= captures - 1;  // Clear the processed bit
 
             // Convert to algebraic notation
-            let from_file = int_file_to_string(from_square % 8);
-            let from_rank = (from_square / 8 + 1).to_string();
-            let to_file = int_file_to_string(to_square % 8);
             let to_rank_int = to_square / 8 + 1;
-            let to_rank = to_rank_int.to_string();
 
             if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
-                moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
-                moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
-                moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
-                moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
+                // Promotion case
+                for promotion in [PieceType::Bishop, PieceType::Knight, PieceType::Rook, PieceType::Queen] {
+                    moves.push(
+                        Move {
+                            src: Square::from_bit_index(from_square),
+                            target: Square::from_bit_index(to_square),
+                            promotion: Some(promotion),
+                        }
+                    );
+                }
             } else {
-                moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+                moves.push(
+                    Move {
+                        src: Square::from_bit_index(from_square),
+                        target: Square::from_bit_index(to_square),
+                        promotion: None,
+                    }
+                );
             }
         }
     }
 
-    moves
 }

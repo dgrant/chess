@@ -196,10 +196,16 @@ fn test_invalid_black_move() {
     let possible_moves = bitboard_to_pawn_single_moves(moveable_black_pawns, true);
 
     for mv in &possible_moves {
-        let from_rank = mv.chars().nth(1).unwrap().to_digit(10).unwrap();
-        let to_rank = mv.chars().nth(3).unwrap().to_digit(10).unwrap();
-        assert!(to_rank < from_rank, "Black pawn moving in wrong direction: {} to {}", from_rank, to_rank);
-        assert!(!mv.starts_with("e2"), "Invalid move generated for black: {}", mv);
+        let from_square = mv.src;
+        let to_square = mv.target;
+        
+        // Check that black pawns are moving in the right direction (down the board)
+        assert!(to_square.get_rank() < from_square.get_rank(), 
+                "Black pawn moving in wrong direction: {} to {}", from_square, to_square);
+                
+        // Check that no black pawn is coming from e2
+        assert!(from_square != Square::E2, 
+                "Invalid move generated for black: {}", mv);
     }
 
     assert!(!possible_moves.is_empty(), "No moves were generated for black");
@@ -483,9 +489,9 @@ fn test_bitboard_to_moves() {
     let moves = board.bitboard_to_moves(source, targets);
 
     // Verify the moves are generated correctly
-    assert!(moves.contains(&"e4f6".to_string()));
-    assert!(moves.contains(&"e4d6".to_string()));
-    assert!(moves.contains(&"e4c5".to_string()));
+    assert!(moves.contains(&Move { src: Square::E4, target: Square::F6, promotion: None }));
+    assert!(moves.contains(&Move { src: Square::E4, target: Square::D6, promotion: None }));
+    assert!(moves.contains(&Move { src: Square::E4, target: Square::C5, promotion: None }));
     assert_eq!(moves.len(), 3);
 }
 
@@ -500,7 +506,7 @@ fn test_bitboard_to_moves2() {
     let moves = board.bitboard_to_moves(source, target);
 
     // Verify move is generated correctly
-    assert!(moves.contains(&"g1f3".to_string()));
+    assert!(moves.contains(&Move { src: Square::G1, target: Square::F3, promotion: None }));
     assert_eq!(moves.len(), 1);
 }
 
@@ -515,7 +521,7 @@ fn test_bitboard_to_moves3() {
     let moves = board.bitboard_to_moves(source, target);
 
     // Verify move is generated correctly
-    assert!(moves.contains(&"b1c3".to_string()));
+    assert!(moves.contains(&Move { src: Square::B1, target: Square::C3, promotion: None }));
     assert_eq!(moves.len(), 1);
 }
 
@@ -816,15 +822,34 @@ fn test_pawn_promotion_moves() {
         ..get_empty_board()
     };
     white_promotion_board.update_composite_bitboards();
-    let white_moves = white_promotion_board.get_next_moves(-1);  // Get all possible moves
-    // Remove white moves that start with "a1"
-    let white_moves_filtered: Vec<String> = white_moves.into_iter()
+    // Ensure side to move is White
+    white_promotion_board.side_to_move = Color::White;
+    
+    println!("White pawn bitboard: {:064b}", white_promotion_board.white_pawns);
+    
+    let white_moves = white_promotion_board.get_raw_moves(-1);  // Get all possible moves
+    
+    println!("Generated {} raw moves for white", white_moves.len());
+    for mv in &white_moves {
+        println!("Move: {:?}, from: {}, to: {}", mv, mv.src, mv.target);
+    }
+    
+    let white_moves_strings = white_promotion_board.get_next_moves(-1);
+    
+    // Remove white moves that start with "a1" (king moves)
+    let white_moves_filtered: Vec<String> = white_moves_strings.into_iter()
         .filter(|m| !m.starts_with("a1"))
         .collect();
+        
+    println!("Filtered moves: {:?}", white_moves_filtered);
+    
     let expected_promotions = vec![
         "e7e8q", "e7e8r", "e7e8b", "e7e8n"  // All possible promotion moves
     ];
-    assert_eq!(white_moves_filtered.len(), 4);
+    
+    assert_eq!(white_moves_filtered.len(), 4, "Expected 4 promotion moves, got {}: {:?}", 
+               white_moves_filtered.len(), white_moves_filtered);
+               
     for move_str in expected_promotions {
         assert!(white_moves_filtered.contains(&move_str.to_string()),
                 "Missing expected promotion move: {}", move_str);

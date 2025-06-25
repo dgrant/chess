@@ -1,3 +1,4 @@
+use rand::prelude::IteratorRandom;
 use crate::board_utils;
 use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use crate::move_generation::{
@@ -414,17 +415,32 @@ impl Board {
         moves.map(|mv| Move::try_from(mv.as_str()))
     }
 
-    pub fn get_next_moves(&self, n: i32) -> Vec<String> {
+    pub fn get_raw_moves(&self, n: i32) -> Vec<Move> {
+        let mut possible_moves = Vec::new();
+        self.get_all_raw_moves_append(&mut possible_moves);
+
+        // Apply randomization if n >= 0
+        if n >= 0 {
+            let n = n as usize;
+            if n == 0 {
+                return Vec::new();
+            } else {
+                let mut rng = rand::thread_rng();
+                return possible_moves
+                    .iter()
+                    .choose_multiple(&mut rng, n.min(possible_moves.len())).into_iter().cloned().collect();
+            }
+        }
+        possible_moves
+    }
+
+    pub fn get_all_raw_moves_append(&self, possible_moves: &mut Vec<Move>) {
         use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
                                    w_pawns_attack_targets, b_pawns_attack_targets,
                                    w_pawns_en_passant_targets, b_pawns_en_passant_targets,
                                    knight_legal_moves, bishop_legal_moves, rook_legal_moves,
                                    queen_legal_moves, king_legal_moves};
-        use rand::seq::IteratorRandom;
-        use crate::board_utils;
-
-        let mut possible_moves = Vec::new();
 
         if self.side_to_move == Color::Black {
             // Get all possible pawn moves
@@ -449,9 +465,10 @@ impl Board {
                 }
             }
 
-            board_utils::bitboard_to_pawn_single_moves_append(&mut possible_moves, moveable_pawns, true);
-            possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, true));
-            possible_moves.extend(board_utils::bitboard_to_pawn_capture_moves(self.black_pawns, attacking_pawns, true));
+            // Process regular pawn moves using existing board_utils functions
+            board_utils::bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, true);
+            board_utils::bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, true);
+            board_utils::bitboard_to_pawn_capture_moves_append(possible_moves, self.black_pawns, attacking_pawns, true);
 
             // Process each black knight separately
             let mut working_knights = self.black_knights;
@@ -470,7 +487,6 @@ impl Board {
             while working_bishops != 0 {
                 let bishop_pos = working_bishops.trailing_zeros() as u8;
                 working_bishops &= working_bishops - 1;
-
                 let single_bishop = 1u64 << bishop_pos;
                 let moves = bishop_legal_moves(single_bishop, self.any_black, self.any_white);
                 possible_moves.extend(self.bitboard_to_moves(single_bishop, moves));
@@ -481,33 +497,39 @@ impl Board {
             while working_rooks != 0 {
                 let rook_pos = working_rooks.trailing_zeros() as u8;
                 working_rooks &= working_rooks - 1;
-
                 let single_rook = 1u64 << rook_pos;
                 let moves = rook_legal_moves(single_rook, self.any_black, self.any_white);
                 possible_moves.extend(self.bitboard_to_moves(single_rook, moves));
             }
 
-            // Process each black queen separately (usually just one)
+            // Process each black queen separately
             let mut working_queens = self.black_queen;
             while working_queens != 0 {
                 let queen_pos = working_queens.trailing_zeros() as u8;
                 working_queens &= working_queens - 1;
-
                 let single_queen = 1u64 << queen_pos;
                 let moves = queen_legal_moves(single_queen, self.any_black, self.any_white);
                 possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
             }
 
-            // Process black king (only one) with normal moves and castling
+            // Process black king moves and castling
             let moves = king_legal_moves(self.black_king, self.any_black);
             possible_moves.extend(self.bitboard_to_moves(self.black_king, moves));
 
             // Add castling moves if legal
             if self.is_castling_legal(true, false) {  // Black kingside castle
-                possible_moves.push("e8g8".to_string());
+                possible_moves.push(Move {
+                    src: Square::E8,
+                    target: Square::G8,
+                    promotion: None
+                });
             }
             if self.is_castling_legal(false, false) {  // Black queenside castle
-                possible_moves.push("e8c8".to_string());
+                possible_moves.push(Move {
+                    src: Square::E8,
+                    target: Square::C8,
+                    promotion: None
+                });
             }
 
         } else {
@@ -533,9 +555,9 @@ impl Board {
                 }
             }
 
-            board_utils::bitboard_to_pawn_single_moves_append(&mut possible_moves, moveable_pawns, false);
-            possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, false));
-            possible_moves.extend(board_utils::bitboard_to_pawn_capture_moves(self.white_pawns, attacking_pawns, false));
+            board_utils::bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, false);
+            board_utils::bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, false);
+            board_utils::bitboard_to_pawn_capture_moves_append(possible_moves, self.white_pawns, attacking_pawns, false);
 
             // Process each white knight separately
             let mut working_knights = self.white_knights;
@@ -588,39 +610,30 @@ impl Board {
 
             // Add castling moves if legal
             if self.is_castling_legal(true, true) {  // White kingside castle
-                possible_moves.push("e1g1".to_string());
-            }
+                possible_moves.push(Move {
+                    src: Square::E1,
+                    target: Square::G1,
+                    promotion: None
+                })
+            };
             if self.is_castling_legal(false, true) {  // White queenside castle
-                possible_moves.push("e1c1".to_string());
-            }
+                possible_moves.push(Move {
+                    src: Square::E1,
+                    target: Square::C1,
+                    promotion: None
+                })
+            };
         }
 
         // Filter the moves to only include legal ones (that get out of check if we're in check)
-        let legal_moves: Vec<String> = possible_moves.into_iter()
-            .filter(|mv_str| {
-                if let Ok(mv) = Move::try_from(mv_str.as_str()) {
-                    self.is_legal_move(&mv)
-                } else {
-                    false
-                }
-            })
-            .collect();
+        possible_moves.retain(|mv| self.is_legal_move(mv));
+    }
 
-        if n == -1 {
-            legal_moves
-        } else {
-            let n = n as usize;
-            if n == 0 {
-                Vec::new()
-            } else {
-                let mut rng = rand::thread_rng();
-                legal_moves.iter()
-                    .choose_multiple(&mut rng, n.min(legal_moves.len()))
-                    .into_iter()
-                    .cloned()
-                    .collect()
-            }
-        }
+    pub fn get_next_moves(&self, n: i32) -> Vec<String> {
+        // Use get_raw_moves and convert to strings
+        self.get_raw_moves(n).into_iter()
+            .map(|mv| mv.to_string())
+            .collect()
     }
 
     pub fn get_next_move(&self) -> String {
@@ -632,7 +645,7 @@ impl Board {
     }
 
     // Generic helper function to convert a source bitboard and target bitboard into a list of moves
-    pub fn bitboard_to_moves(&self, source_pieces: u64, target_squares: u64) -> Vec<String> {
+    pub fn bitboard_to_moves(&self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
         // Assert that source_pieces contains exactly one piece (one bit set)
         debug_assert_eq!(source_pieces.count_ones(), 1,
             "bitboard_to_moves should be called with exactly one source piece, got {} pieces",
@@ -652,13 +665,11 @@ impl Board {
                 let to_square = current_targets.trailing_zeros() as u8;
                 current_targets &= current_targets - 1;  // Clear the processed bit
 
-                // Convert to algebraic notation
-                let from_file = board_utils::int_file_to_string(from_square % 8);
-                let from_rank = (from_square / 8 + 1).to_string();
-                let to_file = board_utils::int_file_to_string(to_square % 8);
-                let to_rank = (to_square / 8 + 1).to_string();
-
-                moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+                moves.push(Move {
+                    src: Square::from_bit_index(from_square),
+                    target: Square::from_bit_index(to_square),
+                    promotion: None,  // Promotions are handled separately
+                });
             }
         }
 
@@ -877,7 +888,8 @@ impl Board {
 
         let mut nodes: u64 = 0;
         let mut checkmates: u64 = 0;
-        let moves = self.generate_legal_moves();
+        let mut moves: Vec<Move> = Vec::with_capacity(218);
+        self.generate_legal_moves_append(&mut moves);
 
         for mv in moves {
             self.apply_move(&mv);
@@ -891,13 +903,13 @@ impl Board {
 
     /// Generates all legal moves in the current position
     fn generate_legal_moves(&self) -> Vec<Move> {
-        // Get all possible moves first
-        let moves_str = self.get_next_moves(-1);
+        let mut moves = Vec::new();
+        self.generate_legal_moves_append(&mut moves);
+        moves
+    }
 
-        // Convert string moves to Move structs
-        moves_str.into_iter()
-            .filter_map(|mv_str| Move::try_from(mv_str.as_str()).ok())
-            .collect()
+    fn generate_legal_moves_append(&self, moves: &mut Vec<Move>) {
+        self.get_all_raw_moves_append(moves);
     }
 
     /// Undoes the last move made, restoring the board to its previous state
