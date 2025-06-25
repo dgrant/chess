@@ -729,6 +729,10 @@ fn test_is_legal_move_complex() {
         empty: 0,
         white_king_in_check: true,
         black_king_in_check: false,
+        black_kingside_castle_rights: true,
+        black_queenside_castle_rights: true,
+        white_kingside_castle_rights: true,
+        white_queenside_castle_rights: true,
     };
     check_board.update_composite_bitboards();
     check_board.update_check_state();

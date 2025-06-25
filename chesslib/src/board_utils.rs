@@ -34,6 +34,11 @@ pub fn get_empty_board() -> Board {
         side_to_move: Color::White,
         white_king_in_check: false,
         black_king_in_check: false,
+        // Empty board has no castling rights since there are no pieces
+        white_kingside_castle_rights: false,
+        white_queenside_castle_rights: false,
+        black_kingside_castle_rights: false,
+        black_queenside_castle_rights: false,
     };
     board.update_composite_bitboards();
     board
@@ -75,6 +80,11 @@ pub fn get_starting_board() -> Board {
         side_to_move: Color::White,
         white_king_in_check: false,
         black_king_in_check: false,
+        // Initialize all castling rights as available for a new game
+        white_kingside_castle_rights: true,
+        white_queenside_castle_rights: true,
+        black_kingside_castle_rights: true,
+        black_queenside_castle_rights: true,
     };
     board.update_composite_bitboards();
     board

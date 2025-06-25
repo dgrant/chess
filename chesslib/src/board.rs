@@ -33,10 +33,15 @@ pub struct Board {
     pub side_to_move: Color,
     pub white_king_in_check: bool,
     pub black_king_in_check: bool,
+
+    /// Castling rights
+    pub white_kingside_castle_rights: bool,
+    pub white_queenside_castle_rights: bool,
+    pub black_kingside_castle_rights: bool,
+    pub black_queenside_castle_rights: bool,
 }
 
 impl Board {
-
     /// Returns the Unicode character representation of the chess piece at the given coordinate
     ///
     /// # Arguments
@@ -109,26 +114,123 @@ impl Board {
                     piece.color(), self.side_to_move);
             }
 
-            // First, if there's a piece on the target square, remove it from its bitboard
-            if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
-                let captured_bitboard = match captured_piece {
-                    Piece::WhitePawn => &mut self.white_pawns,
-                    Piece::BlackPawn => &mut self.black_pawns,
-                    Piece::WhiteRook => &mut self.white_rooks,
-                    Piece::WhiteKnight => &mut self.white_knights,
-                    Piece::WhiteBishop => &mut self.white_bishops,
-                    Piece::WhiteQueen => &mut self.white_queen,
-                    Piece::WhiteKing => &mut self.white_king,
-                    Piece::BlackRook => &mut self.black_rooks,
-                    Piece::BlackKnight => &mut self.black_knights,
-                    Piece::BlackBishop => &mut self.black_bishops,
-                    Piece::BlackQueen => &mut self.black_queen,
-                    Piece::BlackKing => &mut self.black_king,
-                };
-                *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
+            // First, identify if this is a castling move
+            // TODO: Use Square enum instead of target_idx for clarity
+            let is_castle = match piece {
+                Piece::WhiteKing if src_idx == 4 && (target_idx == 6 || target_idx == 2) => true,
+                Piece::BlackKing if src_idx == 60 && (target_idx == 62 || target_idx == 58) => true,
+                _ => false,
+            };
+
+            // Handle castling rook movements before we do any other piece movements
+            if is_castle {
+                match piece {
+                    Piece::WhiteKing => {
+                        if target_idx == 6 {  // g1 - kingside castle
+                            debug_assert!(self.white_kingside_castle_rights, "Attempting kingside castle without rights");
+                            // TODO: use Square enum instead of hardcoded indices
+                            self.white_rooks ^= (1u64 << 7) | (1u64 << 5);  // h1 to f1
+                        } else if target_idx == 2 {  // c1 - queenside castle
+                            debug_assert!(self.white_queenside_castle_rights, "Attempting queenside castle without rights");
+                            // TODO: use Square enum instead of hardcoded indices
+                            self.white_rooks ^= 1u64 | (1u64 << 3);  // a1 to d1
+                        }
+                    },
+                    Piece::BlackKing => {
+                        if target_idx == 62 {  // g8 - kingside castle
+                            debug_assert!(self.black_kingside_castle_rights, "Attempting kingside castle without rights");
+                            // TODO: use Square enum instead of hardcoded indices
+                            self.black_rooks ^= (1u64 << 63) | (1u64 << 61);  // h8 to f8
+                        } else if target_idx == 58 {  // c8 - queenside castle
+                            debug_assert!(self.black_queenside_castle_rights, "Attempting queenside castle without rights");
+                            // TODO: use Square enum instead of hardcoded indices
+                            self.black_rooks ^= (1u64 << 56) | (1u64 << 59);  // a8 to d8
+                        }
+                    },
+                    _ => {}
+                }
             }
 
-            // Then move the piece from source to target
+            // Remove captured piece if any (but not for castling which doesn't capture)
+            if !is_castle {
+                if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
+                    let captured_bitboard = match captured_piece {
+                        Piece::WhitePawn => &mut self.white_pawns,
+                        Piece::BlackPawn => &mut self.black_pawns,
+                        Piece::WhiteRook => &mut self.white_rooks,
+                        Piece::WhiteKnight => &mut self.white_knights,
+                        Piece::WhiteBishop => &mut self.white_bishops,
+                        Piece::WhiteQueen => &mut self.white_queen,
+                        Piece::WhiteKing => &mut self.white_king,
+                        Piece::BlackRook => &mut self.black_rooks,
+                        Piece::BlackKnight => &mut self.black_knights,
+                        Piece::BlackBishop => &mut self.black_bishops,
+                        Piece::BlackQueen => &mut self.black_queen,
+                        Piece::BlackKing => &mut self.black_king,
+                    };
+                    *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
+                }
+            }
+
+            // Update castling rights based on the moving piece
+            match piece {
+                Piece::WhiteKing => {
+                    self.white_kingside_castle_rights = false;
+                    self.white_queenside_castle_rights = false;
+                }
+                Piece::BlackKing => {
+                    self.black_kingside_castle_rights = false;
+                    self.black_queenside_castle_rights = false;
+                }
+                Piece::WhiteRook => {
+                    // Check if it's the kingside or queenside rook
+                    // TODO: use Square enum instead of hardcoded indices
+                    if src_idx == 7 { // h1
+                        self.white_kingside_castle_rights = false;
+                    // TODO: use Square enum instead of hardcoded indices
+                    } else if src_idx == 0 { // a1
+                        self.white_queenside_castle_rights = false;
+                    }
+                }
+                Piece::BlackRook => {
+                    // Check if it's the kingside or queenside rook
+                    // TODO: use Square enum instead of hardcoded indices
+                    if src_idx == 63 { // h8
+                        self.black_kingside_castle_rights = false;
+                    // TODO: use Square enum instead of hardcoded indices
+                    } else if src_idx == 56 { // a8
+                        self.black_queenside_castle_rights = false;
+                    }
+                }
+                _ => {}
+            }
+
+            // Also remove castling rights if a rook is captured
+            if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
+                match captured_piece {
+                    Piece::WhiteRook => {
+                        // TODO: use Square enum instead of hardcoded indices
+                        if target_idx == 7 { // h1
+                            self.white_kingside_castle_rights = false;
+                        // TODO: use Square enum instead of hardcoded indices
+                        } else if target_idx == 0 { // a1
+                            self.white_queenside_castle_rights = false;
+                        }
+                    }
+                    Piece::BlackRook => {
+                        // TODO: use Square enum instead of hardcoded indices
+                        if target_idx == 63 { // h8
+                            self.black_kingside_castle_rights = false;
+                        // TODO: use Square enum instead of hardcoded indices
+                        } else if target_idx == 56 { // a8
+                            self.black_queenside_castle_rights = false;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            // Move the main piece (king or other)
             let piece_bitboard = match piece {
                 Piece::WhitePawn => &mut self.white_pawns,
                 Piece::BlackPawn => &mut self.black_pawns,
@@ -146,14 +248,16 @@ impl Board {
             *piece_bitboard ^= from_bit;  // Clear the source square
             *piece_bitboard |= to_bit;    // Set the target square
 
+
+            // Handle promotions if any
             if mv.promotion.is_some() {
-                assert!(piece == Piece::WhitePawn || piece == Piece::BlackPawn, "Promotion can only be applied to a white pawn in this function");
+                assert!(piece == Piece::WhitePawn || piece == Piece::BlackPawn, "Promotion can only be applied to pawns");
                 // Handle promotion
                 let promotion_piece = match mv.promotion.unwrap() {
-                    PieceType::Queen => Piece::WhiteQueen,
-                    PieceType::Rook => Piece::WhiteRook,
-                    PieceType::Bishop => Piece::WhiteBishop,
-                    PieceType::Knight => Piece::WhiteKnight,
+                    PieceType::Queen => if piece == Piece::WhitePawn { Piece::WhiteQueen } else { Piece::BlackQueen },
+                    PieceType::Rook => if piece == Piece::WhitePawn { Piece::WhiteRook } else { Piece::BlackRook },
+                    PieceType::Bishop => if piece == Piece::WhitePawn { Piece::WhiteBishop } else { Piece::BlackBishop },
+                    PieceType::Knight => if piece == Piece::WhitePawn { Piece::WhiteKnight } else { Piece::BlackKnight },
                     _ => panic!("Invalid promotion piece type: {:?}", mv.promotion),
                 };
                 // Remove the pawn from the board
@@ -164,7 +268,11 @@ impl Board {
                     Piece::WhiteRook => self.white_rooks |= to_bit,
                     Piece::WhiteBishop => self.white_bishops |= to_bit,
                     Piece::WhiteKnight => self.white_knights |= to_bit,
-                    _ => panic!("Promotion piece must be white for this function"),
+                    Piece::BlackQueen => self.black_queen |= to_bit,
+                    Piece::BlackRook => self.black_rooks |= to_bit,
+                    Piece::BlackBishop => self.black_bishops |= to_bit,
+                    Piece::BlackKnight => self.black_knights |= to_bit,
+                    _ => panic!("Invalid promotion piece"),
                 }
             }
 
@@ -193,6 +301,8 @@ impl Board {
     pub fn apply_move_from_string(&mut self, mv_str: &str) {
         if let Ok(mv) = Move::try_from(mv_str) {
             self.apply_move(&mv);
+        } else {
+            panic!("Invalid move string: {}", mv_str);
         }
     }
 
@@ -278,9 +388,17 @@ impl Board {
                 possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
             }
 
-            // Process black king (only one)
+            // Process black king (only one) with normal moves and castling
             let moves = king_legal_moves(self.black_king, self.any_black);
             possible_moves.extend(self.bitboard_to_moves(self.black_king, moves));
+
+            // Add castling moves if legal
+            if self.is_castling_legal(true, false) {  // Black kingside castle
+                possible_moves.push("e8g8".to_string());
+            }
+            if self.is_castling_legal(false, false) {  // Black queenside castle
+                possible_moves.push("e8c8".to_string());
+            }
 
         } else {
             // Get all possible pawn moves
@@ -337,9 +455,17 @@ impl Board {
                 possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
             }
 
-            // Process white king (only one)
+            // Process white king (only one) with normal moves and castling
             let moves = king_legal_moves(self.white_king, self.any_white);
             possible_moves.extend(self.bitboard_to_moves(self.white_king, moves));
+
+            // Add castling moves if legal
+            if self.is_castling_legal(true, true) {  // White kingside castle
+                possible_moves.push("e1g1".to_string());
+            }
+            if self.is_castling_legal(false, true) {  // White queenside castle
+                possible_moves.push("e1c1".to_string());
+            }
         }
 
         // Filter the moves to only include legal ones (that get out of check if we're in check)
@@ -538,6 +664,74 @@ impl Board {
             !test_board.black_king_in_check
         }
     }
+
+    /// Checks if squares between king and rook are empty for castling
+    fn is_castling_path_empty(&self, is_kingside: bool, is_white: bool) -> bool {
+        // TODO: pass in color
+        let rank = if is_white { 0 } else { 7 * 8 };
+        let path = if is_kingside {
+            // f1 and g1 must be empty for white kingside, f8 and g8 for black
+            (1u64 << (rank + 5)) | (1u64 << (rank + 6))
+        } else {
+            // b1, c1, and d1 must be empty for white queenside, b8, c8, d8 for black
+            (1u64 << (rank + 1)) | (1u64 << (rank + 2)) | (1u64 << (rank + 3))
+        };
+        (path & self.empty) == path
+    }
+
+    /// Checks if any of the squares the king passes through (including start and end) are attacked
+    fn is_castling_path_attacked(&self, is_kingside: bool, is_white: bool) -> bool {
+        // TODO: pass in color
+        let rank = if is_white { 0 } else { 7 * 8 };
+        let king_path = if is_kingside {
+            // e1, f1, g1 for white kingside, e8, f8, g8 for black
+            (1u64 << (rank + 4)) | (1u64 << (rank + 5)) | (1u64 << (rank + 6))
+        } else {
+            // e1, d1, c1 for white queenside, e8, d8, c8 for black
+            (1u64 << (rank + 4)) | (1u64 << (rank + 3)) | (1u64 << (rank + 2))
+        };
+
+        // Check each square in the path
+        let mut path = king_path;
+        while path != 0 {
+            let square = path.trailing_zeros() as u8;
+            path &= path - 1;  // Clear the processed bit
+            if self.is_square_attacked(square, if is_white { Color::Black } else { Color::White }) {
+                return true;
+            }
+        }
+        false
+    }
+
+    /// Returns true if castling is legal (all conditions are met)
+    fn is_castling_legal(&self, is_kingside: bool, is_white: bool) -> bool {
+        // Check castling rights
+        let has_rights = if is_white {
+            if is_kingside { self.white_kingside_castle_rights } else { self.white_queenside_castle_rights }
+        } else {
+            if is_kingside { self.black_kingside_castle_rights } else { self.black_queenside_castle_rights }
+        };
+
+        // Early return if no castling rights
+        if !has_rights {
+            return false;
+        }
+
+        // Check if king is in check
+        if (is_white && self.white_king_in_check) || (!is_white && self.black_king_in_check) {
+            return false;
+        }
+
+        // Check if squares between king and rook are empty
+        if !self.is_castling_path_empty(is_kingside, is_white) {
+            return false;
+        }
+
+        // Check if any squares in the king's path are attacked
+        if self.is_castling_path_attacked(is_kingside, is_white) {
+            return false;
+        }
+
+        true
+    }
 }
-
-

@@ -209,7 +209,7 @@ impl TryFrom<&str> for Move {
     type Error = &'static str;
     fn try_from(mv: &str) -> Result<Self, Self::Error> {
         if mv.len() == 5 {
-            // Promotion move, e.g., "e7e8Q"
+            // Promotion move, e.g., "e7e8q"
             let src = Square::try_from(&mv[0..2])?;
             let target = Square::try_from(&mv[2..4])?;
             let promotion_char = mv.chars().nth(4).unwrap();
