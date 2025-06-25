@@ -68,6 +68,7 @@ pub fn get_empty_board() -> Board {
         black_kingside_castle_rights: false,
         black_queenside_castle_rights: false,
         en_passant_target: None,
+        move_history: Vec::new(),
     };
     board.update_composite_bitboards();
     board
@@ -114,6 +115,7 @@ pub fn get_starting_board() -> Board {
         black_kingside_castle_rights: true,
         black_queenside_castle_rights: true,
         en_passant_target: None,
+        move_history: Vec::new(),
     };
     board.update_composite_bitboards();
     board
@@ -202,55 +204,46 @@ pub fn bitboard_to_pawn_double_moves(moveable_pawns: u64, is_black: bool) -> Vec
     moves
 }
 
-pub fn bitboard_to_pawn_capture_moves(from_bitboard: u64, target_bitboard: u64, is_black: bool) -> Vec<String> {
+/// Convert a bitboard of pawn capture moves into a list of move strings
+pub fn bitboard_to_pawn_capture_moves(source_pawns: u64, target_squares: u64, is_black: bool) -> Vec<String> {
     let mut moves = Vec::new();
-    let mut working_board = target_bitboard;
+    let mut working_pawns = source_pawns;
 
-    while working_board != 0 {
-        // Get the target square (least significant 1-bit)
-        let to_square = working_board.trailing_zeros() as u8;
-        // Clear the processed bit
-        working_board &= working_board - 1;
+    // For each pawn
+    while working_pawns != 0 {
+        let from_square = working_pawns.trailing_zeros() as u8;
+        working_pawns &= working_pawns - 1;  // Clear the processed bit
 
-        // Find the source pawn that can attack this square
-        let from_square = if is_black {
-            // Check both possible source squares for black pawns (one rank up, one file left or right)
-            let possible_from_east = to_square + 7;
-            let possible_from_west = to_square + 9;
-            if from_bitboard & (1 << possible_from_east) != 0 {
-                possible_from_east
-            } else {
-                possible_from_west
-            }
+        // Get this pawn's possible captures
+        let pawn = 1u64 << from_square;
+        let mut captures = if is_black {
+            crate::move_generation::b_pawns_attack_targets(pawn, target_squares)
         } else {
-            // Check both possible source squares for white pawns (one rank down, one file left or right)
-            let possible_from_east = to_square - 9;
-            let possible_from_west = to_square - 7;
-            if from_bitboard & (1 << possible_from_east) != 0 {
-                possible_from_east
-            } else {
-                possible_from_west
-            }
+            crate::move_generation::w_pawns_attack_targets(pawn, target_squares)
         };
 
+        // For each capture
+        while captures != 0 {
+            let to_square = captures.trailing_zeros() as u8;
+            captures &= captures - 1;  // Clear the processed bit
+
             // Convert to algebraic notation
-        // TODO: Clean up the 0-indexing here or 1-indexing here
             let from_file = int_file_to_string(from_square % 8);
             let from_rank = (from_square / 8 + 1).to_string();
             let to_file = int_file_to_string(to_square % 8);
-        let to_rank_int = to_square / 8 + 1;
-        let to_rank = to_rank_int.to_string();
+            let to_rank_int = to_square / 8 + 1;
+            let to_rank = to_rank_int.to_string();
 
-        if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
-            moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
-            moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
-        } else {
-            moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+            if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
+                moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
+                moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
+                moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
+                moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
+            } else {
+                moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+            }
         }
     }
 
     moves
 }
-

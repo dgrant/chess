@@ -734,7 +734,7 @@ fn test_is_legal_move_complex() {
         black_knights: 0,
         black_bishops: 0,
         black_queen: 0,
-        black_king: Square::G8.to_bitboard(), // Black king safely away
+        black_king: Square::H8.to_bitboard(),
         any_white: 0,
         any_black: 0,
         empty: 0,
@@ -745,6 +745,7 @@ fn test_is_legal_move_complex() {
         black_kingside_castle_rights: false,
         black_queenside_castle_rights: false,
         en_passant_target: None,
+        move_history: Vec::new(),
     };
     check_board.update_composite_bitboards();
     check_board.update_check_state();

@@ -7,6 +7,16 @@ use crate::move_generation::{
     w_pawns_attack_targets,
 };
 
+#[derive(Clone, Debug)]
+pub struct BoardState {
+    pub white_kingside_castle_rights: bool,
+    pub white_queenside_castle_rights: bool,
+    pub black_kingside_castle_rights: bool,
+    pub black_queenside_castle_rights: bool,
+    pub en_passant_target: Option<Square>,
+    pub last_move: Move,
+    pub captured_piece: Option<Piece>,
+}
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -43,6 +53,9 @@ pub struct Board {
     /// The square where an en-passant capture is possible (if any)
     /// This is set when a pawn makes a double move and cleared after each move
     pub en_passant_target: Option<Square>,
+
+    /// Represents a snapshot of board state that can be restored when undoing a move
+    pub move_history: Vec<BoardState>,
 }
 
 impl Board {
@@ -103,6 +116,17 @@ impl Board {
     }
 
     pub fn apply_move(&mut self, mv: &Move) {
+        // Store current state before making the move
+        let current_state = BoardState {
+            white_kingside_castle_rights: self.white_kingside_castle_rights,
+            white_queenside_castle_rights: self.white_queenside_castle_rights,
+            black_kingside_castle_rights: self.black_kingside_castle_rights,
+            black_queenside_castle_rights: self.black_queenside_castle_rights,
+            en_passant_target: self.en_passant_target,
+            last_move: mv.clone(),
+            captured_piece: self.get_piece_at_square(mv.target.to_bit_index()),
+        };
+
         let from_bit = mv.src.to_bitboard();
         let to_bit = mv.target.to_bitboard();
         let src_idx = mv.src.to_bit_index();
@@ -324,6 +348,8 @@ impl Board {
                 Color::Black => Color::White,
             };
         }
+
+        self.move_history.push(current_state);
     }
 
     /// Updates the composite bitboards that represent the state of the board.
@@ -380,7 +406,7 @@ impl Board {
             let moveable_pawns = b_pawns_able_to_push(self.black_pawns, self.empty);
             let double_moveable_pawns = b_pawns_able_to_double_push(self.black_pawns, self.empty);
             let attacking_pawns = b_pawns_attack_targets(self.black_pawns, self.any_white);
-            
+
             // Add en-passant moves if available
             if let Some(ep_square) = self.en_passant_target {
                 let ep_targets = b_pawns_en_passant_targets(self.black_pawns, ep_square.to_bitboard());
@@ -464,7 +490,7 @@ impl Board {
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
             let double_moveable_pawns = w_pawns_able_to_double_push(self.white_pawns, self.empty);
             let attacking_pawns = w_pawns_attack_targets(self.white_pawns, self.any_black);
-            
+
             // Add en-passant moves if available
             if let Some(ep_square) = self.en_passant_target {
                 let ep_targets = w_pawns_en_passant_targets(self.white_pawns, ep_square.to_bitboard());
@@ -809,5 +835,136 @@ impl Board {
         }
 
         true
+    }
+
+    /// Performs a perft (performance test) to count all possible moves at a given depth.
+    /// This is used to verify move generation correctness by comparing against known values.
+    ///
+    /// # Arguments
+    /// * `depth` - The depth to search to, where 0 means just count the current position
+    ///
+    /// # Returns
+    /// The number of leaf nodes at the specified depth
+    pub fn perft(&mut self, depth: u32) -> u64 {
+        if depth == 0 {
+            return 1;
+        }
+
+        let mut nodes: u64 = 0;
+        let moves = self.generate_legal_moves();
+
+        for mv in moves {
+            self.apply_move(&mv);
+            nodes += self.perft(depth - 1);
+            self.undo_last_move();
+        }
+
+        nodes
+    }
+
+    /// Generates all legal moves in the current position
+    fn generate_legal_moves(&self) -> Vec<Move> {
+        // Get all possible moves first
+        let moves_str = self.get_next_moves(-1);
+
+        // Convert string moves to Move structs
+        moves_str.into_iter()
+            .filter_map(|mv_str| Move::try_from(mv_str.as_str()).ok())
+            .collect()
+    }
+
+    /// Undoes the last move made, restoring the board to its previous state
+    pub fn undo_last_move(&mut self) {
+        if let Some(state) = self.move_history.pop() {
+            // Restore the previous position by "un-applying" the move
+            let mv = &state.last_move;
+
+            // Move the piece back
+            let piece = self.get_piece_at_square(mv.target.to_bit_index())
+                .expect("No piece at target square when undoing move");
+
+            let src_bit = mv.src.to_bitboard();
+            let target_bit = mv.target.to_bitboard();
+
+            // Handle promotions first
+            if let Some(promotion) = mv.promotion {
+                // Remove the promoted piece
+                match piece {
+                    Piece::WhiteQueen => self.white_queen &= !target_bit,
+                    Piece::WhiteRook => self.white_rooks &= !target_bit,
+                    Piece::WhiteBishop => self.white_bishops &= !target_bit,
+                    Piece::WhiteKnight => self.white_knights &= !target_bit,
+                    Piece::BlackQueen => self.black_queen &= !target_bit,
+                    Piece::BlackRook => self.black_rooks &= !target_bit,
+                    Piece::BlackBishop => self.black_bishops &= !target_bit,
+                    Piece::BlackKnight => self.black_knights &= !target_bit,
+                    _ => panic!("Invalid promotion piece when undoing"),
+                }
+                // Restore the pawn
+                if piece.color() == Color::White {
+                    self.white_pawns |= src_bit;
+                } else {
+                    self.black_pawns |= src_bit;
+                }
+            } else {
+                // Move the piece back to its source square
+                let piece_bb = match piece {
+                    Piece::WhitePawn => &mut self.white_pawns,
+                    Piece::BlackPawn => &mut self.black_pawns,
+                    Piece::WhiteKnight => &mut self.white_knights,
+                    Piece::BlackKnight => &mut self.black_knights,
+                    Piece::WhiteBishop => &mut self.white_bishops,
+                    Piece::BlackBishop => &mut self.black_bishops,
+                    Piece::WhiteRook => &mut self.white_rooks,
+                    Piece::BlackRook => &mut self.black_rooks,
+                    Piece::WhiteQueen => &mut self.white_queen,
+                    Piece::BlackQueen => &mut self.black_queen,
+                    Piece::WhiteKing => &mut self.white_king,
+                    Piece::BlackKing => &mut self.black_king,
+                };
+                *piece_bb &= !target_bit;  // Remove from target
+                *piece_bb |= src_bit;      // Add to source
+            }
+
+            // Restore captured piece if any
+            if let Some(captured) = state.captured_piece {
+                let captured_bb = match captured {
+                    Piece::WhitePawn => &mut self.white_pawns,
+                    Piece::BlackPawn => &mut self.black_pawns,
+                    Piece::WhiteKnight => &mut self.white_knights,
+                    Piece::BlackKnight => &mut self.black_knights,
+                    Piece::WhiteBishop => &mut self.white_bishops,
+                    Piece::BlackBishop => &mut self.black_bishops,
+                    Piece::WhiteRook => &mut self.white_rooks,
+                    Piece::BlackRook => &mut self.black_rooks,
+                    Piece::WhiteQueen => &mut self.white_queen,
+                    Piece::BlackQueen => &mut self.black_queen,
+                    Piece::WhiteKing => &mut self.white_king,
+                    Piece::BlackKing => &mut self.black_king,
+                };
+                *captured_bb |= target_bit;
+            }
+
+            // Restore castling state
+            self.white_kingside_castle_rights = state.white_kingside_castle_rights;
+            self.white_queenside_castle_rights = state.white_queenside_castle_rights;
+            self.black_kingside_castle_rights = state.black_kingside_castle_rights;
+            self.black_queenside_castle_rights = state.black_queenside_castle_rights;
+
+            // Restore en-passant state
+            self.en_passant_target = state.en_passant_target;
+
+            // Update composite bitboards
+            self.update_composite_bitboards();
+
+            // Switch back to previous side
+            self.side_to_move = match self.side_to_move {
+                Color::White => Color::Black,
+                Color::Black => Color::White,
+            };
+
+            // Update check states
+            self.update_check_state();
+        }
     }
 }
