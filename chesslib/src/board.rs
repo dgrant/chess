@@ -39,6 +39,10 @@ pub struct Board {
     pub white_queenside_castle_rights: bool,
     pub black_kingside_castle_rights: bool,
     pub black_queenside_castle_rights: bool,
+
+    /// The square where an en-passant capture is possible (if any)
+    /// This is set when a pawn makes a double move and cleared after each move
+    pub en_passant_target: Option<Square>,
 }
 
 impl Board {
@@ -122,6 +126,18 @@ impl Board {
                 _ => false,
             };
 
+            // Handle en-passant capture
+            let is_en_passant = match piece {
+                Piece::WhitePawn | Piece::BlackPawn => {
+                    if let Some(ep_square) = self.en_passant_target {
+                        mv.target == ep_square
+                    } else {
+                        false
+                    }
+                },
+                _ => false,
+            };
+
             // Handle castling rook movements before we do any other piece movements
             if is_castle {
                 match piece {
@@ -153,7 +169,20 @@ impl Board {
 
             // Remove captured piece if any (but not for castling which doesn't capture)
             if !is_castle {
-                if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
+                // Handle en-passant capture
+                if is_en_passant {
+                    let captured_pawn_square = if piece == Piece::WhitePawn {
+                        target_idx - 8 // captured black pawn is one rank below
+                    } else {
+                        target_idx + 8 // captured white pawn is one rank above
+                    };
+                    let captured_pawn_bit = 1u64 << captured_pawn_square;
+                    if piece == Piece::WhitePawn {
+                        self.black_pawns &= !captured_pawn_bit;
+                    } else {
+                        self.white_pawns &= !captured_pawn_bit;
+                    }
+                } else if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
                     let captured_bitboard = match captured_piece {
                         Piece::WhitePawn => &mut self.white_pawns,
                         Piece::BlackPawn => &mut self.black_pawns,
@@ -248,6 +277,18 @@ impl Board {
             *piece_bitboard ^= from_bit;  // Clear the source square
             *piece_bitboard |= to_bit;    // Set the target square
 
+            // Set en-passant target square for double pawn moves
+            self.en_passant_target = match piece {
+                Piece::WhitePawn if src_idx / 8 == 1 && target_idx / 8 == 3 => {
+                    // White pawn double push
+                    Some(Square::from_bit_index(src_idx + 8))
+                },
+                Piece::BlackPawn if src_idx / 8 == 6 && target_idx / 8 == 4 => {
+                    // Black pawn double push
+                    Some(Square::from_bit_index(src_idx - 8))
+                },
+                _ => None
+            };
 
             // Handle promotions if any
             if mv.promotion.is_some() {
@@ -326,6 +367,7 @@ impl Board {
         use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
                                    w_pawns_attack_targets, b_pawns_attack_targets,
+                                   w_pawns_en_passant_targets, b_pawns_en_passant_targets,
                                    knight_legal_moves, bishop_legal_moves, rook_legal_moves,
                                    queen_legal_moves, king_legal_moves};
         use rand::seq::IteratorRandom;
@@ -338,6 +380,23 @@ impl Board {
             let moveable_pawns = b_pawns_able_to_push(self.black_pawns, self.empty);
             let double_moveable_pawns = b_pawns_able_to_double_push(self.black_pawns, self.empty);
             let attacking_pawns = b_pawns_attack_targets(self.black_pawns, self.any_white);
+            
+            // Add en-passant moves if available
+            if let Some(ep_square) = self.en_passant_target {
+                let ep_targets = b_pawns_en_passant_targets(self.black_pawns, ep_square.to_bitboard());
+                if ep_targets != 0 {
+                    // Find the source pawns that can make the en-passant capture
+                    let mut working_pawns = self.black_pawns;
+                    while working_pawns != 0 {
+                        let from_square = working_pawns.trailing_zeros() as u8;
+                        working_pawns &= working_pawns - 1;  // Clear the processed bit
+                        let pawn = 1u64 << from_square;
+                        if b_pawns_en_passant_targets(pawn, ep_square.to_bitboard()) != 0 {
+                            possible_moves.push(board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard()));
+                        }
+                    }
+                }
+            }
 
             possible_moves.extend(board_utils::bitboard_to_pawn_single_moves(moveable_pawns, true));
             possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, true));
@@ -405,6 +464,23 @@ impl Board {
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
             let double_moveable_pawns = w_pawns_able_to_double_push(self.white_pawns, self.empty);
             let attacking_pawns = w_pawns_attack_targets(self.white_pawns, self.any_black);
+            
+            // Add en-passant moves if available
+            if let Some(ep_square) = self.en_passant_target {
+                let ep_targets = w_pawns_en_passant_targets(self.white_pawns, ep_square.to_bitboard());
+                if ep_targets != 0 {
+                    // Find the source pawns that can make the en-passant capture
+                    let mut working_pawns = self.white_pawns;
+                    while working_pawns != 0 {
+                        let from_square = working_pawns.trailing_zeros() as u8;
+                        working_pawns &= working_pawns - 1;  // Clear the processed bit
+                        let pawn = 1u64 << from_square;
+                        if w_pawns_en_passant_targets(pawn, ep_square.to_bitboard()) != 0 {
+                            possible_moves.push(board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard()));
+                        }
+                    }
+                }
+            }
 
             possible_moves.extend(board_utils::bitboard_to_pawn_single_moves(moveable_pawns, false));
             possible_moves.extend(board_utils::bitboard_to_pawn_double_moves(double_moveable_pawns, false));

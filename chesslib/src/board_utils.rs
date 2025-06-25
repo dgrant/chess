@@ -1,5 +1,34 @@
 use crate::board::Board;
-use crate::types::{Color, A, B, C, D, E, F, G, H, SPACE};
+use crate::types::{Color, A, B, C, D, E, F, G, H};
+
+pub fn int_file_to_string(file: u8) -> &'static str {
+    match file {
+        0 => A,
+        1 => B,
+        2 => C,
+        3 => D,
+        4 => E,
+        5 => F,
+        6 => G,
+        7 => H,
+        _ => panic!("Invalid file number"),
+    }
+}
+
+/// Convert a source and target bitboard (each with exactly one bit set) to a move string
+pub fn bitboard_squares_to_move(src: u64, target: u64) -> String {
+    // Get indices
+    let src_idx = src.trailing_zeros() as u8;
+    let target_idx = target.trailing_zeros() as u8;
+
+    // Convert to algebraic notation
+    let from_file = int_file_to_string(src_idx % 8);
+    let from_rank = (src_idx / 8 + 1).to_string();
+    let to_file = int_file_to_string(target_idx % 8);
+    let to_rank = (target_idx / 8 + 1).to_string();
+
+    format!("{}{}{}{}", from_file, from_rank, to_file, to_rank)
+}
 
 pub fn get_empty_board() -> Board {
     let white_pawns = 0;
@@ -34,11 +63,11 @@ pub fn get_empty_board() -> Board {
         side_to_move: Color::White,
         white_king_in_check: false,
         black_king_in_check: false,
-        // Empty board has no castling rights since there are no pieces
         white_kingside_castle_rights: false,
         white_queenside_castle_rights: false,
         black_kingside_castle_rights: false,
         black_queenside_castle_rights: false,
+        en_passant_target: None,
     };
     board.update_composite_bitboards();
     board
@@ -52,14 +81,14 @@ pub fn get_starting_board() -> Board {
     let white_rooks = (1 << (0 + 0)) + (1 << (0 + 7));
     let white_queen = 1 << (0 + 3);
     let white_king = 1 << (0 + 4);
-    let black_pawns = (1 << (6 * 8 + 0)) + (1 << (6 * 8 + 1)) + (1 << (6 * 8 + 2)) +
-                     (1 << (6 * 8 + 3)) + (1 << (6 * 8 + 4)) + (1 << (6 * 8 + 5)) +
-                     (1 << (6 * 8 + 6)) + (1 << (6 * 8 + 7));
-    let black_knights = (1 << (7 * 8 + 1)) + (1 << (7 * 8 + 6));
-    let black_bishops = (1 << (7 * 8 + 2)) + (1 << (7 * 8 + 5));
-    let black_rooks = (1 << (7 * 8 + 0)) + (1 << (7 * 8 + 7));
-    let black_queen = 1 << (7 * 8 + 3);
-    let black_king = 1 << (7 * 8 + 4);
+
+    let black_pawns = (1 << (48 + 0)) + (1 << (48 + 1)) + (1 << (48 + 2)) + (1 << (48 + 3)) +
+                     (1 << (48 + 4)) + (1 << (48 + 5)) + (1 << (48 + 6)) + (1 << (48 + 7));
+    let black_knights = (1 << (56 + 1)) + (1 << (56 + 6));
+    let black_bishops = (1 << (56 + 2)) + (1 << (56 + 5));
+    let black_rooks = (1 << (56 + 0)) + (1 << (56 + 7));
+    let black_queen = 1 << (56 + 3);
+    let black_king = 1 << (56 + 4);
 
     let mut board = Board {
         white_pawns,
@@ -80,33 +109,19 @@ pub fn get_starting_board() -> Board {
         side_to_move: Color::White,
         white_king_in_check: false,
         black_king_in_check: false,
-        // Initialize all castling rights as available for a new game
         white_kingside_castle_rights: true,
         white_queenside_castle_rights: true,
         black_kingside_castle_rights: true,
         black_queenside_castle_rights: true,
+        en_passant_target: None,
     };
     board.update_composite_bitboards();
     board
 }
 
-pub fn int_file_to_string(file: u8) -> &'static str {
-    match file {
-        0 => A,
-        1 => B,
-        2 => C,
-        3 => D,
-        4 => E,
-        5 => F,
-        6 => G,
-        7 => H,
-//        TODO(dgrant): Handle this differently
-        _ => SPACE
-    }
-}
-
+/// Returns true if the given bit is set in the bitboard
 pub fn is_bit_set(bitboard: u64, bit: u8) -> bool {
-    (1 << bit) & bitboard != 0
+    (bitboard & (1u64 << bit)) != 0
 }
 
 pub fn bitboard_to_string(bitboard: u64) -> String {
@@ -125,50 +140,65 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     result
 }
 
-pub fn bitboard_to_pawn_single_moves(bitboard: u64, is_black: bool) -> Vec<String> {
+/// Convert a bitboard of pawn single moves into a list of move strings
+pub fn bitboard_to_pawn_single_moves(moveable_pawns: u64, is_black: bool) -> Vec<String> {
     let mut moves = Vec::new();
-    for rank in 0..8 {
-        for file in 0..8 {
-            let square = 1 << (rank * 8 + file);
-            if bitboard & square != 0 {
-                let to_rank = if is_black {
-                    rank - 1 // Black pawns move downward by decreasing rank
-                } else {
-                    rank + 1 // White pawns move upward by increasing rank
-                };
-                let from = format!("{}{}", int_file_to_string(file), rank + 1);
-                let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
-                if (is_black && to_rank == 0) || (!is_black && to_rank == 7) {
-                    moves.push(format!("{}{}q", from, to));
-                    moves.push(format!("{}{}r", from, to));
-                    moves.push(format!("{}{}b", from, to));
-                    moves.push(format!("{}{}n", from, to));
-                } else {
-                    moves.push(format!("{}{}", from, to));
-                };
-            }
-        }
+    let mut working_pawns = moveable_pawns;
+
+    while working_pawns != 0 {
+        let from_square = working_pawns.trailing_zeros() as u8;
+        working_pawns &= working_pawns - 1;  // Clear the processed bit
+
+        let to_square = if is_black {
+            from_square - 8  // Black pawns move down
+        } else {
+            from_square + 8  // White pawns move up
+        };
+
+        // Convert to algebraic notation
+        let from_file = int_file_to_string(from_square % 8);
+        let from_rank = (from_square / 8 + 1).to_string();
+        let to_file = int_file_to_string(to_square % 8);
+        let to_rank_int = to_square / 8 + 1;
+        let to_rank = to_rank_int.to_string();
+
+        if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
+            moves.push(format!("{}{}{}{}q", from_file, from_rank, to_file, to_rank));
+            moves.push(format!("{}{}{}{}r", from_file, from_rank, to_file, to_rank));
+            moves.push(format!("{}{}{}{}b", from_file, from_rank, to_file, to_rank));
+            moves.push(format!("{}{}{}{}n", from_file, from_rank, to_file, to_rank));
+        } else {
+            moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
+        };
     }
+
     moves
 }
 
-pub fn bitboard_to_pawn_double_moves(bitboard: u64, is_black: bool) -> Vec<String> {
+/// Convert a bitboard of pawn double moves into a list of move strings
+pub fn bitboard_to_pawn_double_moves(moveable_pawns: u64, is_black: bool) -> Vec<String> {
     let mut moves = Vec::new();
-    for rank in 0..8 {
-        for file in 0..8 {
-            let square = 1 << (rank * 8 + file);
-            if bitboard & square != 0 {
-                let from = format!("{}{}", int_file_to_string(file), rank + 1);
-                let to_rank = if is_black {
-                    rank - 2 // Black pawns move down two ranks
-                } else {
-                    rank + 2 // White pawns move up two ranks
-                };
-                let to = format!("{}{}", int_file_to_string(file), to_rank + 1);
-                moves.push(format!("{}{}", from, to));
-            }
-        }
+    let mut working_pawns = moveable_pawns;
+
+    while working_pawns != 0 {
+        let from_square = working_pawns.trailing_zeros() as u8;
+        working_pawns &= working_pawns - 1;  // Clear the processed bit
+
+        let to_square = if is_black {
+            from_square - 16  // Black pawns move down two squares
+        } else {
+            from_square + 16  // White pawns move up two squares
+        };
+
+        // Convert to algebraic notation
+        let from_file = int_file_to_string(from_square % 8);
+        let from_rank = (from_square / 8 + 1).to_string();
+        let to_file = int_file_to_string(to_square % 8);
+        let to_rank = (to_square / 8 + 1).to_string();
+
+        moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
     }
+
     moves
 }
 
@@ -203,11 +233,11 @@ pub fn bitboard_to_pawn_capture_moves(from_bitboard: u64, target_bitboard: u64, 
             }
         };
 
-        // Convert to algebraic notation
+            // Convert to algebraic notation
         // TODO: Clean up the 0-indexing here or 1-indexing here
-        let from_file = int_file_to_string(from_square % 8);
-        let from_rank = (from_square / 8 + 1).to_string();
-        let to_file = int_file_to_string(to_square % 8);
+            let from_file = int_file_to_string(from_square % 8);
+            let from_rank = (from_square / 8 + 1).to_string();
+            let to_file = int_file_to_string(to_square % 8);
         let to_rank_int = to_square / 8 + 1;
         let to_rank = to_rank_int.to_string();
 
@@ -220,5 +250,7 @@ pub fn bitboard_to_pawn_capture_moves(from_bitboard: u64, target_bitboard: u64, 
             moves.push(format!("{}{}{}{}", from_file, from_rank, to_file, to_rank));
         }
     }
+
     moves
 }
+

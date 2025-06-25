@@ -275,3 +275,18 @@ pub fn king_legal_moves(kings: u64, friendly_pieces: u64) -> u64 {
     king_moves(kings) & !friendly_pieces
 }
 
+// Get en-passant attack targets for pawns
+pub fn w_pawns_en_passant_targets(wp: u64, ep_square: u64) -> u64 {
+    // It is assumed that ep_square is on the 6th rank.
+    assert !(ep_square & 0x0000FF0000000000 != 0, "En-passant square must be on the 6th rank");
+        
+    // Calculate which pawns can make the en-passant capture
+    w_pawn_attacks(wp) & ep_square
+}
+
+pub fn b_pawns_en_passant_targets(bp: u64, ep_square: u64) -> u64 {
+    // It is assumed that ep_square is on the 3rd rank.
+    assert!(ep_square & 0x0000000000FF0000 != 0, "En-passant square must be on the 3rd rank");
+    // Calculate which pawns can make the en-passant capture
+    b_pawn_attacks(bp) & ep_square
+}

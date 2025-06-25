@@ -2,7 +2,6 @@ extern crate chesslib;
 use chesslib::move_generation::{b_pawns_able_to_double_push, b_pawns_able_to_push, w_pawns_able_to_double_push, w_pawns_able_to_push};
 use chesslib::Square;
 use chesslib::types::{Color, Move, PieceType};
-
 use chesslib::board::Board;
 use chesslib::board_utils::{bitboard_to_pawn_single_moves, bitboard_to_string, get_empty_board, get_starting_board, is_bit_set};
 
@@ -163,7 +162,6 @@ fn test_random_pawn_moves_no_capture() {
             if let Some(mv) = possible_moves.as_slice().choose(&mut rand::thread_rng()) {
                 println!("Applying move: {}", mv);
                 board.apply_moves_from_strings(std::iter::once(mv.to_string()));
-
                 assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap!");
 
                 println!("Current board state after move {}:", mv);
@@ -177,6 +175,12 @@ fn test_random_pawn_moves_no_capture() {
     println!("Final board state after {} iterations:", iteration_count);
     println!("White pawns:\n{}", bitboard_to_string(board.white_pawns));
     println!("Black pawns:\n{}", bitboard_to_string(board.black_pawns));
+    // Verify final board state is valid
+    assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap in final position");
+    assert_eq!(board.white_pawns & board.empty, 0, "White pawns overlap with empty squares");
+    assert_eq!(board.black_pawns & board.empty, 0, "Black pawns overlap with empty squares");
+    assert_eq!(board.any_white & board.empty, 0, "White pieces overlap with empty squares");
+    assert_eq!(board.any_black & board.empty, 0, "Black pieces overlap with empty squares");
 }
 
 #[test]
@@ -530,16 +534,23 @@ fn test_get_next_move() {
     assert_eq!(board.side_to_move, Color::White);
 
     // White's first move should be either a pawn move or knight move
-    let first_move = board.get_next_move();
-    assert!(first_move.starts_with("a2") || first_move.starts_with("b2") ||
-                first_move.starts_with("c2") || first_move.starts_with("d2") ||
-                first_move.starts_with("e2") || first_move.starts_with("f2") ||
-                first_move.starts_with("g2") || first_move.starts_with("h2") ||
-                first_move.starts_with("b1") || first_move.starts_with("g1"),
-            "First move {} should be a white pawn or knight move", first_move);
+    let first_moves = board.get_next_moves(-1);
+    assert_eq!(first_moves.len(), 20, "Starting position should have exactly 20 possible moves");
+    assert!(first_moves.iter().all(|mv| {
+        mv.eq("a2a3") || mv.eq("a2a4")||
+        mv.eq("b2b3") || mv.eq("b2b4") ||
+        mv.eq("c2c3") || mv.eq("c2c4") ||
+        mv.eq("d2d3") || mv.eq("d2d4") ||
+        mv.eq("e2e3") || mv.eq("e2e4") ||
+        mv.eq("f2f3") || mv.eq("f2f4") ||
+        mv.eq("g2g3") || mv.eq("g2g4") ||
+        mv.eq("h2h3") || mv.eq("h2h4") ||
+        mv.eq("b1a3") || mv.eq("b1c3") ||
+        mv.eq("g1h3") || mv.eq("g1f3")
+    }), "All first moves should be valid white pawn or knight moves");
 
     // Apply the first move and get a response from black
-    board.apply_move_from_string(&first_move);
+    board.apply_move_from_string(first_moves[0].as_str());
     assert_eq!(board.side_to_move, Color::Black);
 
     let black_move = board.get_next_move();
@@ -729,10 +740,11 @@ fn test_is_legal_move_complex() {
         empty: 0,
         white_king_in_check: true,
         black_king_in_check: false,
-        black_kingside_castle_rights: true,
-        black_queenside_castle_rights: true,
-        white_kingside_castle_rights: true,
-        white_queenside_castle_rights: true,
+        white_kingside_castle_rights: false,
+        white_queenside_castle_rights: false,
+        black_kingside_castle_rights: false,
+        black_queenside_castle_rights: false,
+        en_passant_target: None,
     };
     check_board.update_composite_bitboards();
     check_board.update_check_state();
@@ -797,7 +809,7 @@ fn test_apply_move_promotion() {
 fn test_pawn_promotion_moves() {
     // Test white pawn promotion
     let mut white_promotion_board = Board {
-        white_pawns: Square::E7.to_bitboard(),  // White pawn ready to promote, and also surrounding white king to prevent king moves
+        white_pawns: Square::E7.to_bitboard(),  // White pawn ready to promote
         black_king: Square::H8.to_bitboard(),   // Place black king away from promotion square
         white_king: Square::A1.to_bitboard(),   // Place white king away
         ..get_empty_board()

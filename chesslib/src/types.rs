@@ -18,6 +18,11 @@ impl Square {
     pub fn to_bitboard(&self) -> u64 {
         1u64 << self.to_bit_index()
     }
+
+    pub fn from_bit_index(idx: u8) -> Self {
+        // Safety: we know all possible values 0-63 map to valid squares
+        unsafe { std::mem::transmute(idx) }
+    }
 }
 
 // Implement a conversion from a string coordinate (e.g., "a1") to a Square.
