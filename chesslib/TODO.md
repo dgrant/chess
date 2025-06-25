@@ -5,9 +5,9 @@ I assume a simple way to do this, is to try making the move, then check the boar
 v0.1 - still random moves, just correctly generates moves for all pieces
 king moves - just had a case where a king move was generated that would have put the king in check, I think I didn't handle king attacking squares.
 pawn promotion - done
-castling
+castling - done
+en passant - todo
 proper fen generation of move numbers
-en passant
 perft for accuracy
 
 v0.2 - actually evaluate positions
