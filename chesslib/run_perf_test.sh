@@ -19,9 +19,20 @@ sudo perf record -g --call-graph dwarf \
     ./target/release/deps/perft_tests-18017576f8847c4f \
     --exact perft_tests::test_perft_depth_6
 
-# Generate perf report
-echo "Generating perf report..."
+# Generate a standard perf report
+echo "Generating standard perf report..."
 sudo perf report -g 'graph,0.5,caller' > perf_report.txt
+
+# Generate a more focused text report of hotspots
+echo "Generating hotspot summary..."
+echo "==== TOP 20 FUNCTIONS BY CPU TIME ====" > hotspots_report.txt
+sudo perf report --sort=dso,symbol --no-children --stdio | grep -v "^#" | head -n 30 >> hotspots_report.txt
+echo -e "\n\n==== FUNCTION CALL HIERARCHY (TOP 10) ====" >> hotspots_report.txt
+sudo perf report --sort=dso,symbol -g --stdio | grep -A 20 -B 2 "Children      Self  Command" | head -n 50 >> hotspots_report.txt
+echo -e "\n\n==== SPECIFIC HOTSPOTS ====" >> hotspots_report.txt
+sudo perf report --stdio | grep -A 3 -B 3 "is_legal_move" >> hotspots_report.txt
+sudo perf report --stdio | grep -A 3 -B 3 "apply_move" >> hotspots_report.txt
+sudo perf report --stdio | grep -A 3 -B 3 "undo_last_move" >> hotspots_report.txt
 
 # Extract perf data to a format compatible with multiple visualization tools
 echo "Processing performance data..."
@@ -73,17 +84,22 @@ cat perf_output.stacks | \
 echo "Converting SVG to PNG..."
 rsvg-convert -o chess_perft_inferno.png chess_perft_inferno.svg
 
+# Generate a simpler text-based flat profile for easier reading
+echo "Generating flat profile text report..."
+sudo perf report --sort comm,dso,symbol -n --stdio > flat_profile.txt
+
 sudo chown dgrant:dgrant perf.data
 sudo chown dgrant:dgrant perf_output.stacks
+sudo chown dgrant:dgrant hotspots_report.txt
+sudo chown dgrant:dgrant flat_profile.txt
 
 echo "Done! Results available in:"
-echo "- perf_report.txt (text-based report)"
+echo "- perf_report.txt (detailed text-based report)"
+echo "- hotspots_report.txt (focused report on performance hotspots)"
+echo "- flat_profile.txt (simplified flat profile for easy reading)"
 echo "- chess_perft_flame_original.svg (original flamegraph)"
 echo "- chess_perft_inferno.svg (improved flamegraph with better text rendering)"
 echo "- chess_perft_detailed.svg (detailed flamegraph with smaller font for more text)"
 echo "- chess_perft_inferno.png (PNG version of improved flamegraph)"
 echo ""
-echo "TIP: To see full function names, try the following:"
-echo "  1. Open the SVG files directly in a browser - they're often interactive"
-echo "  2. Use your browser's zoom feature to zoom in on specific areas"
-echo "  3. Review the detailed text report in perf_report.txt"
+echo "TIP: To see the performance hotspots, check hotspots_report.txt first."

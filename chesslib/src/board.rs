@@ -415,7 +415,7 @@ impl Board {
         moves.map(|mv| Move::try_from(mv.as_str()))
     }
 
-    pub fn get_raw_moves(&self, n: i32) -> Vec<Move> {
+    pub fn get_raw_moves(&mut self, n: i32) -> Vec<Move> {
         let mut possible_moves = Vec::new();
         self.get_all_raw_moves_append(&mut possible_moves);
 
@@ -434,7 +434,7 @@ impl Board {
         possible_moves
     }
 
-    pub fn get_all_raw_moves_append(&self, possible_moves: &mut Vec<Move>) {
+    pub fn get_all_raw_moves_append(&mut self, possible_moves: &mut Vec<Move>) {
         use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
                                    w_pawns_attack_targets, b_pawns_attack_targets,
@@ -459,16 +459,19 @@ impl Board {
                         working_pawns &= working_pawns - 1;  // Clear the processed bit
                         let pawn = 1u64 << from_square;
                         if b_pawns_en_passant_targets(pawn, ep_square.to_bitboard()) != 0 {
-                            possible_moves.push(board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard()));
+                            let mv = board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard());
+                            if self.is_legal_move(&mv) {
+                                possible_moves.push(mv);
+                            }
                         }
                     }
                 }
             }
 
             // Process regular pawn moves using existing board_utils functions
-            board_utils::bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, true);
-            board_utils::bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, true);
-            board_utils::bitboard_to_pawn_capture_moves_append(possible_moves, self.black_pawns, attacking_pawns, true);
+            self.bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, true);
+            self.bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, true);
+            self.bitboard_to_pawn_capture_moves_append(possible_moves, self.black_pawns, attacking_pawns, true);
 
             // Process each black knight separately
             let mut working_knights = self.black_knights;
@@ -479,7 +482,7 @@ impl Board {
                 let single_knight = 1u64 << knight_pos;
                 // Get all legal moves for this knight (including both empty squares and captures)
                 let moves = knight_legal_moves(single_knight, self.any_black);
-                possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
+                self.bitboard_to_moves_append(possible_moves, single_knight, moves);
             }
 
             // Process each black bishop separately
@@ -489,7 +492,7 @@ impl Board {
                 working_bishops &= working_bishops - 1;
                 let single_bishop = 1u64 << bishop_pos;
                 let moves = bishop_legal_moves(single_bishop, self.any_black, self.any_white);
-                possible_moves.extend(self.bitboard_to_moves(single_bishop, moves));
+                self.bitboard_to_moves_append(possible_moves, single_bishop, moves);
             }
 
             // Process each black rook separately
@@ -499,7 +502,7 @@ impl Board {
                 working_rooks &= working_rooks - 1;
                 let single_rook = 1u64 << rook_pos;
                 let moves = rook_legal_moves(single_rook, self.any_black, self.any_white);
-                possible_moves.extend(self.bitboard_to_moves(single_rook, moves));
+                self.bitboard_to_moves_append(possible_moves, single_rook, moves);
             }
 
             // Process each black queen separately
@@ -509,27 +512,33 @@ impl Board {
                 working_queens &= working_queens - 1;
                 let single_queen = 1u64 << queen_pos;
                 let moves = queen_legal_moves(single_queen, self.any_black, self.any_white);
-                possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
+                self.bitboard_to_moves_append(possible_moves, single_queen, moves);
             }
 
             // Process black king moves and castling
             let moves = king_legal_moves(self.black_king, self.any_black);
-            possible_moves.extend(self.bitboard_to_moves(self.black_king, moves));
+            self.bitboard_to_moves_append(possible_moves, self.black_king, moves);
 
             // Add castling moves if legal
             if self.is_castling_legal(true, false) {  // Black kingside castle
-                possible_moves.push(Move {
+                let mv = Move {
                     src: Square::E8,
                     target: Square::G8,
                     promotion: None
-                });
+                };
+                if self.is_legal_move(&mv) {  // Check if the move is legal
+                    possible_moves.push(mv);
+                }
             }
             if self.is_castling_legal(false, false) {  // Black queenside castle
-                possible_moves.push(Move {
+                let mv = Move {
                     src: Square::E8,
                     target: Square::C8,
                     promotion: None
-                });
+                };
+                if self.is_legal_move(&mv) {  // Check if the move is legal
+                    possible_moves.push(mv);
+                }
             }
 
         } else {
@@ -549,15 +558,18 @@ impl Board {
                         working_pawns &= working_pawns - 1;  // Clear the processed bit
                         let pawn = 1u64 << from_square;
                         if w_pawns_en_passant_targets(pawn, ep_square.to_bitboard()) != 0 {
-                            possible_moves.push(board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard()));
+                            let mv = board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard());
+                            if self.is_legal_move(&mv) {
+                                possible_moves.push(mv);
+                            }
                         }
                     }
                 }
             }
 
-            board_utils::bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, false);
-            board_utils::bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, false);
-            board_utils::bitboard_to_pawn_capture_moves_append(possible_moves, self.white_pawns, attacking_pawns, false);
+            self.bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, false);
+            self.bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, false);
+            self.bitboard_to_pawn_capture_moves_append(possible_moves, self.white_pawns, attacking_pawns, false);
 
             // Process each white knight separately
             let mut working_knights = self.white_knights;
@@ -568,7 +580,7 @@ impl Board {
                 let single_knight = 1u64 << knight_pos;
                 // Get all legal moves for this knight (including both empty squares and captures)
                 let moves = knight_legal_moves(single_knight, self.any_white);
-                possible_moves.extend(self.bitboard_to_moves(single_knight, moves));
+                self.bitboard_to_moves_append(possible_moves, single_knight, moves);
             }
 
             // Process each white bishop separately
@@ -579,7 +591,7 @@ impl Board {
 
                 let single_bishop = 1u64 << bishop_pos;
                 let moves = bishop_legal_moves(single_bishop, self.any_white, self.any_black);
-                possible_moves.extend(self.bitboard_to_moves(single_bishop, moves));
+                self.bitboard_to_moves_append(possible_moves, single_bishop, moves);
             }
 
             // Process each white rook separately
@@ -590,7 +602,7 @@ impl Board {
 
                 let single_rook = 1u64 << rook_pos;
                 let moves = rook_legal_moves(single_rook, self.any_white, self.any_black);
-                possible_moves.extend(self.bitboard_to_moves(single_rook, moves));
+                self.bitboard_to_moves_append(possible_moves, single_rook, moves);
             }
 
             // Process each white queen separately (usually just one)
@@ -601,42 +613,48 @@ impl Board {
 
                 let single_queen = 1u64 << queen_pos;
                 let moves = queen_legal_moves(single_queen, self.any_white, self.any_black);
-                possible_moves.extend(self.bitboard_to_moves(single_queen, moves));
+                self.bitboard_to_moves_append(possible_moves, single_queen, moves);
             }
 
             // Process white king (only one) with normal moves and castling
             let moves = king_legal_moves(self.white_king, self.any_white);
-            possible_moves.extend(self.bitboard_to_moves(self.white_king, moves));
+            self.bitboard_to_moves_append(possible_moves, self.white_king, moves);
 
             // Add castling moves if legal
             if self.is_castling_legal(true, true) {  // White kingside castle
-                possible_moves.push(Move {
+                let mv = Move {
                     src: Square::E1,
                     target: Square::G1,
                     promotion: None
-                })
+                };
+                if self.is_legal_move(&mv) {  // Check if the move is legal
+                    possible_moves.push(mv);
+                }
             };
             if self.is_castling_legal(false, true) {  // White queenside castle
-                possible_moves.push(Move {
+                let mv = Move {
                     src: Square::E1,
                     target: Square::C1,
                     promotion: None
-                })
+                };
+                if self.is_legal_move(&mv) {  // Check if the move is legal
+                    possible_moves.push(mv);
+                }
             };
         }
 
         // Filter the moves to only include legal ones (that get out of check if we're in check)
-        possible_moves.retain(|mv| self.is_legal_move(mv));
+        // possible_moves.retain(|mv| self.is_legal_move(mv));
     }
 
-    pub fn get_next_moves(&self, n: i32) -> Vec<String> {
+    pub fn get_next_moves(&mut self, n: i32) -> Vec<String> {
         // Use get_raw_moves and convert to strings
         self.get_raw_moves(n).into_iter()
             .map(|mv| mv.to_string())
             .collect()
     }
 
-    pub fn get_next_move(&self) -> String {
+    pub fn get_next_move(&mut self) -> String {
         // Default to getting one move
         self.get_next_moves(1)
             .into_iter()
@@ -644,14 +662,20 @@ impl Board {
             .expect("No moves found, which should be impossible in current state")
     }
 
+    pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
+        let mut possible_moves = Vec::new();
+        self.bitboard_to_moves_append(&mut possible_moves, source_pieces, target_squares);
+        possible_moves
+    }
+
     // Generic helper function to convert a source bitboard and target bitboard into a list of moves
-    pub fn bitboard_to_moves(&self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
+    pub fn bitboard_to_moves_append(&mut self, possible_moves: &mut Vec<Move>, source_pieces: u64, target_squares: u64) {
         // Assert that source_pieces contains exactly one piece (one bit set)
         debug_assert_eq!(source_pieces.count_ones(), 1,
             "bitboard_to_moves should be called with exactly one source piece, got {} pieces",
             source_pieces.count_ones());
 
-        let mut moves = Vec::new();
+
         let mut working_source = source_pieces;
 
         // For each source piece
@@ -665,15 +689,159 @@ impl Board {
                 let to_square = current_targets.trailing_zeros() as u8;
                 current_targets &= current_targets - 1;  // Clear the processed bit
 
-                moves.push(Move {
+                let mv = Move {
                     src: Square::from_bit_index(from_square),
                     target: Square::from_bit_index(to_square),
                     promotion: None,  // Promotions are handled separately
-                });
+                };
+                if self.is_legal_move(&mv) {
+                    possible_moves.push(mv);
+                }
+            }
+        }
+    }
+
+    pub fn bitboard_to_pawn_single_moves(&mut self, moveable_pawns: u64, is_black: bool) -> Vec<Move> {
+        let mut moves = Vec::new();
+        self.bitboard_to_pawn_single_moves_append(&mut moves, moveable_pawns, is_black);
+        moves
+    }
+
+    /// Convert a bitboard of pawn single moves into a list of move strings
+    pub fn bitboard_to_pawn_single_moves_append(&mut self, possible_moves: &mut Vec<Move>, moveable_pawns: u64, is_black: bool) {
+        let mut working_pawns = moveable_pawns;
+
+        while working_pawns != 0 {
+            let from_square = working_pawns.trailing_zeros() as u8;
+            working_pawns &= working_pawns - 1;  // Clear the processed bit
+
+            let to_square = if is_black {
+                from_square - 8  // Black pawns move down
+            } else {
+                from_square + 8  // White pawns move up
+            };
+
+            let to_rank = to_square / 8;
+
+            // Handle promotion
+            if (is_black && to_rank == 0) || (!is_black && to_rank == 7) {
+                let base_mv = Move {
+                    src: Square::from_bit_index(from_square),
+                    target: Square::from_bit_index(to_square),
+                    promotion: None,
+                };
+
+                for promotion in [PieceType::Bishop, PieceType::Knight, PieceType::Rook, PieceType::Queen] {
+                    let mv = Move {
+                        promotion: Some(promotion),
+                        ..base_mv.clone()
+                    };
+                    if self.is_legal_move(&mv) {
+                        possible_moves.push(mv);
+                    }
+                }
+            } else {
+                let mv = Move {
+                    src: Square::from_bit_index(from_square),
+                    target: Square::from_bit_index(to_square),
+                    promotion: None,
+                };
+                if self.is_legal_move(&mv) {
+                    possible_moves.push(mv);
+                }
             }
         }
 
+    }
+
+    /// Convert a bitboard of pawn double moves into a list of move strings
+    pub fn bitboard_to_pawn_double_moves(&mut self, moveable_pawns: u64, is_black: bool) -> Vec<Move> {
+        let mut moves = Vec::new();
+        self.bitboard_to_pawn_double_moves_append(&mut moves, moveable_pawns, is_black);
         moves
+    }
+
+    pub fn bitboard_to_pawn_double_moves_append(&mut self, possible_moves: &mut Vec<Move>, moveable_pawns: u64, is_black: bool) {
+        let mut working_pawns = moveable_pawns;
+
+        while working_pawns != 0 {
+            let from_square = working_pawns.trailing_zeros() as u8;
+            working_pawns &= working_pawns - 1;  // Clear the processed bit
+
+            let to_square = if is_black {
+                from_square - 16  // Black pawns move down two squares
+            } else {
+                from_square + 16  // White pawns move up two squares
+            };
+
+            let mv = Move {
+                src: Square::from_bit_index(from_square),
+                target: Square::from_bit_index(to_square),
+                promotion: None,
+            };
+            // Check if the move is legal
+            if self.is_legal_move(&mv) {
+                possible_moves.push(mv);
+            }
+        }
+    }
+
+    pub fn bitboard_to_pawn_capture_moves(&mut self, source_pawns: u64, target_squares: u64, is_black: bool) -> Vec<Move> {
+        let mut moves = Vec::new();
+        self.bitboard_to_pawn_capture_moves_append(&mut moves, source_pawns, target_squares, is_black);
+        moves
+    }
+
+    /// Convert a bitboard of pawn capture moves into a list of move strings
+    pub fn bitboard_to_pawn_capture_moves_append(&mut self, possible_moves: &mut Vec<Move>, source_pawns: u64, target_squares: u64, is_black: bool) {
+        let mut working_pawns = source_pawns;
+
+        // For each pawn
+        while working_pawns != 0 {
+            let from_square = working_pawns.trailing_zeros() as u8;
+            working_pawns &= working_pawns - 1;  // Clear the processed bit
+
+            // Get this pawn's possible captures
+            let pawn = 1u64 << from_square;
+            let mut captures = if is_black {
+                b_pawns_attack_targets(pawn, target_squares)
+            } else {
+                w_pawns_attack_targets(pawn, target_squares)
+            };
+
+            // For each capture
+            while captures != 0 {
+                let to_square = captures.trailing_zeros() as u8;
+                captures &= captures - 1;  // Clear the processed bit
+
+                // Convert to algebraic notation
+                let to_rank_int = to_square / 8 + 1;
+
+                if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
+                    // Promotion case
+                    for promotion in [PieceType::Bishop, PieceType::Knight, PieceType::Rook, PieceType::Queen] {
+                        let mv = Move {
+                            src: Square::from_bit_index(from_square),
+                            target: Square::from_bit_index(to_square),
+                            promotion: Some(promotion),
+                        };
+                        if self.is_legal_move(&mv) {
+                            // Only add the move if it's legal
+                            possible_moves.push(mv);
+                        }
+                    }
+                } else {
+                    let mv = Move {
+                        src: Square::from_bit_index(from_square),
+                        target: Square::from_bit_index(to_square),
+                        promotion: None,
+                    };
+                    if self.is_legal_move(&mv) {
+                        possible_moves.push(mv);
+                    }
+                }
+            }
+        }
     }
 
     pub fn is_square_attacked(&self, square: u8, attacked_by_color: Color) -> bool {
@@ -769,37 +937,45 @@ impl Board {
         self.black_king_in_check = self.is_square_attacked(black_king_square, Color::White);
     }
 
-    pub fn is_legal_move(&self, mv: &Move) -> bool {
+    pub fn is_legal_move(&mut self, mv: &Move) -> bool {
         // If we're not in check, all moves are legal (for now - we'll add more restrictions later)
         if !self.white_king_in_check && !self.black_king_in_check {
-            let mut test_board = self.clone();
-            test_board.apply_move(mv);
             if self.side_to_move == Color::White {
                 assert!(!self.white_king_in_check);
+                self.apply_move(mv);
                 // If the move doesn't put the white king in check, it's legal
-                return !test_board.white_king_in_check;
+                let ret = !self.white_king_in_check;
+                self.undo_last_move();
+                return ret;
             } else {
                 assert!(!self.black_king_in_check);
+                self.apply_move(mv);
                 // If the move doesn't put the black king in check, it's legal
-                return !test_board.black_king_in_check;
+                let ret = !self.black_king_in_check;
+                self.undo_last_move();
+                return  ret;
             }
         }
 
         // At this point we know we are in check.
 
         // We are in check, so make a copy of the board and try the move
-        let mut test_board = self.clone();
-        test_board.apply_move(mv);
 
         // The move is legal if it got us out of check
         if self.white_king_in_check {
             assert_eq!(self.side_to_move, Color::White, "White king is in check, but side to move is not White");
-            !test_board.white_king_in_check
+            self.apply_move(mv);
+            let ret = !self.white_king_in_check;
+            self.undo_last_move();
+            ret
         } else {
             assert!(self.black_king_in_check);
             assert_eq!(self.side_to_move, Color::Black, "Black king is in check, but side to move is not Black");
             // Assumed we are in check and moving black
-            !test_board.black_king_in_check
+            self.apply_move(mv);
+            let ret = !self.black_king_in_check;
+            self.undo_last_move();
+            ret
         }
     }
 
@@ -902,13 +1078,13 @@ impl Board {
     }
 
     /// Generates all legal moves in the current position
-    fn generate_legal_moves(&self) -> Vec<Move> {
+    fn generate_legal_moves(&mut self) -> Vec<Move> {
         let mut moves = Vec::new();
         self.generate_legal_moves_append(&mut moves);
         moves
     }
 
-    fn generate_legal_moves_append(&self, moves: &mut Vec<Move>) {
+    fn generate_legal_moves_append(&mut self, moves: &mut Vec<Move>) {
         self.get_all_raw_moves_append(moves);
     }
 
@@ -1007,7 +1183,7 @@ impl Board {
 
     /// Returns true if the current position is checkmate
     /// A position is checkmate if the side to move is in check and has no legal moves
-    pub fn is_checkmate(&self) -> bool {
+    pub fn is_checkmate(&mut self) -> bool {
         // First check if the appropriate king is in check
         let in_check = match self.side_to_move {
             Color::White => self.white_king_in_check,

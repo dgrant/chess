@@ -3,7 +3,7 @@ use chesslib::move_generation::{b_pawns_able_to_double_push, b_pawns_able_to_pus
 use chesslib::Square;
 use chesslib::types::{Color, Move, PieceType};
 use chesslib::board::Board;
-use chesslib::board_utils::{bitboard_to_pawn_single_moves, bitboard_to_string, get_empty_board, get_starting_board, is_bit_set};
+use chesslib::board_utils::{bitboard_to_string, get_empty_board, get_starting_board, is_bit_set};
 
 #[test]
 fn test_initial_board_pawns() {
@@ -49,7 +49,7 @@ fn test_initial_board_pawns() {
 //
 // #[test]
 // fn test_w_single_push_targets() {
-//     let board = get_starting_board();
+//     let mut board = get_starting_board();
 //
 //     // Test white single push targets
 //     let white_single_push = w_single_push_targets(board.white_pawns, board.empty);
@@ -60,7 +60,7 @@ fn test_initial_board_pawns() {
 //
 // #[test]
 // fn test_w_double_push_targets() {
-//     let board = get_starting_board();
+//     let mut board = get_starting_board();
 //
 //     // Test white double push targets
 //     let white_double_push = w_double_push_targets(board.white_pawns, board.empty);
@@ -71,7 +71,7 @@ fn test_initial_board_pawns() {
 //
 // #[test]
 // fn test_b_single_push_targets() {
-//     let board = get_starting_board();
+//     let mut board = get_starting_board();
 //
 //     // Test black single push targets
 //     let black_single_push = b_single_push_targets(board.black_pawns, board.empty);
@@ -82,7 +82,7 @@ fn test_initial_board_pawns() {
 //
 // #[test]
 // fn test_b_double_push_targets() {
-//     let board = get_starting_board();
+//     let mut board = get_starting_board();
 //
 //     // Test black double push targets
 //     let black_double_push = b_double_push_targets(board.black_pawns, board.empty);
@@ -152,9 +152,9 @@ fn test_random_pawn_moves_no_capture() {
         }
 
         let possible_moves = if board.side_to_move == Color::White {
-            bitboard_to_pawn_single_moves(white_pawns_push, false)
+            board.bitboard_to_pawn_single_moves(white_pawns_push, false)
         } else {
-            bitboard_to_pawn_single_moves(black_pawns_push, true)
+            board.bitboard_to_pawn_single_moves(black_pawns_push, true)
         };
 
         if !possible_moves.is_empty() {
@@ -193,7 +193,7 @@ fn test_invalid_black_move() {
     assert_eq!(board.side_to_move, Color::Black);
 
     let moveable_black_pawns = b_pawns_able_to_push(board.black_pawns, board.empty);
-    let possible_moves = bitboard_to_pawn_single_moves(moveable_black_pawns, true);
+    let possible_moves = board.bitboard_to_pawn_single_moves(moveable_black_pawns, true);
 
     for mv in &possible_moves {
         let from_square = mv.src;
@@ -204,8 +204,7 @@ fn test_invalid_black_move() {
                 "Black pawn moving in wrong direction: {} to {}", from_square, to_square);
                 
         // Check that no black pawn is coming from e2
-        assert!(from_square != Square::E2, 
-                "Invalid move generated for black: {}", mv);
+        assert_ne!(from_square, Square::E2, "Invalid move generated for black: {}", mv);
     }
 
     assert!(!possible_moves.is_empty(), "No moves were generated for black");
@@ -480,24 +479,23 @@ fn test_knight_moves() {
 
 #[test]
 fn test_bitboard_to_moves() {
-    let board = get_starting_board();
+    let mut board = get_starting_board();
 
     // Test with a single source and multiple targets
-    let source = Square::E4.to_bitboard();  // Knight on e4
-    let targets = Square::F6.to_bitboard() | Square::D6.to_bitboard() | Square::C5.to_bitboard();
+    let source = Square::B1.to_bitboard();  // Knight on b1
+    let targets = Square::A3.to_bitboard() | Square::C3.to_bitboard();
 
     let moves = board.bitboard_to_moves(source, targets);
 
     // Verify the moves are generated correctly
-    assert!(moves.contains(&Move { src: Square::E4, target: Square::F6, promotion: None }));
-    assert!(moves.contains(&Move { src: Square::E4, target: Square::D6, promotion: None }));
-    assert!(moves.contains(&Move { src: Square::E4, target: Square::C5, promotion: None }));
-    assert_eq!(moves.len(), 3);
+    assert!(moves.contains(&Move { src: Square::B1, target: Square::A3, promotion: None }));
+    assert!(moves.contains(&Move { src: Square::B1, target: Square::C3, promotion: None }));
+    assert_eq!(moves.len(), 2);
 }
 
 #[test]
 fn test_bitboard_to_moves2() {
-    let board = get_starting_board();
+    let mut board = get_starting_board();
 
     // Test with a different single source and single target
     let source = Square::G1.to_bitboard();  // Knight on g1
@@ -512,7 +510,7 @@ fn test_bitboard_to_moves2() {
 
 #[test]
 fn test_bitboard_to_moves3() {
-    let board = get_starting_board();
+    let mut board = get_starting_board();
 
     // Test b1 knight separately
     let source = Square::B1.to_bitboard();  // Knight on b1
@@ -527,7 +525,7 @@ fn test_bitboard_to_moves3() {
 
 #[test]
 fn test_bitboard_to_moves4() {
-    let board = get_starting_board();
+    let mut board = get_starting_board();
     let source = Square::E4.to_bitboard();  // Knight on e4
 
     // Test with no target squares (should produce empty move list)
@@ -580,7 +578,7 @@ fn test_get_next_move() {
 
 #[test]
 fn test_get_next_moves() {
-    let board = get_starting_board();
+    let mut board = get_starting_board();
 
     // Test getting no moves
     let no_moves = board.get_next_moves(0);
@@ -720,7 +718,7 @@ fn test_is_square_attacked_queen() {
 #[test]
 fn test_is_legal_move() {
     // Test 1: Starting position, any legal move is valid
-    let board = get_starting_board();
+    let mut board = get_starting_board();
     assert!(board.is_legal_move(&Move { src: Square::E2, target: Square::E4, promotion: None  }));
 }
 
@@ -824,32 +822,32 @@ fn test_pawn_promotion_moves() {
     white_promotion_board.update_composite_bitboards();
     // Ensure side to move is White
     white_promotion_board.side_to_move = Color::White;
-    
+
     println!("White pawn bitboard: {:064b}", white_promotion_board.white_pawns);
-    
+
     let white_moves = white_promotion_board.get_raw_moves(-1);  // Get all possible moves
-    
+
     println!("Generated {} raw moves for white", white_moves.len());
     for mv in &white_moves {
         println!("Move: {:?}, from: {}, to: {}", mv, mv.src, mv.target);
     }
-    
+
     let white_moves_strings = white_promotion_board.get_next_moves(-1);
-    
+
     // Remove white moves that start with "a1" (king moves)
     let white_moves_filtered: Vec<String> = white_moves_strings.into_iter()
         .filter(|m| !m.starts_with("a1"))
         .collect();
-        
+
     println!("Filtered moves: {:?}", white_moves_filtered);
-    
+
     let expected_promotions = vec![
         "e7e8q", "e7e8r", "e7e8b", "e7e8n"  // All possible promotion moves
     ];
-    
-    assert_eq!(white_moves_filtered.len(), 4, "Expected 4 promotion moves, got {}: {:?}", 
+
+    assert_eq!(white_moves_filtered.len(), 4, "Expected 4 promotion moves, got {}: {:?}",
                white_moves_filtered.len(), white_moves_filtered);
-               
+
     for move_str in expected_promotions {
         assert!(white_moves_filtered.contains(&move_str.to_string()),
                 "Missing expected promotion move: {}", move_str);

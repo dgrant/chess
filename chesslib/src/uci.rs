@@ -48,8 +48,8 @@ pub fn handle_uci_command(input: &str) -> String {
             "position set".to_string()
         },
         command if command.starts_with("go") => {
-            let board_state = BOARD_STATE.lock().unwrap();
-            if let Some(board) = board_state.as_ref() {
+            let mut board_state = BOARD_STATE.lock().unwrap();
+            if let Some(board) = board_state.as_mut() {
                 let mut _wtime: Option<u32> = None;
                 let mut _btime: Option<u32> = None;
                 let mut _movestogo: Option<u32> = None;
