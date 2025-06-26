@@ -1,5 +1,6 @@
 use rand::prelude::IteratorRandom;
 use crate::board_utils;
+use crate::board_utils::get_starting_board;
 use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use crate::move_generation::{
     b_pawns_attack_targets, bishop_moves,
@@ -8,7 +9,7 @@ use crate::move_generation::{
     w_pawns_attack_targets,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BoardState {
     pub white_kingside_castle_rights: bool,
     pub white_queenside_castle_rights: bool,
@@ -64,6 +65,10 @@ pub struct Board {
 }
 
 impl Board {
+    pub fn new() -> Self {
+        get_starting_board()
+    }
+
     #[inline(always)]
     pub fn get_piece_at_square_fast(&self, sq: u8) -> Option<Piece> {
         self.piece_map[sq as usize]
@@ -1138,7 +1143,7 @@ impl Board {
         let mut nodes: u64 = 0;
         let mut checkmates: u64 = 0;
         let mut moves: Vec<Move> = Vec::with_capacity(218);
-        self.generate_legal_moves_append(&mut moves);
+        self.get_all_raw_moves_append(&mut moves);
 
         for mv in moves {
             self.apply_move(&mv);
@@ -1153,12 +1158,8 @@ impl Board {
     /// Generates all legal moves in the current position
     fn generate_legal_moves(&mut self) -> Vec<Move> {
         let mut moves = Vec::new();
-        self.generate_legal_moves_append(&mut moves);
+        self.get_all_raw_moves_append(&mut moves);
         moves
-    }
-
-    fn generate_legal_moves_append(&mut self, moves: &mut Vec<Move>) {
-        self.get_all_raw_moves_append(moves);
     }
 
     /// Undoes the last move made, restoring the board to its previous state
@@ -1304,6 +1305,12 @@ impl Board {
         self.generate_legal_moves().is_empty()
     }
 
+    pub fn is_stalemate(&mut self) -> bool {
+        // If the side to move is not in check and has no legal moves, it's a stalemate
+        let legal_moves = self.generate_legal_moves();
+        legal_moves.is_empty() && !self.black_king_in_check && !self.white_king_in_check
+    }
+
     /// Gets a complete debug state of the board including bitboards and move history
     pub fn get_debug_state(&self) -> String {
         let mut output = String::new();
@@ -1347,5 +1354,35 @@ impl Board {
                     state.captured_piece)
             })
             .collect()
+    }
+}
+
+impl PartialEq for Board {
+    fn eq(&self, other: &Self) -> bool {
+        // Compare all fields except move_history
+        self.white_pawns == other.white_pawns &&
+        self.white_knights == other.white_knights &&
+        self.white_bishops == other.white_bishops &&
+        self.white_rooks == other.white_rooks &&
+        self.white_queen == other.white_queen &&
+        self.white_king == other.white_king &&
+        self.black_pawns == other.black_pawns &&
+        self.black_knights == other.black_knights &&
+        self.black_bishops == other.black_bishops &&
+        self.black_rooks == other.black_rooks &&
+        self.black_queen == other.black_queen &&
+        self.black_king == other.black_king &&
+        self.any_white == other.any_white &&
+        self.any_black == other.any_black &&
+        self.empty == other.empty &&
+        self.side_to_move == other.side_to_move &&
+        self.white_king_in_check == other.white_king_in_check &&
+        self.black_king_in_check == other.black_king_in_check &&
+        self.white_kingside_castle_rights == other.white_kingside_castle_rights &&
+        self.white_queenside_castle_rights == other.white_queenside_castle_rights &&
+        self.black_kingside_castle_rights == other.black_kingside_castle_rights &&
+        self.black_queenside_castle_rights == other.black_queenside_castle_rights &&
+        self.en_passant_target == other.en_passant_target &&
+        self.piece_map == other.piece_map
     }
 }

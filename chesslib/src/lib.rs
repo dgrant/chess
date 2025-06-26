@@ -5,6 +5,7 @@ pub mod types;
 pub mod fen;
 pub mod logger;
 pub mod board_utils;
+pub mod evaluation;
 
 pub use uci::handle_uci_command;
 pub use types::Square;
