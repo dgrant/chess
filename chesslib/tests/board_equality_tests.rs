@@ -1,10 +1,11 @@
 use chesslib::board::Board;
+use chesslib::board_utils::get_starting_board;
 use chesslib::fen::load_fen;
 
 #[test]
 fn test_board_equality() {
-    let board1 = Board::new();
-    let board2 = Board::new();
+    let board1 = get_starting_board();
+    let board2 = get_starting_board();
 
     // Two newly created boards should be equal
     assert_eq!(board1, board2);

@@ -34,6 +34,19 @@ impl Board {
         score -= (self.black_rooks.count_ones() * ROOK_VALUE as u32) as i32;
         score -= (self.black_queen.count_ones() * QUEEN_VALUE as u32) as i32;
 
+        // Add a bonus for check (50 centipawns)
+        if self.black_king_in_check {
+            score += 50;
+        }
+        if self.white_king_in_check {
+            score -= 50;
+        }
+
+        // Center control bonus (10 centipawns per piece)
+        let center_squares = 0x0000001818000000u64; // e4, e5, d4, d5
+        score += ((self.any_white & center_squares).count_ones() as i32) * 10;
+        score -= ((self.any_black & center_squares).count_ones() as i32) * 10;
+
         score
     }
 }

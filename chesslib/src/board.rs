@@ -1,4 +1,3 @@
-use rand::prelude::IteratorRandom;
 use crate::board_utils;
 use crate::board_utils::get_starting_board;
 use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
@@ -503,19 +502,37 @@ impl Board {
         let mut possible_moves = Vec::new();
         self.get_all_raw_moves_append(&mut possible_moves);
 
-        // Apply randomization if n >= 0
-        if n >= 0 {
-            let n = n as usize;
-            if n == 0 {
-                return Vec::new();
-            } else {
-                let mut rng = rand::thread_rng();
-                return possible_moves
-                    .iter()
-                    .choose_multiple(&mut rng, n.min(possible_moves.len())).into_iter().cloned().collect();
+        let n = n as usize;
+        if n == 0 {
+            Vec::new()
+        } else {
+            // Apply move ordering by evaluation score
+            let side_to_move = self.side_to_move.clone(); // Clone the Color enum
+            possible_moves.sort_by(|a, b| {
+                // Apply each move, get evaluation, then undo
+                self.apply_move(a);
+                let score_a = self.evaluate();
+                self.undo_last_move();
+
+                self.apply_move(b);
+                let score_b = self.evaluate();
+                self.undo_last_move();
+
+                // For white, higher scores are better (descending)
+                // For black, lower scores are better (ascending)
+                match side_to_move {
+                    Color::White => score_b.cmp(&score_a), // descending
+                    Color::Black => score_a.cmp(&score_b), // ascending
+                }
+            });
+            if n >= 1 {
+                // Return first n moves
+                possible_moves.into_iter().take(n).collect()
+            }
+            else {
+                possible_moves
             }
         }
-        possible_moves
     }
 
     pub fn get_all_raw_moves_append(&mut self, possible_moves: &mut Vec<Move>) {
@@ -1166,7 +1183,7 @@ impl Board {
     pub fn undo_last_move(&mut self) {
         if let Some(state) = self.move_history.pop() {
             let mv = &state.last_move;
-            
+
             let piece = self.get_piece_at_square_fast(mv.target.to_bit_index())
                 .expect("No piece at target square when undoing move");
 
@@ -1329,13 +1346,13 @@ impl Board {
         output.push_str(&format!("Black king:    {:064b}\n", self.black_king));
         output.push_str(&format!("Move history length: {}\n", self.move_history.len()));
         output.push_str(&format!("Side to move: {:?}\n", self.side_to_move));
-        
+
         // Add complete move history in algebraic notation
         if !self.move_history.is_empty() {
             output.push_str("\nComplete move history:\n");
             for (i, state) in self.move_history.iter().enumerate() {
-                output.push_str(&format!("{}. {} (captured: {:?})\n", 
-                    i + 1, 
+                output.push_str(&format!("{}. {} (captured: {:?})\n",
+                    i + 1,
                     state.last_move,
                     state.captured_piece));
             }
@@ -1348,8 +1365,8 @@ impl Board {
         self.move_history.iter()
             .enumerate()
             .map(|(i, state)| {
-                format!("{}. {} (captured: {:?})", 
-                    i + 1, 
+                format!("{}. {} (captured: {:?})",
+                    i + 1,
                     state.last_move,
                     state.captured_piece)
             })
