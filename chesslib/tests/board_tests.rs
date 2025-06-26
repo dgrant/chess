@@ -1,7 +1,7 @@
 extern crate chesslib;
 use chesslib::move_generation::{b_pawns_able_to_double_push, b_pawns_able_to_push, w_pawns_able_to_double_push, w_pawns_able_to_push};
 use chesslib::Square;
-use chesslib::types::{Color, Move, PieceType};
+use chesslib::types::{Color, Move, Piece, PieceType};
 use chesslib::board::Board;
 use chesslib::board_utils::{bitboard_to_string, get_empty_board, get_starting_board, is_bit_set};
 
@@ -754,6 +754,7 @@ fn test_is_legal_move_complex() {
     };
     check_board.update_composite_bitboards();
     check_board.update_check_state();
+    check_board.rebuild_piece_map();
 
     assert!(check_board.white_king_in_check);
 
@@ -802,6 +803,9 @@ fn test_apply_move_promotion() {
         white_pawns: Square::E7.to_bitboard(),  // White pawn ready to promote
         ..get_empty_board()
     };
+    board.rebuild_piece_map();
+
+    assert_eq!(board.get_piece_at_square_fast(Square::E7.to_bit_index()), Some(Piece::WhitePawn));
 
     // Move a white pawn to promotion square
     board.apply_move(&Move { src: Square::E7, target: Square::E8, promotion: Some(PieceType::Queen) });
@@ -821,8 +825,10 @@ fn test_pawn_promotion_moves() {
         ..get_empty_board()
     };
     white_promotion_board.update_composite_bitboards();
+    white_promotion_board.rebuild_piece_map();
+
     // Ensure side to move is White
-    white_promotion_board.side_to_move = Color::White;
+    assert_eq!(white_promotion_board.side_to_move, Color::White);
 
     println!("White pawn bitboard: {:064b}", white_promotion_board.white_pawns);
 
@@ -863,6 +869,8 @@ fn test_pawn_promotion_moves() {
         ..get_empty_board()
     };
     black_promotion_board.update_composite_bitboards();
+    black_promotion_board.rebuild_piece_map();
+
     let black_moves = black_promotion_board.get_next_moves(-1);  // Get all possible moves
     let black_moves_filtered: Vec<String> = black_moves.into_iter()
         .filter(|m| !m.starts_with("h8"))
@@ -917,12 +925,4 @@ fn test_move_try_from_invalid_moves() {
     // Test invalid move string (invalid format)
     // TODO:
     // assert!(Move::try_from("e2e4q").is_err());
-}
-
-#[test]
-fn piece_map_matches_bitboards_after_init() {
-    let b = get_starting_board();
-    for sq in 0..64u8 {
-        assert_eq!(b.get_piece_at_square_fast(sq), b.get_piece_at_square(sq));
-    }
 }

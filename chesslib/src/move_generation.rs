@@ -163,13 +163,12 @@ pub fn bishop_moves(bishops: u64, friendly_pieces: u64, enemy_pieces: u64) -> u6
     moves
 }
 
-// Legal moves are already computed in bishop_moves
-pub fn bishop_legal_moves(bishops: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
-    bishop_moves(bishops, friendly_pieces, enemy_pieces)
+pub fn rook_moves(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
+    rook_moves_impl1(rooks, friendly_pieces, enemy_pieces)
 }
 
 // Get rook moves - handling all 4 orthogonal directions
-pub fn rook_moves(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
+pub fn rook_moves_impl1(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
     let mut moves = 0u64;
     let mut working_rooks = rooks;
 
@@ -234,11 +233,6 @@ pub fn rook_moves(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
         }
     }
     moves
-}
-
-// Legal moves are already computed in rook_moves
-pub fn rook_legal_moves(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
-    rook_moves(rooks, friendly_pieces, enemy_pieces)
 }
 
 // Queen moves combine bishop and rook moves

@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod tests {
-    use chesslib::move_generation::{b_pawn_attacks, b_pawn_east_attacks, b_pawn_west_attacks, b_pawns_attack_targets, bishop_legal_moves, bishop_moves, king_legal_moves, king_moves, knight_legal_moves, knight_moves, queen_legal_moves, queen_moves, rook_legal_moves, rook_moves, w_pawn_attacks, w_pawn_east_attacks, w_pawn_west_attacks, w_pawns_attack_targets};
+    use chesslib::move_generation::{b_pawn_attacks, b_pawn_east_attacks, b_pawn_west_attacks, b_pawns_attack_targets, bishop_moves, king_legal_moves, king_moves, knight_legal_moves, knight_moves, queen_legal_moves, queen_moves, rook_moves, w_pawn_attacks, w_pawn_east_attacks, w_pawn_west_attacks, w_pawns_attack_targets};
     use chesslib::Square;
 
 
@@ -192,21 +192,21 @@ mod tests {
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_friendlies() {
+    fn test_bishop_moves_with_friendlies() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
         // Friendly pieces on e5 and c5 and b2 and f2
         let friendly_pieces = Square::E5.to_bitboard() | Square::C5.to_bitboard() | Square::B2.to_bitboard() | Square::F2.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, 0);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, 0);
 
         let expected_legal = Square::C3.to_bitboard() | Square::E3.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_enemies() {
+    fn test_bishop_moves_with_enemies() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
@@ -214,70 +214,70 @@ mod tests {
         let friendly_pieces = Square::E5.to_bitboard() | Square::C5.to_bitboard() | Square::B2.to_bitboard() | Square::F2.to_bitboard();
         let enemy_pieces = Square::C3.to_bitboard() | Square::E3.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, enemy_pieces);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::C3.to_bitboard() | Square::E3.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_friendlies_going_northwest() {
+    fn test_bishop_moves_with_friendlies_going_northwest() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
         // Friendly pieces blocking other directions
         let friendly_pieces = Square::E5.to_bitboard() | Square::E3.to_bitboard() | Square::C3.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, 0);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, 0);
 
         let expected_legal = Square::C5.to_bitboard() | Square::B6.to_bitboard() | Square::A7.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_friendlies_going_northeast() {
+    fn test_bishop_moves_with_friendlies_going_northeast() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
         // Friendly pieces blocking other directions
         let friendly_pieces = Square::C5.to_bitboard() | Square::E3.to_bitboard() | Square::C3.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, 0);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, 0);
 
         let expected_legal = Square::E5.to_bitboard() | Square::F6.to_bitboard() | Square::G7.to_bitboard() | Square::H8.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_friendlies_going_southwest() {
+    fn test_bishop_moves_with_friendlies_going_southwest() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
         // Friendly pieces blocking other directions
         let friendly_pieces = Square::C5.to_bitboard() | Square::E5.to_bitboard() | Square::E3.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, 0);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, 0);
 
         let expected_legal = Square::C3.to_bitboard() | Square::B2.to_bitboard() | Square::A1.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_friendlies_going_southeast() {
+    fn test_bishop_moves_with_friendlies_going_southeast() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
         // Friendly pieces blocking other directions
         let friendly_pieces = Square::C5.to_bitboard() | Square::E5.to_bitboard() | Square::C3.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, 0);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, 0);
 
         let expected_legal = Square::E3.to_bitboard() | Square::F2.to_bitboard() | Square::G1.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_enemies_going_northwest() {
+    fn test_bishop_moves_with_enemies_going_northwest() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
@@ -285,14 +285,14 @@ mod tests {
         let friendly_pieces = Square::E5.to_bitboard() | Square::E3.to_bitboard() | Square::C3.to_bitboard();
         let enemy_pieces = Square::B6.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, enemy_pieces);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::C5.to_bitboard() | Square::B6.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_enemies_going_northeast() {
+    fn test_bishop_moves_with_enemies_going_northeast() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
@@ -300,14 +300,14 @@ mod tests {
         let friendly_pieces = Square::C5.to_bitboard() | Square::E3.to_bitboard() | Square::C3.to_bitboard();
         let enemy_pieces = Square::F6.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, enemy_pieces);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::E5.to_bitboard() | Square::F6.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_enemies_going_southwest() {
+    fn test_bishop_moves_with_enemies_going_southwest() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
@@ -315,14 +315,14 @@ mod tests {
         let friendly_pieces = Square::C5.to_bitboard() | Square::E5.to_bitboard() | Square::E3.to_bitboard();
         let enemy_pieces = Square::B2.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, enemy_pieces);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::C3.to_bitboard() | Square::B2.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_bishop_legal_moves_with_enemies_going_southeast() {
+    fn test_bishop_moves_with_enemies_going_southeast() {
         // Bishop on d4
         let bishop = Square::D4.to_bitboard();
 
@@ -330,7 +330,7 @@ mod tests {
         let friendly_pieces = Square::C5.to_bitboard() | Square::E5.to_bitboard() | Square::C3.to_bitboard();
         let enemy_pieces = Square::F2.to_bitboard();
 
-        let legal_moves = bishop_legal_moves(bishop, friendly_pieces, enemy_pieces);
+        let legal_moves = bishop_moves(bishop, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::E3.to_bitboard() | Square::F2.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
@@ -374,112 +374,112 @@ mod tests {
     }
 
     #[test]
-    fn test_rook_legal_moves_with_friendlies_going_left() {
+    fn test_rook_moves_with_friendlies_going_left() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and e4 and c4
         let friendly_pieces = Square::D5.to_bitboard() | Square::E4.to_bitboard() | Square::D3.to_bitboard();
 
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+        let legal_moves = rook_moves(rook, friendly_pieces, 0);
 
         let expected_legal = Square::C4.to_bitboard() | Square::B4.to_bitboard() | Square::A4.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_friendlies_going_right() {
+    fn test_rook_moves_with_friendlies_going_right() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and e4 and c4
         let friendly_pieces = Square::C4.to_bitboard() | Square::D3.to_bitboard() | Square::D5.to_bitboard();
 
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+        let legal_moves = rook_moves(rook, friendly_pieces, 0);
 
         let expected_legal = Square::E4.to_bitboard() | Square::F4.to_bitboard() | Square::G4.to_bitboard() | Square::H4.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_friendlies_going_up() {
+    fn test_rook_moves_with_friendlies_going_up() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and e4 and c4
         let friendly_pieces = Square::C4.to_bitboard() | Square::D3.to_bitboard() | Square::E4.to_bitboard();
 
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+        let legal_moves = rook_moves(rook, friendly_pieces, 0);
 
         let expected_legal = Square::D5.to_bitboard() | Square::D6.to_bitboard() | Square::D7.to_bitboard() | Square::D8.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_friendlies_going_down() {
+    fn test_rook_moves_with_friendlies_going_down() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and e4 and c4
         let friendly_pieces = Square::C4.to_bitboard() | Square::D5.to_bitboard() | Square::E4.to_bitboard();
 
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, 0);
+        let legal_moves = rook_moves(rook, friendly_pieces, 0);
 
         let expected_legal = Square::D3.to_bitboard() | Square::D2.to_bitboard() | Square::D1.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_enemies_going_left() {
+    fn test_rook_moves_with_enemies_going_left() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and e4 and d3
         let friendly_pieces = Square::D5.to_bitboard() | Square::E4.to_bitboard() | Square::D3.to_bitboard();
         let enemy_pieces = Square::B4.to_bitboard();
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+        let legal_moves = rook_moves(rook, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::C4.to_bitboard() | Square::B4.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_enemies_going_right() {
+    fn test_rook_moves_with_enemies_going_right() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and c4 and d3
         let friendly_pieces = Square::D5.to_bitboard() | Square::C4.to_bitboard() | Square::D3.to_bitboard();
         let enemy_pieces = Square::F4.to_bitboard();
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+        let legal_moves = rook_moves(rook, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::E4.to_bitboard() | Square::F4.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_enemies_going_up() {
+    fn test_rook_moves_with_enemies_going_up() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and c4 and d3
         let friendly_pieces = Square::E4.to_bitboard() | Square::C4.to_bitboard() | Square::D3.to_bitboard();
         let enemy_pieces = Square::D6.to_bitboard();
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+        let legal_moves = rook_moves(rook, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::D5.to_bitboard() | Square::D6.to_bitboard();
         assert_eq!(legal_moves, expected_legal);
     }
 
     #[test]
-    fn test_rook_legal_moves_with_enemies_going_down() {
+    fn test_rook_moves_with_enemies_going_down() {
         // Rook on d4
         let rook = Square::D4.to_bitboard();
 
         // Friendly pieces on d5 and c4 and d3
         let friendly_pieces = Square::D5.to_bitboard() | Square::C4.to_bitboard() | Square::E4.to_bitboard();
         let enemy_pieces = Square::D2.to_bitboard();
-        let legal_moves = rook_legal_moves(rook, friendly_pieces, enemy_pieces);
+        let legal_moves = rook_moves(rook, friendly_pieces, enemy_pieces);
 
         let expected_legal = Square::D3.to_bitboard() | Square::D2.to_bitboard();
         assert_eq!(legal_moves, expected_legal);

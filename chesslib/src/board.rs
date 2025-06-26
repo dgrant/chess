@@ -2,9 +2,9 @@ use rand::prelude::IteratorRandom;
 use crate::board_utils;
 use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use crate::move_generation::{
-    b_pawns_attack_targets, bishop_legal_moves,
+    b_pawns_attack_targets, bishop_moves,
     king_legal_moves, knight_legal_moves,
-    rook_legal_moves,
+    rook_moves,
     w_pawns_attack_targets,
 };
 
@@ -69,19 +69,19 @@ impl Board {
         self.piece_map[sq as usize]
     }
 
-    // fn move_piece_in_map(&mut self, from: u8, to: u8) {
-    //     let p = self.piece_map[from as usize];
-    //     self.piece_map[from as usize] = None;
-    //     self.piece_map[to   as usize] = p;
-    // }
-    //
-    // fn remove_piece_in_map(&mut self, at: u8) {
-    //     self.piece_map[at as usize] = None;
-    // }
-    //
-    // fn add_piece_in_map(&mut self, at: u8, p: Piece) {
-    //     self.piece_map[at as usize] = Some(p);
-    // }
+    fn move_piece_in_map(&mut self, from: u8, to: u8) {
+        let p = self.piece_map[from as usize];
+        self.piece_map[from as usize] = None;
+        self.piece_map[to   as usize] = p;
+    }
+
+    fn remove_piece_in_map(&mut self, at: u8) {
+        self.piece_map[at as usize] = None;
+    }
+
+    fn add_piece_in_map(&mut self, at: u8, p: Piece) {
+        self.piece_map[at as usize] = Some(p);
+    }
 
     /// Recomputes `piece_map` from the individual bitboards.
     /// Call this after you created a new position or when you bulk-rewrite bitboards.
@@ -125,7 +125,7 @@ impl Board {
     /// or a space character if the square is empty
     pub fn get_piece_at_coordinate_as_unicode(&self, coordinate: &str) -> &'static str {
         let bitboard_index = Square::try_from(coordinate).unwrap().to_bit_index();
-        match self.get_piece_at_square(bitboard_index) {
+        match self.get_piece_at_square_fast(bitboard_index) {
             Some(piece) => piece.to_unicode(),
             None => SPACE
         }
@@ -133,49 +133,20 @@ impl Board {
 
     pub fn get_piece_at_coordinate_as_fen(&self, coordinate: &str) -> &'static str {
         let bitboard_index = Square::try_from(coordinate).unwrap().to_bit_index();
-        match self.get_piece_at_square(bitboard_index) {
+        match self.get_piece_at_square_fast(bitboard_index) {
             Some(piece) => piece.to_fen(),
             None => SPACE
-        }
-    }
-
-    pub fn get_piece_at_square(&self, square_index: u8) -> Option<Piece> {
-        if board_utils::is_bit_set(self.white_pawns, square_index) {
-            Some(Piece::WhitePawn)
-        } else if board_utils::is_bit_set(self.black_pawns, square_index) {
-            Some(Piece::BlackPawn)
-        } else if board_utils::is_bit_set(self.white_knights, square_index) {
-            Some(Piece::WhiteKnight)
-        } else if board_utils::is_bit_set(self.black_knights, square_index) {
-            Some(Piece::BlackKnight)
-        } else if board_utils::is_bit_set(self.white_bishops, square_index) {
-            Some(Piece::WhiteBishop)
-        } else if board_utils::is_bit_set(self.black_bishops, square_index) {
-            Some(Piece::BlackBishop)
-        } else if board_utils::is_bit_set(self.white_rooks, square_index) {
-            Some(Piece::WhiteRook)
-        } else if board_utils::is_bit_set(self.black_rooks, square_index) {
-            Some(Piece::BlackRook)
-        } else if board_utils::is_bit_set(self.white_queen, square_index) {
-            Some(Piece::WhiteQueen)
-        } else if board_utils::is_bit_set(self.black_queen, square_index) {
-            Some(Piece::BlackQueen)
-        } else if board_utils::is_bit_set(self.white_king, square_index) {
-            Some(Piece::WhiteKing)
-        } else if board_utils::is_bit_set(self.black_king, square_index) {
-            Some(Piece::BlackKing)
-        } else {
-            None
         }
     }
 
     pub fn apply_move(&mut self, mv: &Move) {
         let src_idx = mv.src.to_bit_index();
         let target_idx = mv.target.to_bit_index();
-        let target_piece = self.get_piece_at_square(target_idx);
+        let target_piece = self.get_piece_at_square_fast(target_idx);
+        let source_piece = self.get_piece_at_square_fast(src_idx).unwrap();
+        let from_bit = mv.src.to_bitboard();
+        let to_bit = mv.target.to_bitboard();
 
-        // Get the piece at the source square
-        let source_piece = self.get_piece_at_square(src_idx).unwrap();
         // Check if there is a piece at the source square
         // Check if the piece belongs to the side to move
         if source_piece.color() != self.side_to_move {
@@ -203,7 +174,7 @@ impl Board {
                 target_idx + 8 // captured white pawn is one rank above
             };
             (
-                self.get_piece_at_square(captured_pawn_square),
+                self.get_piece_at_square_fast(captured_pawn_square),
                 Some(Square::from_bit_index(captured_pawn_square))
             )
         } else {
@@ -229,8 +200,7 @@ impl Board {
         // Store the state before making any changes
         self.move_history.push(current_state);
 
-        let from_bit = mv.src.to_bitboard();
-        let to_bit = mv.target.to_bitboard();
+
 
         // First, identify if this is a castling move
         // TODO: Use Square enum instead of target_idx for clarity
@@ -248,6 +218,7 @@ impl Board {
                         debug_assert!(self.white_kingside_castle_rights, "Attempting kingside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.white_rooks ^= (1u64 << 7) | (1u64 << 5);  // h1 to f1
+                        self.move_piece_in_map(7, 5);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
                             state.rook_castle_move = Some(Move {
@@ -260,6 +231,7 @@ impl Board {
                         debug_assert!(self.white_queenside_castle_rights, "Attempting queenside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.white_rooks ^= 1u64 | (1u64 << 3);  // a1 to d1
+                        self.move_piece_in_map(0, 3);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
                             state.rook_castle_move = Some(Move {
@@ -275,6 +247,7 @@ impl Board {
                         debug_assert!(self.black_kingside_castle_rights, "Attempting kingside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.black_rooks ^= (1u64 << 63) | (1u64 << 61);  // h8 to f8
+                        self.move_piece_in_map(63, 61);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
                             state.rook_castle_move = Some(Move {
@@ -287,6 +260,7 @@ impl Board {
                         debug_assert!(self.black_queenside_castle_rights, "Attempting queenside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.black_rooks ^= (1u64 << 56) | (1u64 << 59);  // a8 to d8
+                        self.move_piece_in_map(56, 59);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
                             state.rook_castle_move = Some(Move {
@@ -305,16 +279,18 @@ impl Board {
         if !is_castle {
             // Handle en-passant capture
             if is_en_passant {
-                let captured_pawn_square = if piece == Piece::WhitePawn {
+                let captured_pawn_square_idx = if piece == Piece::WhitePawn {
                     target_idx - 8 // captured black pawn is one rank below
                 } else {
                     target_idx + 8 // captured white pawn is one rank above
                 };
-                let captured_pawn_bit = 1u64 << captured_pawn_square;
+                let captured_pawn_bit = 1u64 << captured_pawn_square_idx;
                 if piece == Piece::WhitePawn {
                     self.black_pawns &= !captured_pawn_bit;
+                    self.remove_piece_in_map(captured_pawn_square_idx);
                 } else {
                     self.white_pawns &= !captured_pawn_bit;
+                    self.remove_piece_in_map(captured_pawn_square_idx);
                 }
             } else if target_piece.is_some() {
                 let captured_bitboard = match target_piece.clone().unwrap() {
@@ -332,6 +308,7 @@ impl Board {
                     Piece::BlackKing => &mut self.black_king,
                 };
                 *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
+                self.remove_piece_in_map(target_idx);
             }
         }
 
@@ -393,23 +370,26 @@ impl Board {
             }
         }
 
-        // Move the main piece (king or other)
-        let piece_bitboard = match piece {
-            Piece::WhitePawn => &mut self.white_pawns,
-            Piece::BlackPawn => &mut self.black_pawns,
-            Piece::WhiteRook => &mut self.white_rooks,
-            Piece::WhiteKnight => &mut self.white_knights,
-            Piece::WhiteBishop => &mut self.white_bishops,
-            Piece::WhiteQueen => &mut self.white_queen,
-            Piece::WhiteKing => &mut self.white_king,
-            Piece::BlackRook => &mut self.black_rooks,
-            Piece::BlackKnight => &mut self.black_knights,
-            Piece::BlackBishop => &mut self.black_bishops,
-            Piece::BlackQueen => &mut self.black_queen,
-            Piece::BlackKing => &mut self.black_king,
-        };
-        *piece_bitboard ^= from_bit;  // Clear the source square
-        *piece_bitboard |= to_bit;    // Set the target square
+        {
+            // Move the main piece (king or other)
+            let piece_bitboard = match piece {
+                Piece::WhitePawn => &mut self.white_pawns,
+                Piece::BlackPawn => &mut self.black_pawns,
+                Piece::WhiteRook => &mut self.white_rooks,
+                Piece::WhiteKnight => &mut self.white_knights,
+                Piece::WhiteBishop => &mut self.white_bishops,
+                Piece::WhiteQueen => &mut self.white_queen,
+                Piece::WhiteKing => &mut self.white_king,
+                Piece::BlackRook => &mut self.black_rooks,
+                Piece::BlackKnight => &mut self.black_knights,
+                Piece::BlackBishop => &mut self.black_bishops,
+                Piece::BlackQueen => &mut self.black_queen,
+                Piece::BlackKing => &mut self.black_king,
+            };
+            *piece_bitboard ^= from_bit;  // Clear the source square
+            *piece_bitboard |= to_bit;    // Set the target square
+        }
+        self.move_piece_in_map(src_idx, target_idx);
 
         // Set en-passant target square for double pawn moves
         self.en_passant_target = match piece {
@@ -435,20 +415,38 @@ impl Board {
                 PieceType::Knight => if piece == Piece::WhitePawn { Piece::WhiteKnight } else { Piece::BlackKnight },
                 _ => panic!("Invalid promotion piece type: {:?}", mv.promotion),
             };
+            let piece_bitboard = match piece {
+                Piece::WhitePawn => &mut self.white_pawns,
+                Piece::BlackPawn => &mut self.black_pawns,
+                Piece::WhiteRook => &mut self.white_rooks,
+                Piece::WhiteKnight => &mut self.white_knights,
+                Piece::WhiteBishop => &mut self.white_bishops,
+                Piece::WhiteQueen => &mut self.white_queen,
+                Piece::WhiteKing => &mut self.white_king,
+                Piece::BlackRook => &mut self.black_rooks,
+                Piece::BlackKnight => &mut self.black_knights,
+                Piece::BlackBishop => &mut self.black_bishops,
+                Piece::BlackQueen => &mut self.black_queen,
+                Piece::BlackKing => &mut self.black_king,
+            };
             // Remove the pawn from the board
             *piece_bitboard ^= to_bit;
+            self.remove_piece_in_map(target_idx);
+
             // Add the promoted piece to the target square
-            match promotion_piece {
-                Piece::WhiteQueen => self.white_queen |= to_bit,
-                Piece::WhiteRook => self.white_rooks |= to_bit,
-                Piece::WhiteBishop => self.white_bishops |= to_bit,
-                Piece::WhiteKnight => self.white_knights |= to_bit,
-                Piece::BlackQueen => self.black_queen |= to_bit,
-                Piece::BlackRook => self.black_rooks |= to_bit,
-                Piece::BlackBishop => self.black_bishops |= to_bit,
-                Piece::BlackKnight => self.black_knights |= to_bit,
+            let promotion_piece_bitboard = match promotion_piece {
+                Piece::WhiteQueen => &mut self.white_queen,
+                Piece::WhiteRook => &mut self.white_rooks,
+                Piece::WhiteBishop => &mut self.white_bishops,
+                Piece::WhiteKnight => &mut self.white_knights,
+                Piece::BlackQueen => &mut self.black_queen,
+                Piece::BlackRook => &mut self.black_rooks,
+                Piece::BlackBishop => &mut self.black_bishops,
+                Piece::BlackKnight => &mut self.black_knights,
                 _ => panic!("Invalid promotion piece"),
-            }
+            };
+            *promotion_piece_bitboard |= to_bit;
+            self.add_piece_in_map(target_idx, promotion_piece);
         }
 
         self.update_composite_bitboards();
@@ -520,7 +518,7 @@ impl Board {
                                    w_pawns_able_to_double_push, b_pawns_able_to_double_push,
                                    w_pawns_attack_targets, b_pawns_attack_targets,
                                    w_pawns_en_passant_targets, b_pawns_en_passant_targets,
-                                   knight_legal_moves, bishop_legal_moves, rook_legal_moves,
+                                   knight_legal_moves, bishop_moves, rook_moves,
                                    queen_legal_moves, king_legal_moves};
 
         if self.side_to_move == Color::Black {
@@ -572,7 +570,7 @@ impl Board {
                 let bishop_pos = working_bishops.trailing_zeros() as u8;
                 working_bishops &= working_bishops - 1;
                 let single_bishop = 1u64 << bishop_pos;
-                let moves = bishop_legal_moves(single_bishop, self.any_black, self.any_white);
+                let moves = bishop_moves(single_bishop, self.any_black, self.any_white);
                 self.bitboard_to_moves_append(possible_moves, single_bishop, moves);
             }
 
@@ -582,7 +580,7 @@ impl Board {
                 let rook_pos = working_rooks.trailing_zeros() as u8;
                 working_rooks &= working_rooks - 1;
                 let single_rook = 1u64 << rook_pos;
-                let moves = rook_legal_moves(single_rook, self.any_black, self.any_white);
+                let moves = rook_moves(single_rook, self.any_black, self.any_white);
                 self.bitboard_to_moves_append(possible_moves, single_rook, moves);
             }
 
@@ -671,7 +669,7 @@ impl Board {
                 working_bishops &= working_bishops - 1;
 
                 let single_bishop = 1u64 << bishop_pos;
-                let moves = bishop_legal_moves(single_bishop, self.any_white, self.any_black);
+                let moves = bishop_moves(single_bishop, self.any_white, self.any_black);
                 self.bitboard_to_moves_append(possible_moves, single_bishop, moves);
             }
 
@@ -682,7 +680,7 @@ impl Board {
                 working_rooks &= working_rooks - 1;
 
                 let single_rook = 1u64 << rook_pos;
-                let moves = rook_legal_moves(single_rook, self.any_white, self.any_black);
+                let moves = rook_moves(single_rook, self.any_white, self.any_black);
                 self.bitboard_to_moves_append(possible_moves, single_rook, moves);
             }
 
@@ -926,9 +924,13 @@ impl Board {
     }
 
     pub fn is_square_attacked(&self, square: u8, attacked_by_color: Color) -> bool {
+        self.is_square_attacked_impl1(square, attacked_by_color)
+    }
+
+    pub fn is_square_attacked_impl1(&self, square: u8, attacked_by_color: Color) -> bool {
         let square_bb = 1u64 << square;
 
-        if let Some(piece) = self.get_piece_at_square(square) {
+        if let Some(piece) = self.get_piece_at_square_fast(square) {
             if piece.color() == attacked_by_color {
                 // If the square is occupied by a piece of the same color we are looking for
                 // attacks BY, then it cannot be attacked
@@ -941,65 +943,55 @@ impl Board {
         if attacked_by_color == Color::White {
             // At this point we know the square is empty or occupied by a black piece
             // Check for pawn attacks
-            let pawn_attacks = w_pawns_attack_targets(self.white_pawns, square_bb);
-            if pawn_attacks != 0 {
+            if w_pawns_attack_targets(self.white_pawns, square_bb) != 0 {
                 return true;
             }
 
             // For knight attacks, we need to check if any knights can move to this square
             // Get all squares a knight could attack this square from
-            let attacking_squares = knight_legal_moves(square_bb, 0);
-            if attacking_squares & self.white_knights != 0 {
+            if knight_legal_moves(square_bb, 0) & self.white_knights != 0 {
                 return true;
             }
 
             // Check for bishop/diagonal queen attacks
-            let bishop_moves = bishop_legal_moves(square_bb, self.any_black, self.any_white);
-            if bishop_moves & (self.white_bishops | self.white_queen) != 0 {
+            if bishop_moves(square_bb, self.any_black, self.any_white) & (self.white_bishops | self.white_queen) != 0 {
                 return true;
             }
 
             // Check for rook/straight queen attacks
-            let rook_moves = rook_legal_moves(square_bb, self.any_black, self.any_white);
-            if rook_moves & (self.white_rooks | self.white_queen) != 0 {
+            if rook_moves(square_bb, self.any_black, self.any_white) & (self.white_rooks | self.white_queen) != 0 {
                 return true;
             }
 
             // Check for king attacks - king can only be blocked by its own pieces
-            let king_moves = king_legal_moves(square_bb, self.any_black);
-            if king_moves & self.white_king != 0 {
+            if king_legal_moves(square_bb, self.any_black) & self.white_king != 0 {
                 return true;
             }
         } else {
             // At this point we know the square is empty or occupied by a white piece
 
             // Check for pawn attacks
-            let pawn_attacks = b_pawns_attack_targets(self.black_pawns, square_bb);
-            if pawn_attacks != 0 {
+            if b_pawns_attack_targets(self.black_pawns, square_bb) != 0 {
                 return true;
             }
 
             // For knight attacks, we need to check if any knights can move to this square
-            let attacking_squares = knight_legal_moves(square_bb, 0);
-            if attacking_squares & self.black_knights != 0 {
+            if knight_legal_moves(square_bb, 0) & self.black_knights != 0 {
                 return true;
             }
 
             // Check for bishop/diagonal queen attacks
-            let bishop_moves = bishop_legal_moves(square_bb, self.any_white, self.any_black);
-            if bishop_moves & (self.black_bishops | self.black_queen) != 0 {
+            if bishop_moves(square_bb, self.any_white, self.any_black) & (self.black_bishops | self.black_queen) != 0 {
                 return true;
             }
 
             // Check for rook/straight queen attacks
-            let rook_moves = rook_legal_moves(square_bb, self.any_white, self.any_black);
-            if rook_moves & (self.black_rooks | self.black_queen) != 0 {
+            if rook_moves(square_bb, self.any_white, self.any_black) & (self.black_rooks | self.black_queen) != 0 {
                 return true;
             }
 
             // Check for king attacks - king can only be blocked by its own pieces
-            let king_moves = king_legal_moves(square_bb, self.any_white);
-            if king_moves & self.black_king != 0 {
+            if king_legal_moves(square_bb, self.any_white) & self.black_king != 0 {
                 return true;
             }
         }
@@ -1174,31 +1166,41 @@ impl Board {
         if let Some(state) = self.move_history.pop() {
             let mv = &state.last_move;
             
-            let piece = self.get_piece_at_square(mv.target.to_bit_index())
+            let piece = self.get_piece_at_square_fast(mv.target.to_bit_index())
                 .expect("No piece at target square when undoing move");
 
             let src_bit = mv.src.to_bitboard();
+            let src_index = mv.src.to_bit_index();
             let target_bit = mv.target.to_bitboard();
+            let target_idx = mv.target.to_bit_index();
 
             // Handle promotions first
             if mv.promotion.is_some() {
                 // Remove the promoted piece
-                match piece {
-                    Piece::WhiteQueen => self.white_queen &= !target_bit,
-                    Piece::WhiteRook => self.white_rooks &= !target_bit,
-                    Piece::WhiteBishop => self.white_bishops &= !target_bit,
-                    Piece::WhiteKnight => self.white_knights &= !target_bit,
-                    Piece::BlackQueen => self.black_queen &= !target_bit,
-                    Piece::BlackRook => self.black_rooks &= !target_bit,
-                    Piece::BlackBishop => self.black_bishops &= !target_bit,
-                    Piece::BlackKnight => self.black_knights &= !target_bit,
-                    _ => panic!("Invalid promotion piece when undoing"),
-                }
+                let promoted_piece_bb = match piece {
+                    Piece::WhitePawn => &mut self.white_pawns,
+                    Piece::BlackPawn => &mut self.black_pawns,
+                    Piece::WhiteKnight => &mut self.white_knights,
+                    Piece::BlackKnight => &mut self.black_knights,
+                    Piece::WhiteBishop => &mut self.white_bishops,
+                    Piece::BlackBishop => &mut self.black_bishops,
+                    Piece::WhiteRook => &mut self.white_rooks,
+                    Piece::BlackRook => &mut self.black_rooks,
+                    Piece::WhiteQueen => &mut self.white_queen,
+                    Piece::BlackQueen => &mut self.black_queen,
+                    Piece::WhiteKing => &mut self.white_king,
+                    Piece::BlackKing => &mut self.black_king,
+                };
+                *promoted_piece_bb &= !target_bit;  // Remove from target square
+                self.remove_piece_in_map(target_idx);
+
                 // Restore the pawn
                 if piece.color() == Color::White {
                     self.white_pawns |= src_bit;
+                    self.add_piece_in_map(src_index, Piece::WhitePawn);
                 } else {
                     self.black_pawns |= src_bit;
+                    self.add_piece_in_map(src_index, Piece::BlackPawn);
                 }
             } else {
                 // Move the piece back to its source square
@@ -1218,12 +1220,15 @@ impl Board {
                 };
                 *piece_bb &= !target_bit;  // Remove from target
                 *piece_bb |= src_bit;      // Add to source
+                self.move_piece_in_map(target_idx, src_index);
             }
 
             // If this was a castling move, undo the rook's move as well
             if let Some(rook_mv) = &state.rook_castle_move {
                 let rook_src_bit = rook_mv.src.to_bitboard();
                 let rook_target_bit = rook_mv.target.to_bitboard();
+                let rook_src_index = rook_mv.src.to_bit_index();
+                let rook_target_index = rook_mv.target.to_bit_index();
 
                 // Determine if this was a white or black rook
                 if piece == Piece::WhiteKing {
@@ -1233,6 +1238,7 @@ impl Board {
                     self.black_rooks &= !rook_target_bit; // Remove from target square
                     self.black_rooks |= rook_src_bit;     // Add to source square
                 }
+                self.move_piece_in_map(rook_target_index, rook_src_index);
             }
 
             // Restore captured piece if any
@@ -1251,7 +1257,10 @@ impl Board {
                     Piece::WhiteKing => &mut self.white_king,
                     Piece::BlackKing => &mut self.black_king,
                 };
-                *captured_bb |= &state.captured_piece_square.unwrap().to_bitboard();
+                let square = state.captured_piece_square.unwrap();
+                let square_idx = square.to_bit_index();
+                *captured_bb |= &square.to_bitboard();
+                self.add_piece_in_map(square_idx, state.captured_piece.unwrap());
             }
 
             // Restore castling state
