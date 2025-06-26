@@ -66,8 +66,10 @@ pub fn get_empty_board() -> Board {
         black_queenside_castle_rights: false,
         en_passant_target: None,
         move_history: Vec::with_capacity(10),
+        piece_map: [None; 64],
     };
     board.update_composite_bitboards();
+    board.rebuild_piece_map();
     board
 }
 
@@ -113,8 +115,10 @@ pub fn get_starting_board() -> Board {
         black_queenside_castle_rights: true,
         en_passant_target: None,
         move_history: Vec::new(),
+        piece_map: [None; 64],
     };
     board.update_composite_bitboards();
+    board.rebuild_piece_map();
     board
 }
 

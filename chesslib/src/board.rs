@@ -16,6 +16,7 @@ pub struct BoardState {
     pub black_queenside_castle_rights: bool,
     pub en_passant_target: Option<Square>,
     pub last_move: Move,
+    pub rook_castle_move: Option<Move>,  // Stores the rook's move during castling
     pub captured_piece: Option<Piece>,
     pub captured_piece_square: Option<Square>,
 }
@@ -58,9 +59,60 @@ pub struct Board {
 
     /// Represents a snapshot of board state that can be restored when undoing a move
     pub move_history: Vec<BoardState>,
+
+    pub piece_map: [Option<Piece>; 64],
 }
 
 impl Board {
+    #[inline(always)]
+    pub fn get_piece_at_square_fast(&self, sq: u8) -> Option<Piece> {
+        self.piece_map[sq as usize]
+    }
+
+    // fn move_piece_in_map(&mut self, from: u8, to: u8) {
+    //     let p = self.piece_map[from as usize];
+    //     self.piece_map[from as usize] = None;
+    //     self.piece_map[to   as usize] = p;
+    // }
+    //
+    // fn remove_piece_in_map(&mut self, at: u8) {
+    //     self.piece_map[at as usize] = None;
+    // }
+    //
+    // fn add_piece_in_map(&mut self, at: u8, p: Piece) {
+    //     self.piece_map[at as usize] = Some(p);
+    // }
+
+    /// Recomputes `piece_map` from the individual bitboards.
+    /// Call this after you created a new position or when you bulk-rewrite bitboards.
+    pub fn rebuild_piece_map(&mut self) {
+        self.piece_map = [None; 64];
+
+        macro_rules! fill {
+            ($bb:expr, $piece:expr) => {{
+                let mut bb = $bb;
+                while bb != 0 {
+                    let sq = bb.trailing_zeros() as usize;
+                    self.piece_map[sq] = Some($piece);
+                    bb &= bb - 1; // clear LS1B
+                }
+            }};
+        }
+
+        fill!(self.white_pawns,   Piece::WhitePawn);
+        fill!(self.black_pawns,   Piece::BlackPawn);
+        fill!(self.white_knights, Piece::WhiteKnight);
+        fill!(self.black_knights, Piece::BlackKnight);
+        fill!(self.white_bishops, Piece::WhiteBishop);
+        fill!(self.black_bishops, Piece::BlackBishop);
+        fill!(self.white_rooks,   Piece::WhiteRook);
+        fill!(self.black_rooks,   Piece::BlackRook);
+        fill!(self.white_queen,   Piece::WhiteQueen);
+        fill!(self.black_queen,   Piece::BlackQueen);
+        fill!(self.white_king,    Piece::WhiteKing);
+        fill!(self.black_king,    Piece::BlackKing);
+    }
+
     /// Returns the Unicode character representation of the chess piece at the given coordinate
     ///
     /// # Arguments
@@ -87,7 +139,7 @@ impl Board {
         }
     }
 
-    fn get_piece_at_square(&self, square_index: u8) -> Option<Piece> {
+    pub fn get_piece_at_square(&self, square_index: u8) -> Option<Piece> {
         if board_utils::is_bit_set(self.white_pawns, square_index) {
             Some(Piece::WhitePawn)
         } else if board_utils::is_bit_set(self.black_pawns, square_index) {
@@ -120,19 +172,17 @@ impl Board {
     pub fn apply_move(&mut self, mv: &Move) {
         let src_idx = mv.src.to_bit_index();
         let target_idx = mv.target.to_bit_index();
+        let target_piece = self.get_piece_at_square(target_idx);
 
         // Get the piece at the source square
-        let piece = self.get_piece_at_square(src_idx);
+        let source_piece = self.get_piece_at_square(src_idx).unwrap();
         // Check if there is a piece at the source square
-        if piece.is_none() {
-            panic!("No piece at source square: {}", mv.src);
-        }
         // Check if the piece belongs to the side to move
-        if piece.as_ref().unwrap().color() != self.side_to_move {
+        if source_piece.color() != self.side_to_move {
             panic!("Piece at source square {} does not match side to move: {:?}", mv.src, self.side_to_move);
         }
 
-        let piece = piece.unwrap(); // Now safe to unwrap and move
+        let piece = source_piece; // Now safe to unwrap and move
         // Check for en-passant capture before storing state
         let is_en_passant = match piece {
             Piece::WhitePawn | Piece::BlackPawn => {
@@ -158,7 +208,7 @@ impl Board {
             )
         } else {
             (
-                self.get_piece_at_square(mv.target.to_bit_index()),
+                target_piece.clone(),
                 Some(mv.target)
             )
         };
@@ -171,7 +221,8 @@ impl Board {
             black_queenside_castle_rights: self.black_queenside_castle_rights,
             en_passant_target: self.en_passant_target,
             last_move: mv.clone(),
-            captured_piece,
+            rook_castle_move: None, // Initialize as None, will be updated if castling
+            captured_piece: captured_piece.clone(),
             captured_piece_square,
         };
 
@@ -180,8 +231,6 @@ impl Board {
 
         let from_bit = mv.src.to_bitboard();
         let to_bit = mv.target.to_bitboard();
-        let src_idx = mv.src.to_bit_index();
-        let target_idx = mv.target.to_bit_index();
 
         // First, identify if this is a castling move
         // TODO: Use Square enum instead of target_idx for clarity
@@ -199,10 +248,26 @@ impl Board {
                         debug_assert!(self.white_kingside_castle_rights, "Attempting kingside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.white_rooks ^= (1u64 << 7) | (1u64 << 5);  // h1 to f1
+                        // Store the rook's move for undoing later
+                        if let Some(state) = self.move_history.last_mut() {
+                            state.rook_castle_move = Some(Move {
+                                src: Square::H1,
+                                target: Square::F1,
+                                promotion: None,
+                            });
+                        }
                     } else if target_idx == 2 {  // c1 - queenside castle
                         debug_assert!(self.white_queenside_castle_rights, "Attempting queenside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.white_rooks ^= 1u64 | (1u64 << 3);  // a1 to d1
+                        // Store the rook's move for undoing later
+                        if let Some(state) = self.move_history.last_mut() {
+                            state.rook_castle_move = Some(Move {
+                                src: Square::A1,
+                                target: Square::D1,
+                                promotion: None,
+                            });
+                        }
                     }
                 },
                 Piece::BlackKing => {
@@ -210,10 +275,26 @@ impl Board {
                         debug_assert!(self.black_kingside_castle_rights, "Attempting kingside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.black_rooks ^= (1u64 << 63) | (1u64 << 61);  // h8 to f8
+                        // Store the rook's move for undoing later
+                        if let Some(state) = self.move_history.last_mut() {
+                            state.rook_castle_move = Some(Move {
+                                src: Square::H8,
+                                target: Square::F8,
+                                promotion: None,
+                            });
+                        }
                     } else if target_idx == 58 {  // c8 - queenside castle
                         debug_assert!(self.black_queenside_castle_rights, "Attempting queenside castle without rights");
                         // TODO: use Square enum instead of hardcoded indices
                         self.black_rooks ^= (1u64 << 56) | (1u64 << 59);  // a8 to d8
+                        // Store the rook's move for undoing later
+                        if let Some(state) = self.move_history.last_mut() {
+                            state.rook_castle_move = Some(Move {
+                                src: Square::A8,
+                                target: Square::D8,
+                                promotion: None,
+                            });
+                        }
                     }
                 },
                 _ => {}
@@ -235,8 +316,8 @@ impl Board {
                 } else {
                     self.white_pawns &= !captured_pawn_bit;
                 }
-            } else if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
-                let captured_bitboard = match captured_piece {
+            } else if target_piece.is_some() {
+                let captured_bitboard = match target_piece.clone().unwrap() {
                     Piece::WhitePawn => &mut self.white_pawns,
                     Piece::BlackPawn => &mut self.black_pawns,
                     Piece::WhiteRook => &mut self.white_rooks,
@@ -288,8 +369,8 @@ impl Board {
         }
 
         // Also remove castling rights if a rook is captured
-        if let Some(captured_piece) = self.get_piece_at_square(target_idx) {
-            match captured_piece {
+        if target_piece.is_some() {
+            match target_piece.unwrap() {
                 Piece::WhiteRook => {
                     // TODO: use Square enum instead of hardcoded indices
                     if target_idx == 7 { // h1
@@ -1137,6 +1218,21 @@ impl Board {
                 };
                 *piece_bb &= !target_bit;  // Remove from target
                 *piece_bb |= src_bit;      // Add to source
+            }
+
+            // If this was a castling move, undo the rook's move as well
+            if let Some(rook_mv) = &state.rook_castle_move {
+                let rook_src_bit = rook_mv.src.to_bitboard();
+                let rook_target_bit = rook_mv.target.to_bitboard();
+
+                // Determine if this was a white or black rook
+                if piece == Piece::WhiteKing {
+                    self.white_rooks &= !rook_target_bit; // Remove from target square
+                    self.white_rooks |= rook_src_bit;     // Add to source square
+                } else {
+                    self.black_rooks &= !rook_target_bit; // Remove from target square
+                    self.black_rooks |= rook_src_bit;     // Add to source square
+                }
             }
 
             // Restore captured piece if any

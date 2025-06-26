@@ -137,6 +137,47 @@ mod perft_tests {
         assert_eq!(checkmates6, 10_828);
     }
 
+    // #[test]
+    // fn test_perft_depth_7() {
+    //     // First castles occur at this depth.
+    //     eprintln!("\nNow attempting depth 7...");
+    //     let mut board = get_starting_board();
+    //     eprintln!("Starting perft depth 7 test...");
+    //
+    //     let (nodes7, checkmates7) = board.perft(7);
+    //     eprintln!("Depth 7 results: {} nodes, {} checkmates", nodes7, checkmates7);
+    //     eprintln!("Final move history: {:?}", board.get_move_history());
+    //     assert_eq!(nodes7, 3_195_901_860);
+    //     assert_eq!(checkmates7, 435_767);
+    // }
+    //
+    // #[test]
+    // fn test_perft_depth_8() {
+    //     eprintln!("\nNow attempting depth 8...");
+    //     let mut board = get_starting_board();
+    //     eprintln!("Starting perft depth 8 test...");
+    //
+    //     let (nodes, checkmates) = board.perft(8);
+    //     eprintln!("Depth 8 results: {} nodes, {} checkmates", nodes, checkmates);
+    //     eprintln!("Final move history: {:?}", board.get_move_history());
+    //     assert_eq!(nodes, 84_998_978_956);
+    //     assert_eq!(checkmates, 9_852_036);
+    // }
+    //
+    // #[test]
+    // fn test_perft_depth_9() {
+    //     // First promotions occur at this depth.
+    //     eprintln!("\nNow attempting depth 9...");
+    //     let mut board = get_starting_board();
+    //     eprintln!("Starting perft depth 9 test...");
+    //
+    //     let (nodes, checkmates) = board.perft(9);
+    //     eprintln!("Depth 9 results: {} nodes, {} checkmates", nodes, checkmates);
+    //     eprintln!("Final move history: {:?}", board.get_move_history());
+    //     assert_eq!(nodes, 2_439_530_234_167);
+    //     assert_eq!(checkmates, 400_191_963); // No checkmates at this depth
+    // }
+
     #[test]
     fn test_move_history_tracking() {
         let mut board = get_starting_board();

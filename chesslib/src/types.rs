@@ -176,7 +176,7 @@ impl PieceType {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Piece {
     WhitePawn,
     WhiteRook,

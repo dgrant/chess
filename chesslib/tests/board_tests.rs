@@ -750,6 +750,7 @@ fn test_is_legal_move_complex() {
         black_queenside_castle_rights: false,
         en_passant_target: None,
         move_history: Vec::new(),
+        piece_map: [None; 64],
     };
     check_board.update_composite_bitboards();
     check_board.update_check_state();
@@ -916,4 +917,12 @@ fn test_move_try_from_invalid_moves() {
     // Test invalid move string (invalid format)
     // TODO:
     // assert!(Move::try_from("e2e4q").is_err());
+}
+
+#[test]
+fn piece_map_matches_bitboards_after_init() {
+    let b = get_starting_board();
+    for sq in 0..64u8 {
+        assert_eq!(b.get_piece_at_square_fast(sq), b.get_piece_at_square(sq));
+    }
 }

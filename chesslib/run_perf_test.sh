@@ -30,9 +30,7 @@ sudo perf report --sort=dso,symbol --no-children --stdio | grep -v "^#" | head -
 echo -e "\n\n==== FUNCTION CALL HIERARCHY (TOP 10) ====" >> hotspots_report.txt
 sudo perf report --sort=dso,symbol -g --stdio | grep -A 20 -B 2 "Children      Self  Command" | head -n 50 >> hotspots_report.txt
 echo -e "\n\n==== SPECIFIC HOTSPOTS ====" >> hotspots_report.txt
-sudo perf report --stdio | grep -A 3 -B 3 "is_legal_move" >> hotspots_report.txt
-sudo perf report --stdio | grep -A 3 -B 3 "apply_move" >> hotspots_report.txt
-sudo perf report --stdio | grep -A 3 -B 3 "undo_last_move" >> hotspots_report.txt
+sudo perf report --stdio | grep -A 3 -B 3 "is_square_attacked" >> hotspots_report.txt
 
 # Extract perf data to a format compatible with multiple visualization tools
 echo "Processing performance data..."
@@ -43,8 +41,8 @@ echo "Generating original SVG flamegraph..."
 cat perf_output.stacks | \
     "$FLAMEGRAPH_DIR/stackcollapse-perf.pl" | \
     "$FLAMEGRAPH_DIR/flamegraph.pl" \
-        --width 1800 \
-        --height 24 \
+        --width 2400 \
+        --height 28 \
         --fontsize 11 \
         --minwidth 0.5 \
         --title "Chess Perft Flame Graph" > chess_perft_flame_original.svg
@@ -56,15 +54,14 @@ echo "Generating Inferno flamegraphs (better for Rust code)..."
 cat perf_output.stacks | \
     inferno-collapse-perf | \
     inferno-flamegraph \
-        --width 2400 \
-        --height 28 \
+        --width 3000 \
+        --height 32 \
         --fontsize 10 \
         --minwidth 0.1 \
         --nametype "Function:" \
         --countname "samples" \
         --title "Chess Perft Performance (Inferno)" \
         --colors "rust" \
-        --truncate-text-right \
         > chess_perft_inferno.svg
 
 # Try an alternative visualization for more details
@@ -72,8 +69,8 @@ echo "Generating alternative detailed flamegraph..."
 cat perf_output.stacks | \
     "$FLAMEGRAPH_DIR/stackcollapse-perf.pl" | \
     "$FLAMEGRAPH_DIR/flamegraph.pl" \
-        --width 2400 \
-        --height 32 \
+        --width 3000 \
+        --height 36 \
         --fontsize 8 \
         --minwidth 0.2 \
         --title "Chess Perft Detailed Flame Graph" \
