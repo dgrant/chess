@@ -25,7 +25,7 @@ fn test_random_positions() {
     let mut board = get_starting_board();
     for _ in 0..10000 {
         while board.move_history.len() < 600 && !board.is_checkmate() && !board.is_stalemate() {
-            let next_move_str = std::panic::catch_unwind(AssertUnwindSafe(|| board.get_next_move()));
+            let next_move_str = std::panic::catch_unwind(AssertUnwindSafe(|| board.get_next_move_random()));
             match next_move_str {
                 Ok(mv) => board.apply_move_from_string(&*mv),
                 Err(_) => panic!("get_next_move panicked, board: {}", board.to_fen()),
@@ -33,5 +33,5 @@ fn test_random_positions() {
         }
         assert_eq!(load_fen(board.to_fen().as_str()).unwrap(), board, "Failed with this position: {}", board.to_fen());
     }
-    
+
 }

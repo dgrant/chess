@@ -418,7 +418,7 @@ fn test_side_to_move_after_sequence() {
     assert_eq!(board.side_to_move, Color::Black);
 
     // Get next move - should suggest a black move
-    let next_move = board.get_next_move();
+    let next_move = board.get_next_move_random();
     // Check if move starts with a valid black piece position
     assert!(
         // Pawns
@@ -557,7 +557,7 @@ fn test_get_next_move() {
     board.apply_move_from_string(first_moves[0].as_str());
     assert_eq!(board.side_to_move, Color::Black);
 
-    let black_move = board.get_next_move();
+    let black_move = board.get_next_move_random();
     assert!(black_move.starts_with("a7") || black_move.starts_with("b7") ||
                 black_move.starts_with("c7") || black_move.starts_with("d7") ||
                 black_move.starts_with("e7") || black_move.starts_with("f7") ||
@@ -570,7 +570,7 @@ fn test_get_next_move() {
     assert_eq!(board.side_to_move, Color::White);
 
     // Get another move - make sure it's still valid format
-    let next_move = board.get_next_move();
+    let next_move = board.get_next_move_random();
     assert_eq!(next_move.len(), 4, "Move should be in format 'e2e4', got {}", next_move);
     assert!(next_move.chars().all(|c| c.is_ascii_alphanumeric()),
             "Move should only contain letters and numbers, got {}", next_move);

@@ -65,7 +65,8 @@ pub fn handle_uci_command(input: &str) -> String {
                     }
                 }
 
-                format!("bestmove {}", board.get_next_move())
+                // format!("bestmove {}", board.get_next_move_random())
+                format!("bestmove {}", board.get_next_move_smart())
             } else {
                 "bestmove e2e4".to_string() // Default move if no position is set
             }

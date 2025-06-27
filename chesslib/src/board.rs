@@ -755,12 +755,16 @@ impl Board {
             .collect()
     }
 
-    pub fn get_next_move(&mut self) -> String {
+    pub fn get_next_move_random(&mut self) -> String {
         // Default to getting one move
         self.get_next_moves(1)
             .into_iter()
             .next()
             .expect("No moves found, which should be impossible in current state")
+    }
+
+    pub fn get_next_move_smart(&mut self) -> String {
+        self.find_best_move(4).unwrap().to_string()
     }
 
     pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
@@ -1371,6 +1375,63 @@ impl Board {
                     state.captured_piece)
             })
             .collect()
+    }
+
+    /// Recursive negamax search function that returns the best score for the current position
+    /// depth: remaining depth to search
+    /// returns: evaluation score from the perspective of the side to move
+    fn negamax(&mut self, depth: i32) -> i64 {
+        if depth == 0 {
+            return if self.side_to_move == Color::White {
+                self.evaluate()
+            } else {
+                -self.evaluate()
+            };
+        }
+
+        let mut max_score = -99999;
+        let mut moves = Vec::new();
+        self.get_all_raw_moves_append(&mut moves);
+
+
+        for mv in moves {
+            self.apply_move(&mv);
+            let score = -self.negamax(depth - 1);
+            self.undo_last_move();
+
+            max_score = max_score.max(score);
+        }
+
+        max_score
+    }
+
+    /// Finds the best move in the current position using negamax search
+    /// depth: how many plies to search
+    /// returns: Option<Move> - the best move found, or None if no legal moves exist
+    pub fn find_best_move(&mut self, depth: i32) -> Option<Move> {
+        let mut best_score = i64::MIN;
+        let mut best_move = None;
+        let mut moves = Vec::new();
+        self.get_all_raw_moves_append(&mut moves);
+
+        for mv in moves {
+            self.apply_move(&mv);
+            let score = -self.negamax(depth - 1);
+            self.undo_last_move();
+
+            if score > best_score {
+                best_score = score;
+                best_move = Some(mv);
+            } else if score == best_score {
+                // If the score is the same, randomly choose between the two
+                if rand::random() {
+                    best_score = score;
+                    best_move = Some(mv);
+                }
+            }
+        }
+
+        best_move
     }
 }
 
