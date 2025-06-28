@@ -764,7 +764,7 @@ impl Board {
     }
 
     pub fn get_next_move_smart(&mut self) -> String {
-        self.find_best_move(4).unwrap().to_string()
+        self.find_best_move(5).unwrap().to_string()
     }
 
     pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
@@ -1377,10 +1377,18 @@ impl Board {
             .collect()
     }
 
-    /// Recursive negamax search function that returns the best score for the current position
+    /// Recursive negamax search function with alpha-beta pruning
+    /// This algorithm prunes branches that can't improve the best known score
     /// depth: remaining depth to search
+    /// alpha: best score that the maximizing player is assured of
+    /// beta: best score that the minimizing player is assured of
     /// returns: evaluation score from the perspective of the side to move
     fn negamax(&mut self, depth: i32) -> i64 {
+        self.negamax_ab(depth, i64::MIN + 1, i64::MAX - 1)
+    }
+
+    /// Recursive negamax search function with alpha-beta pruning
+    fn negamax_ab(&mut self, depth: i32, mut alpha: i64, beta: i64) -> i64 {
         if depth == 0 {
             return if self.side_to_move == Color::White {
                 self.evaluate()
@@ -1389,20 +1397,36 @@ impl Board {
             };
         }
 
-        let mut max_score = -99999;
         let mut moves = Vec::new();
         self.get_all_raw_moves_append(&mut moves);
 
+        // If no legal moves available, this is checkmate or stalemate
+        if moves.is_empty() {
+            if self.is_checkmate() {
+                // Return a very negative score, adjusted to prefer shorter checkmates
+                return -30000 + depth as i64;
+            } else {
+                // Stalemate
+                return 0;
+            }
+        }
 
         for mv in moves {
             self.apply_move(&mv);
-            let score = -self.negamax(depth - 1);
+            let score = -self.negamax_ab(depth - 1, -beta, -alpha);
             self.undo_last_move();
 
-            max_score = max_score.max(score);
+            if score >= beta {
+                // Beta cutoff - this move is too good for the opponent
+                return beta;
+            }
+
+            if score > alpha {
+                alpha = score;
+            }
         }
 
-        max_score
+        alpha
     }
 
     /// Finds the best move in the current position using negamax search
@@ -1416,7 +1440,7 @@ impl Board {
 
         for mv in moves {
             self.apply_move(&mv);
-            let score = -self.negamax(depth - 1);
+            let score = -self.negamax_ab(depth - 1, i64::MIN + 1, i64::MAX - 1);
             self.undo_last_move();
 
             if score > best_score {
@@ -1424,8 +1448,7 @@ impl Board {
                 best_move = Some(mv);
             } else if score == best_score {
                 // If the score is the same, randomly choose between the two
-                if rand::random() {
-                    best_score = score;
+                if rand::random::<bool>() {
                     best_move = Some(mv);
                 }
             }
