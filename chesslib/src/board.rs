@@ -764,7 +764,7 @@ impl Board {
     }
 
     pub fn get_next_move_smart(&mut self) -> String {
-        self.find_best_move(5).unwrap().to_string()
+        self.find_best_move(7).unwrap().to_string()
     }
 
     pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
@@ -1390,6 +1390,8 @@ impl Board {
     /// Recursive negamax search function with alpha-beta pruning
     fn negamax_ab(&mut self, depth: i32, mut alpha: i64, beta: i64) -> i64 {
         if depth == 0 {
+            // Return evaluation from current side to move's perspective
+            // Since evaluate() returns from White's perspective, negate for Black
             return if self.side_to_move == Color::White {
                 self.evaluate()
             } else {
@@ -1411,10 +1413,19 @@ impl Board {
             }
         }
 
+        // Order moves by evaluation score for better alpha-beta pruning
+        self.order_moves_by_evaluation(&mut moves);
+
+        let mut best_score = i64::MIN + 1;
+
         for mv in moves {
             self.apply_move(&mv);
             let score = -self.negamax_ab(depth - 1, -beta, -alpha);
             self.undo_last_move();
+
+            if score > best_score {
+                best_score = score;
+            }
 
             if score >= beta {
                 // Beta cutoff - this move is too good for the opponent
@@ -1426,10 +1437,10 @@ impl Board {
             }
         }
 
-        alpha
+        best_score
     }
 
-    /// Finds the best move in the current position using negamax search
+    /// Finds the best move in the current position using negamax search with alpha-beta pruning
     /// depth: how many plies to search
     /// returns: Option<Move> - the best move found, or None if no legal moves exist
     pub fn find_best_move(&mut self, depth: i32) -> Option<Move> {
@@ -1438,8 +1449,12 @@ impl Board {
         let mut moves = Vec::new();
         self.get_all_raw_moves_append(&mut moves);
 
+        // Order moves by evaluation score for better alpha-beta pruning
+        self.order_moves_by_evaluation(&mut moves);
+
         for mv in moves {
             self.apply_move(&mv);
+            // Use negamax_ab directly with the full depth for the opponent
             let score = -self.negamax_ab(depth - 1, i64::MIN + 1, i64::MAX - 1);
             self.undo_last_move();
 
@@ -1455,6 +1470,31 @@ impl Board {
         }
 
         best_move
+    }
+
+    /// Orders moves by their evaluation score after making the move.
+    /// Better moves (higher evaluation) are placed first for better alpha-beta pruning.
+    fn order_moves_by_evaluation(&mut self, moves: &mut Vec<Move>) {
+        // Create pairs of (move, evaluation_score) 
+        let mut move_scores: Vec<(Move, i64)> = moves.iter().map(|mv| {
+            self.apply_move(mv);
+            // Get evaluation from the perspective of the player who just moved
+            let score = if self.side_to_move == Color::White {
+                // Black just moved, so we want the evaluation from Black's perspective
+                -self.evaluate()
+            } else {
+                // White just moved, so we want the evaluation from White's perspective  
+                self.evaluate()
+            };
+            self.undo_last_move();
+            (*mv, score)
+        }).collect();
+
+        // Sort by score in descending order (best moves first)
+        move_scores.sort_by(|a, b| b.1.cmp(&a.1));
+
+        // Extract the sorted moves
+        *moves = move_scores.into_iter().map(|(mv, _)| mv).collect();
     }
 }
 

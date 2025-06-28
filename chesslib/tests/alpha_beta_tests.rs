@@ -59,12 +59,17 @@ mod alpha_beta_tests {
 
     #[test]
     fn test_alpha_beta_checkmate_detection() {
-        // Test checkmate in 1 position
+        // Test checkmate in 1 position - this is actually a checkmate position for White
         let fen = "rnb1kbnr/pppp1ppp/8/4p3/6Pq/5P2/PPPPP2P/RNBQKBNR w KQkq - 1 3";
         let mut board = load_fen(fen).expect("Valid FEN");
 
+        // In a checkmate position, there should be no legal moves
         let best_move = board.find_best_move(2);
-        assert!(best_move.is_some(), "Should find a move even in losing position");
+        if board.is_checkmate() {
+            assert!(best_move.is_none(), "Should find no moves in checkmate position");
+        } else {
+            assert!(best_move.is_some(), "Should find a move in non-checkmate position");
+        }
     }
 
     #[test]
