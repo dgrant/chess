@@ -763,8 +763,9 @@ impl Board {
             .expect("No moves found, which should be impossible in current state")
     }
 
-    pub fn get_next_move_smart(&mut self) -> String {
-        self.find_best_move(7).unwrap().to_string()
+    pub fn get_next_move_smart(&mut self) -> (String, i64) {
+        let (best_move, best_score) = self.find_best_move(5);
+        (best_move.unwrap().to_string(), best_score)
     }
 
     pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
@@ -1383,11 +1384,6 @@ impl Board {
     /// alpha: best score that the maximizing player is assured of
     /// beta: best score that the minimizing player is assured of
     /// returns: evaluation score from the perspective of the side to move
-    fn negamax(&mut self, depth: i32) -> i64 {
-        self.negamax_ab(depth, i64::MIN + 1, i64::MAX - 1)
-    }
-
-    /// Recursive negamax search function with alpha-beta pruning
     fn negamax_ab(&mut self, depth: i32, mut alpha: i64, beta: i64) -> i64 {
         if depth == 0 {
             // Return evaluation from current side to move's perspective
@@ -1443,7 +1439,7 @@ impl Board {
     /// Finds the best move in the current position using negamax search with alpha-beta pruning
     /// depth: how many plies to search
     /// returns: Option<Move> - the best move found, or None if no legal moves exist
-    pub fn find_best_move(&mut self, depth: i32) -> Option<Move> {
+    pub fn find_best_move(&mut self, depth: i32) -> (Option<Move>, i64) {
         let mut best_score = i64::MIN;
         let mut best_move = None;
         let mut moves = Vec::new();
@@ -1469,7 +1465,12 @@ impl Board {
             }
         }
 
-        best_move
+        if self.side_to_move == Color::Black {
+            (best_move, -best_score)
+        } else {
+            // White just moved, so we want the evaluation
+            (best_move, best_score)
+        }
     }
 
     /// Orders moves by their evaluation score after making the move.

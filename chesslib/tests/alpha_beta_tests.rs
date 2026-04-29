@@ -18,7 +18,7 @@ mod alpha_beta_tests {
         board.apply_move_from_string("b8c6");
 
         // Get the best move using our alpha-beta implementation
-        let best_move_ab = board.find_best_move(3);
+        let (best_move_ab, _score) = board.find_best_move(3);
 
         // The move should exist (not None)
         assert!(best_move_ab.is_some(), "Alpha-beta should find a best move");
@@ -34,7 +34,7 @@ mod alpha_beta_tests {
         let fen = "rnbqkb1r/pppp1ppp/5n2/4p3/2B1P3/8/PPPP1PPP/RNBQK1NR w KQkq - 2 3";
         let mut board = load_fen(fen).expect("Valid FEN");
 
-        let best_move = board.find_best_move(4);
+        let (best_move, _score) = board.find_best_move(4);
         assert!(best_move.is_some(), "Should find a best move in tactical position");
 
         // Verify the move is legal
@@ -48,7 +48,7 @@ mod alpha_beta_tests {
         let mut board = Board::new();
 
         let start = std::time::Instant::now();
-        let best_move = board.find_best_move(4);
+        let (best_move, _score) = board.find_best_move(4);
         let duration = start.elapsed();
 
         assert!(best_move.is_some(), "Should find a move");
@@ -64,7 +64,7 @@ mod alpha_beta_tests {
         let mut board = load_fen(fen).expect("Valid FEN");
 
         // In a checkmate position, there should be no legal moves
-        let best_move = board.find_best_move(2);
+        let (best_move, _score) = board.find_best_move(2);
         if board.is_checkmate() {
             assert!(best_move.is_none(), "Should find no moves in checkmate position");
         } else {
@@ -78,7 +78,7 @@ mod alpha_beta_tests {
         let fen = "rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 2";
         let mut board = load_fen(fen).expect("Valid FEN");
 
-        let best_move = board.find_best_move(3);
+        let (best_move, _score) = board.find_best_move(3);
         assert!(best_move.is_some(), "Should find best move");
 
         let mv = best_move.unwrap();

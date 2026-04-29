@@ -102,9 +102,9 @@ pub fn handle_uci_command(input: &str) -> String {
                         _ => {}
                     }
                 }
-                let best_move_str = board.get_next_move_smart();
+                let (best_move_str, best_move_score) = board.get_next_move_smart();
                 // hack to make it fully uci compatible
-                println!("info depth 1 seldepth 1 score cp -50 time 0 nodes 2 pv {}", best_move_str);
+                println!("info depth 1 seldepth 1 score cp {} time 0 nodes 2 pv {}", best_move_score, best_move_str);
                 format!("bestmove {}", best_move_str)
             } else {
                 "bestmove e2e4".to_string() // Default move if no position is set
