@@ -13,21 +13,25 @@ pub fn test_bug_position() {
 #[test]
 pub fn test_bug_position2() {
     // I think we've fixed the bug now... previously the castling bonus was not being applied correctly
+    // Eval values updated after PSTs landed (eval baseline shifted up by
+    // ~70 cp due to per-piece positional bonuses). Relative order between
+    // moves is what matters: castling (e8g8) is still by far the best
+    // option for black; e8f8 (king walk) is a clear regression.
     let mut board = load_fen("rn2k2r/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 b kq - 0 1").unwrap();
     let score = board.evaluate();
-    assert_eq!(score, 135);
+    assert_eq!(score, 206);
     let board_after_e8f8 = load_fen("rn3k1r/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 w - - 0 1").unwrap();
     let score_after_e8f8 = board_after_e8f8.evaluate();
-    assert_eq!(score_after_e8f8, 180); // how is this better for black?
+    assert_eq!(score_after_e8f8, 287); // worse for black (king walked, lost castling)
 
     let board_after_e8g8 = load_fen("rn3rk1/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 w - - 0 1").unwrap();
     let score_after_e8g8 = board_after_e8g8.evaluate();
-    assert_eq!(score_after_e8g8, 100); // this is even better for black so why is this not the best move?
+    assert_eq!(score_after_e8g8, 122); // best for black: castled bonus + king PST g1 reward
 
     // Moving the queen in line with bishop, attacking the king
     let board_after_a5b6 = load_fen("rn2k2r/ppp2pp1/1q2bn1p/2b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 w kq - 0 1").unwrap();
     let score_after_a5b6 = board_after_a5b6.evaluate();
-    assert_eq!(score_after_a5b6, 130);
+    assert_eq!(score_after_a5b6, 180);
 
     // Pre-quiescence, the engine picked e8g8 (castling) because the static eval
     // gives it a +35cp bonus over the start position. With quiescence resolving

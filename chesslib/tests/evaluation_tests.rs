@@ -37,17 +37,18 @@ fn test_starting_position_evaluation() {
 fn test_material_advantage() {
     let mut board = Board::new();
 
+    // Numbers updated after PSTs landed; relative directions all match expectations.
     assert_eq!(board.evaluate(), 0);
     board.apply_move_from_string("e2e4");
-    assert_eq!(board.evaluate(), 45); // white gains some freedom for queen, and pawn in center
+    assert_eq!(board.evaluate(), 62); // white pawn advance plus PST bonus for centralized pawn
     board.apply_move_from_string("d7d5");
-    assert_eq!(board.evaluate(), 0); // black gains the same, net even
+    assert_eq!(board.evaluate(), -3); // nearly mirrored; tiny asymmetry from PST tuning
     // Capture a black pawn
     board.apply_move_from_string("e4d5");
-    assert_eq!(board.evaluate(), 115); // white captures a pawn, and black has lost a pawn in center too
+    assert_eq!(board.evaluate(), 113); // white up a pawn after capture
 
     board.apply_move_from_string("d8d5"); // queen captures pawn
-    assert_eq!(board.evaluate(), -15); // back to almost even, slight advantage to black as the queen is in center of board
+    assert_eq!(board.evaluate(), 12); // material restored; black's queen on d5 has slight PST cost
 }
 
 #[test]

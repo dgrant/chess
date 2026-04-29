@@ -2,7 +2,7 @@
 // they have a single home shared with Piece::material_value().
 
 /// Positional bonuses in centipawns
-const CENTER_CONTROL_BONUS: i64 = 10;    // Bonus for controlling center squares
+// CENTER_CONTROL_BONUS removed — central squares are now rewarded via PSTs.
 const CHECK_BONUS: i64 = 50;             // Bonus for giving check
 const BISHOP_PAIR_BONUS: i64 = 25;       // Bonus for having both bishops
 const CHECKMATE_BONUS: i64 = 100000;     // Large bonus for checkmate
@@ -80,21 +80,59 @@ impl Board {
     fn evaluate_position(&self) -> i64 {
         let mut score = 0;
 
-        // Center control (e4, e5, d4, d5)
-        let center_squares = 0x0000001818000000u64;
-        score += ((self.any_white & center_squares).count_ones() as i64) * CENTER_CONTROL_BONUS;
-        score -= ((self.any_black & center_squares).count_ones() as i64) * CENTER_CONTROL_BONUS;
+        // Piece-square tables: per-piece per-square positional bonus.
+        // Subsumes center control (central squares have higher PST values).
+        score += self.evaluate_pst();
 
-        // Extended center control (e3, e6, d3, d6, c4, c5, f4, f5)
-        let extended_center = 0x00003C3C3C3C0000u64;
-        score += ((self.any_white & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
-        score -= ((self.any_black & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
-
-        // Mobility evaluation for pieces
+        // Mobility evaluation for pieces (kept for now — will tune weight separately).
         score += self.evaluate_piece_mobility();
 
-        // Castling evaluation
+        // Castling evaluation (PSTs capture some king-position bonus, but
+        // castled bonus is stricter — it requires actual castling, not a
+        // king-walk to the same square).
         score += self.evaluate_castling();
+
+        score
+    }
+
+    /// Sum of PST values for every piece on the board, from White's perspective.
+    /// Black squares are mirrored vertically before lookup.
+    fn evaluate_pst(&self) -> i64 {
+        use crate::pst::{PAWN_PST, KNIGHT_PST, BISHOP_PST, ROOK_PST, QUEEN_PST, KING_PST, mirror};
+
+        fn sum_white(mut bb: u64, table: &[i64; 64]) -> i64 {
+            let mut s = 0;
+            while bb != 0 {
+                let idx = bb.trailing_zeros() as usize;
+                s += table[idx];
+                bb &= bb - 1;
+            }
+            s
+        }
+        fn sum_black(mut bb: u64, table: &[i64; 64]) -> i64 {
+            let mut s = 0;
+            while bb != 0 {
+                let idx = bb.trailing_zeros() as u8;
+                s += table[mirror(idx) as usize];
+                bb &= bb - 1;
+            }
+            s
+        }
+
+        let mut score = 0;
+        score += sum_white(self.white_pawns,   &PAWN_PST);
+        score += sum_white(self.white_knights, &KNIGHT_PST);
+        score += sum_white(self.white_bishops, &BISHOP_PST);
+        score += sum_white(self.white_rooks,   &ROOK_PST);
+        score += sum_white(self.white_queen,   &QUEEN_PST);
+        score += sum_white(self.white_king,    &KING_PST);
+
+        score -= sum_black(self.black_pawns,   &PAWN_PST);
+        score -= sum_black(self.black_knights, &KNIGHT_PST);
+        score -= sum_black(self.black_bishops, &BISHOP_PST);
+        score -= sum_black(self.black_rooks,   &ROOK_PST);
+        score -= sum_black(self.black_queen,   &QUEEN_PST);
+        score -= sum_black(self.black_king,    &KING_PST);
 
         score
     }
