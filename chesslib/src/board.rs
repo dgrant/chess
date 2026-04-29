@@ -1412,6 +1412,63 @@ impl Board {
             .collect()
     }
 
+    /// Static evaluation from the side-to-move's perspective.
+    /// Wraps `evaluate()` (White's POV) and flips for Black.
+    fn evaluate_pov(&self) -> i64 {
+        if self.side_to_move == Color::White {
+            self.evaluate()
+        } else {
+            -self.evaluate()
+        }
+    }
+
+    /// Quiescence search: at the main-search horizon, keep extending on captures
+    /// only until the position is "quiet" (no profitable captures left). Resolves
+    /// pending exchanges so the static eval at the real leaf is honest. Without
+    /// this, depth-N negamax happily evaluates positions with hanging pieces.
+    ///
+    /// Stand-pat: the side to move can decline to capture (= keep the static
+    /// eval). So `evaluate_pov` is the floor; captures only get explored if they
+    /// might beat it.
+    ///
+    /// Limitations of this first cut:
+    ///  - Doesn't generate check evasions when in check (should search all moves
+    ///    if in check, not just captures).
+    ///  - Misses en-passant captures (the `is_capture` test only checks whether
+    ///    target square is occupied; e.p. moves to an empty square).
+    fn quiesce(&mut self, mut alpha: i64, beta: i64) -> i64 {
+        let stand_pat = self.evaluate_pov();
+        if stand_pat >= beta {
+            return beta;
+        }
+        if stand_pat > alpha {
+            alpha = stand_pat;
+        }
+
+        let mut moves = Vec::new();
+        self.get_all_raw_moves_append(&mut moves);
+
+        for mv in moves {
+            // Captures only: target square must be occupied.
+            if self.get_piece_at_square_fast(mv.target.to_bit_index()).is_none() {
+                continue;
+            }
+
+            self.apply_move(&mv);
+            let score = -self.quiesce(-beta, -alpha);
+            self.undo_last_move();
+
+            if score >= beta {
+                return beta;
+            }
+            if score > alpha {
+                alpha = score;
+            }
+        }
+
+        alpha
+    }
+
     /// Recursive negamax search function with alpha-beta pruning
     /// This algorithm prunes branches that can't improve the best known score
     /// depth: remaining depth to search
@@ -1420,13 +1477,8 @@ impl Board {
     /// returns: evaluation score from the perspective of the side to move
     fn negamax_ab(&mut self, depth: i32, mut alpha: i64, beta: i64) -> i64 {
         if depth == 0 {
-            // Return evaluation from current side to move's perspective
-            // Since evaluate() returns from White's perspective, negate for Black
-            return if self.side_to_move == Color::White {
-                self.evaluate()
-            } else {
-                -self.evaluate()
-            };
+            // Resolve pending captures before returning the static eval.
+            return self.quiesce(alpha, beta);
         }
 
         let mut moves = Vec::new();
