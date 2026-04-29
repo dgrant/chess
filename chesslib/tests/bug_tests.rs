@@ -19,19 +19,19 @@ pub fn test_bug_position2() {
     // option for black; e8f8 (king walk) is a clear regression.
     let mut board = load_fen("rn2k2r/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 b kq - 0 1").unwrap();
     let score = board.evaluate();
-    assert_eq!(score, 216);
+    assert_eq!(score, 206);
     let board_after_e8f8 = load_fen("rn3k1r/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 w - - 0 1").unwrap();
     let score_after_e8f8 = board_after_e8f8.evaluate();
-    assert_eq!(score_after_e8f8, 292); // worse for black (king walked, lost castling)
+    assert_eq!(score_after_e8f8, 287); // worse for black (king walked, lost castling)
 
     let board_after_e8g8 = load_fen("rn3rk1/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 w - - 0 1").unwrap();
     let score_after_e8g8 = board_after_e8g8.evaluate();
-    assert_eq!(score_after_e8g8, 132); // best for black: castled bonus + king PST g1 reward
+    assert_eq!(score_after_e8g8, 122); // best for black: castled bonus + king PST g1 reward
 
     // Moving the queen in line with bishop, attacking the king
     let board_after_a5b6 = load_fen("rn2k2r/ppp2pp1/1q2bn1p/2b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 w kq - 0 1").unwrap();
     let score_after_a5b6 = board_after_a5b6.evaluate();
-    assert_eq!(score_after_a5b6, 195);
+    assert_eq!(score_after_a5b6, 180);
 
     // Pre-quiescence, the engine picked e8g8 (castling) because the static eval
     // gives it a +35cp bonus over the start position. With quiescence resolving

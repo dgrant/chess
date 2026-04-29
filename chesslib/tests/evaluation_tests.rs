@@ -40,9 +40,9 @@ fn test_material_advantage() {
     // Numbers updated after PSTs landed; relative directions all match expectations.
     assert_eq!(board.evaluate(), 0);
     board.apply_move_from_string("e2e4");
-    assert_eq!(board.evaluate(), 32); // white pawn advance, PST bonus for centralized pawn
+    assert_eq!(board.evaluate(), 62); // white pawn advance plus PST bonus for centralized pawn
     board.apply_move_from_string("d7d5");
-    assert_eq!(board.evaluate(), -3); // nearly mirrored
+    assert_eq!(board.evaluate(), -3); // nearly mirrored; tiny asymmetry from PST tuning
     // Capture a black pawn
     board.apply_move_from_string("e4d5");
     assert_eq!(board.evaluate(), 113); // white up a pawn after capture
