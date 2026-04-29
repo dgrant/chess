@@ -7,6 +7,7 @@ use crate::move_generation::{
     rook_moves,
     w_pawns_attack_targets,
 };
+use std::time::{Duration, Instant};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BoardState {
@@ -763,9 +764,39 @@ impl Board {
             .expect("No moves found, which should be impossible in current state")
     }
 
-    pub fn get_next_move_smart(&mut self) -> (String, i64) {
+    pub fn get_next_move_smart(&mut self) -> Option<(String, i64)> {
         let (best_move, best_score) = self.find_best_move(5);
-        (best_move.unwrap().to_string(), best_score)
+        best_move.map(|m| (m.to_string(), best_score))
+    }
+
+    /// Iterative deepening with a time budget. Always completes at least depth 1
+    /// (so we always return *something* legal if any move exists), then deepens
+    /// until the next iteration would likely overshoot the deadline.
+    pub fn find_best_move_within(&mut self, time_budget: Duration) -> (Option<Move>, i64, i32) {
+        let deadline = Instant::now() + time_budget;
+        let mut best_move = None;
+        let mut best_score = 0i64;
+        let mut completed_depth = 0;
+        for depth in 1..=20 {
+            let iter_start = Instant::now();
+            let (mv, score) = self.find_best_move(depth);
+            best_move = mv;
+            best_score = score;
+            completed_depth = depth;
+            // Heuristic: branching factor (post-pruning) is roughly 3-5x per depth,
+            // so if the iteration we just finished plus 4x its time would exceed
+            // the deadline, don't start the next iteration.
+            let elapsed = iter_start.elapsed();
+            if Instant::now() + elapsed * 4 >= deadline {
+                break;
+            }
+        }
+        (best_move, best_score, completed_depth)
+    }
+
+    pub fn get_next_move_timed(&mut self, time_budget_ms: u64) -> Option<(String, i64, i32)> {
+        let (best_move, score, depth) = self.find_best_move_within(Duration::from_millis(time_budget_ms));
+        best_move.map(|m| (m.to_string(), score, depth))
     }
 
     pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {

@@ -1,5 +1,6 @@
 use crate::board::Board;
 use crate::logger::log_to_file;
+use crate::types::Color;
 use std::sync::Mutex;
 
 use lazy_static::lazy_static;
@@ -88,24 +89,45 @@ pub fn handle_uci_command(input: &str) -> String {
         command if command.starts_with("go") => {
             let mut board_state = BOARD_STATE.lock().unwrap();
             if let Some(board) = board_state.as_mut() {
-                let mut _wtime: Option<u32> = None;
-                let mut _btime: Option<u32> = None;
-                let mut _movestogo: Option<u32> = None;
+                let mut wtime: Option<u32> = None;
+                let mut btime: Option<u32> = None;
+                let mut movetime: Option<u32> = None;
+                let mut fixed_depth: Option<i32> = None;
 
-                // Parse parameters
                 let params: Vec<&str> = command.split_whitespace().collect();
                 for i in 0..params.len() {
                     match params[i] {
-                        "wtime" => _wtime = params.get(i + 1).and_then(|v| v.parse::<u32>().ok()),
-                        "btime" => _btime = params.get(i + 1).and_then(|v| v.parse::<u32>().ok()),
-                        "movestogo" => _movestogo = params.get(i + 1).and_then(|v| v.parse::<u32>().ok()),
+                        "wtime" => wtime = params.get(i + 1).and_then(|v| v.parse().ok()),
+                        "btime" => btime = params.get(i + 1).and_then(|v| v.parse().ok()),
+                        "movetime" => movetime = params.get(i + 1).and_then(|v| v.parse().ok()),
+                        "depth" => fixed_depth = params.get(i + 1).and_then(|v| v.parse().ok()),
                         _ => {}
                     }
                 }
-                let (best_move_str, best_move_score) = board.get_next_move_smart();
-                // hack to make it fully uci compatible
-                println!("info depth 1 seldepth 1 score cp {} time 0 nodes 2 pv {}", best_move_score, best_move_str);
-                format!("bestmove {}", best_move_str)
+
+                // 'go depth N' is exact. Otherwise use a time budget from movetime
+                // or 1/30th of our remaining clock, default 1s if no info.
+                let result = if let Some(d) = fixed_depth {
+                    let (mv, score) = board.find_best_move(d);
+                    mv.map(|m| (m.to_string(), score, d))
+                } else {
+                    let budget_ms: u64 = movetime.map(|t| t as u64).unwrap_or_else(|| {
+                        let our_ms = match board.side_to_move {
+                            Color::White => wtime,
+                            Color::Black => btime,
+                        };
+                        our_ms.map(|t| (t as u64 / 30).max(50)).unwrap_or(1000)
+                    });
+                    board.get_next_move_timed(budget_ms)
+                };
+
+                match result {
+                    Some((mv, score, depth)) => {
+                        println!("info depth {} score cp {} pv {}", depth, score, mv);
+                        format!("bestmove {}", mv)
+                    }
+                    None => "bestmove 0000".to_string(),
+                }
             } else {
                 "bestmove e2e4".to_string() // Default move if no position is set
             }
