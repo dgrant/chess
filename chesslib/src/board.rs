@@ -7,7 +7,23 @@ use crate::move_generation::{
     rook_moves,
     w_pawns_attack_targets,
 };
+use crate::evaluation::{PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE};
 use std::time::{Duration, Instant};
+
+/// Material value of a piece in centipawns. The king's value is a large
+/// sentinel — it never gets captured in legal play, but MVV-LVA needs a
+/// number for completeness (e.g. when a quiescence search reaches an
+/// illegal capture-the-king move).
+fn piece_value(piece: Piece) -> i64 {
+    match piece {
+        Piece::WhitePawn   | Piece::BlackPawn   => PAWN_VALUE,
+        Piece::WhiteKnight | Piece::BlackKnight => KNIGHT_VALUE,
+        Piece::WhiteBishop | Piece::BlackBishop => BISHOP_VALUE,
+        Piece::WhiteRook   | Piece::BlackRook   => ROOK_VALUE,
+        Piece::WhiteQueen  | Piece::BlackQueen  => QUEEN_VALUE,
+        Piece::WhiteKing   | Piece::BlackKing   => 10_000,
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BoardState {
@@ -1431,6 +1447,11 @@ impl Board {
     /// eval). So `evaluate_pov` is the floor; captures only get explored if they
     /// might beat it.
     ///
+    /// Captures are ordered MVV-LVA (most valuable victim, least valuable
+    /// attacker) so promising captures (PxQ) are tried before bad ones (QxP).
+    /// With ordering, beta cutoffs land on the first or second move much more
+    /// often, and the recursion terminates fast even in tactical positions.
+    ///
     /// Limitations of this first cut:
     ///  - Doesn't generate check evasions when in check (should search all moves
     ///    if in check, not just captures).
@@ -1448,12 +1469,21 @@ impl Board {
         let mut moves = Vec::new();
         self.get_all_raw_moves_append(&mut moves);
 
-        for mv in moves {
-            // Captures only: target square must be occupied.
-            if self.get_piece_at_square_fast(mv.target.to_bit_index()).is_none() {
-                continue;
-            }
+        // Filter to captures and score by MVV-LVA. Higher score first.
+        // Score = victim_value * 10 - attacker_value, so PxQ (8900) ranks
+        // far above QxP (100) and beats every quiet move (filtered out).
+        let mut scored: Vec<(i64, Move)> = moves
+            .into_iter()
+            .filter_map(|mv| {
+                let victim = self.get_piece_at_square_fast(mv.target.to_bit_index())?;
+                let attacker = self.get_piece_at_square_fast(mv.src.to_bit_index())?;
+                let score = piece_value(victim) * 10 - piece_value(attacker);
+                Some((score, mv))
+            })
+            .collect();
+        scored.sort_unstable_by(|a, b| b.0.cmp(&a.0));
 
+        for (_score, mv) in scored {
             self.apply_move(&mv);
             let score = -self.quiesce(-beta, -alpha);
             self.undo_last_move();
