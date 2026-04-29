@@ -6,3 +6,15 @@ target/
 *.iml
 *.log
 *.txt
+
+# Profiling / flamegraph artifacts
+*.svg
+*.png
+perf.data*
+*.stacks
+
+# Local debug binaries and logs
+*.debug
+chesslib/debug_negamax
+chesslib/debug_position
+flamegraph_tools/
