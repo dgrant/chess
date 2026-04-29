@@ -82,11 +82,13 @@ def play_game(white_cmd, black_cmd, white_opts, black_opts, movetime_ms,
               resign_cp=500, resign_window=8, resign_min_ply=20):
     """Returns ('1-0' | '0-1' | '1/2-1/2', moves_list, reason).
 
-    Score-based adjudication: if the side-to-move's reported cp score has
-    been <= -resign_cp for resign_window consecutive plies (after
-    resign_min_ply), the other side wins. This converts "obviously winning
-    but engine can't deliver mate within max_plies" games from draws into
-    decisive results.
+    Score-based adjudication (two-sided / consensus):
+      Adjudicate only when *both* engines agree on the verdict for
+      `resign_window` consecutive plies of their own moves.
+      - The losing side's window must be all <= -resign_cp.
+      - The winning side's window must be all >= +resign_cp.
+    Requiring agreement protects against false positives caused by one
+    engine's eval being miscalibrated (e.g. ours).
     """
     w = open_engine(white_cmd); b = open_engine(black_cmd)
     init(w, white_opts); init(b, black_opts)
@@ -117,15 +119,23 @@ def play_game(white_cmd, black_cmd, white_opts, black_opts, movetime_ms,
                 recent[who].append(score)
                 if len(recent[who]) > resign_window:
                     recent[who] = recent[who][-resign_window:]
-            if (ply >= resign_min_ply
-                    and len(recent[who]) == resign_window
-                    and all(s <= -resign_cp for s in recent[who])):
-                # 'who' has reported a sustained losing eval - other side wins.
+            other_who = "black" if who == "white" else "white"
+            this_full = len(recent[who]) == resign_window
+            other_full = len(recent[other_who]) == resign_window
+            this_says_losing = this_full and all(s <= -resign_cp for s in recent[who])
+            other_says_winning = other_full and all(s >= resign_cp for s in recent[other_who])
+            if (resign_cp > 0
+                    and ply >= resign_min_ply
+                    and this_says_losing
+                    and other_says_winning):
+                # Both engines agree 'who' is losing.
                 result = "0-1" if who == "white" else "1-0"
-                worst = min(recent[who])
+                worst_loser = min(recent[who])
+                worst_winner = min(recent[other_who])
                 return result, moves + [mv], (
-                    f"adjudicated: {who} eval <= -{resign_cp} for {resign_window} plies "
-                    f"(latest {recent[who][-1]}, worst {worst}) at ply {ply}"
+                    f"adjudicated (consensus): {who} <= -{resign_cp} & {other_who} >= +{resign_cp} "
+                    f"for {resign_window} plies each "
+                    f"(loser worst {worst_loser}, winner low {worst_winner}) at ply {ply}"
                 )
 
             moves.append(mv)
