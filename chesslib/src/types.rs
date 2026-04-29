@@ -153,6 +153,18 @@ pub static F: &'static str = "f";
 pub static G: &'static str = "g";
 pub static H: &'static str = "h";
 
+/// Material values in centipawns. Used by both static evaluation
+/// (bitboard population counts) and ordering heuristics like MVV-LVA
+/// (per-piece lookups via `Piece::material_value`).
+pub const PAWN_VALUE: i64 = 100;
+pub const KNIGHT_VALUE: i64 = 300;
+pub const BISHOP_VALUE: i64 = 300;
+pub const ROOK_VALUE: i64 = 500;
+pub const QUEEN_VALUE: i64 = 900;
+/// Sentinel value for the king. The king is never legally captured, but
+/// ordering code needs a number.
+pub const KING_VALUE: i64 = 10_000;
+
 #[derive(PartialEq, Clone, Copy, Debug)]
 pub enum PieceType {
     Pawn,
@@ -232,6 +244,18 @@ impl Piece {
             Piece::WhitePawn | Piece::WhiteRook | Piece::WhiteKnight |
             Piece::WhiteBishop | Piece::WhiteQueen | Piece::WhiteKing => Color::White,
             _ => Color::Black
+        }
+    }
+
+    /// Material value in centipawns.
+    pub fn material_value(&self) -> i64 {
+        match self {
+            Piece::WhitePawn   | Piece::BlackPawn   => PAWN_VALUE,
+            Piece::WhiteKnight | Piece::BlackKnight => KNIGHT_VALUE,
+            Piece::WhiteBishop | Piece::BlackBishop => BISHOP_VALUE,
+            Piece::WhiteRook   | Piece::BlackRook   => ROOK_VALUE,
+            Piece::WhiteQueen  | Piece::BlackQueen  => QUEEN_VALUE,
+            Piece::WhiteKing   | Piece::BlackKing   => KING_VALUE,
         }
     }
 }

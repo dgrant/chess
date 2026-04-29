@@ -7,23 +7,7 @@ use crate::move_generation::{
     rook_moves,
     w_pawns_attack_targets,
 };
-use crate::evaluation::{PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE};
 use std::time::{Duration, Instant};
-
-/// Material value of a piece in centipawns. The king's value is a large
-/// sentinel — it never gets captured in legal play, but MVV-LVA needs a
-/// number for completeness (e.g. when a quiescence search reaches an
-/// illegal capture-the-king move).
-fn piece_value(piece: Piece) -> i64 {
-    match piece {
-        Piece::WhitePawn   | Piece::BlackPawn   => PAWN_VALUE,
-        Piece::WhiteKnight | Piece::BlackKnight => KNIGHT_VALUE,
-        Piece::WhiteBishop | Piece::BlackBishop => BISHOP_VALUE,
-        Piece::WhiteRook   | Piece::BlackRook   => ROOK_VALUE,
-        Piece::WhiteQueen  | Piece::BlackQueen  => QUEEN_VALUE,
-        Piece::WhiteKing   | Piece::BlackKing   => 10_000,
-    }
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BoardState {
@@ -1477,7 +1461,7 @@ impl Board {
             .filter_map(|mv| {
                 let victim = self.get_piece_at_square_fast(mv.target.to_bit_index())?;
                 let attacker = self.get_piece_at_square_fast(mv.src.to_bit_index())?;
-                let score = piece_value(victim) * 10 - piece_value(attacker);
+                let score = victim.material_value() * 10 - attacker.material_value();
                 Some((score, mv))
             })
             .collect();

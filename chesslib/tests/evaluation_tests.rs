@@ -1,5 +1,5 @@
 use chesslib::board::Board;
-use chesslib::evaluation::{BISHOP_VALUE};
+use chesslib::types::BISHOP_VALUE;
 
 #[test]
 fn test_castling_bonus() {

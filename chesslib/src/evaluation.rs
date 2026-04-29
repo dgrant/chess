@@ -1,9 +1,5 @@
-/// Material values in centipawns
-pub const PAWN_VALUE: i64 = 100;
-pub const KNIGHT_VALUE: i64 = 300;
-pub const BISHOP_VALUE: i64 = 300;
-pub const ROOK_VALUE: i64 = 500;
-pub const QUEEN_VALUE: i64 = 900;
+// Material values (PAWN_VALUE etc.) live in types.rs alongside Piece so
+// they have a single home shared with Piece::material_value().
 
 /// Positional bonuses in centipawns
 const CENTER_CONTROL_BONUS: i64 = 10;    // Bonus for controlling center squares
@@ -16,7 +12,7 @@ const CASTLING_RIGHTS_BONUS: i64 = 20;   // Bonus for each available castling ri
 const MOBILITY_BONUS: i64 = 5;           // Bonus per available move for piece mobility
 
 use crate::board::Board;
-use crate::types::Color;
+use crate::types::{Color, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE};
 use crate::move_generation::{knight_legal_moves, bishop_moves, rook_moves};
 use crate::Square;
 
