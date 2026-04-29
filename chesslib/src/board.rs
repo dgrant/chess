@@ -807,12 +807,10 @@ impl Board {
 
     // Generic helper function to convert a source bitboard and target bitboard into a list of moves
     pub fn bitboard_to_moves_append(&mut self, possible_moves: &mut Vec<Move>, source_pieces: u64, target_squares: u64) {
-        // Assert that source_pieces contains exactly one piece (one bit set)
-        debug_assert_eq!(source_pieces.count_ones(), 1,
-            "bitboard_to_moves should be called with exactly one source piece, got {} pieces",
-            source_pieces.count_ones());
-
-
+        // 0 source pieces is fine — the loop simply does nothing. The original
+        // assertion required exactly 1, but the implementation iterates over
+        // any count, and search legitimately reaches positions with 0 pawns
+        // (e.g. K+P endgames after the pawn is captured).
         let mut working_source = source_pieces;
 
         // For each source piece
@@ -986,6 +984,11 @@ impl Board {
     }
 
     pub fn is_square_attacked_impl1(&self, square: u8, attacked_by_color: Color) -> bool {
+        // Invalid square (off-board sentinel) can't be attacked. Without this
+        // guard, `1u64 << square` shifts past width and panics in debug builds.
+        if square >= 64 {
+            return false;
+        }
         let square_bb = 1u64 << square;
 
         if let Some(piece) = self.get_piece_at_square_fast(square) {
