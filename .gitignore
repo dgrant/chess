@@ -18,3 +18,5 @@ perf.data*
 chesslib/debug_negamax
 chesslib/debug_position
 flamegraph_tools/
+.claude/
+chesslib/config.json
