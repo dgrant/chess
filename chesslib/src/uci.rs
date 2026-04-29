@@ -123,7 +123,11 @@ pub fn handle_uci_command(input: &str) -> String {
 
                 match result {
                     Some((mv, score, depth)) => {
-                        println!("info depth {} score cp {} pv {}", depth, score, mv);
+                        // UCI: 'score cp' is from the engine's perspective (side to
+                        // move), positive = engine is winning. Our find_best_move
+                        // returns it in White's POV, so flip when Black is to move.
+                        let cp = if board.side_to_move == Color::Black { -score } else { score };
+                        println!("info depth {} score cp {} pv {}", depth, cp, mv);
                         format!("bestmove {}", mv)
                     }
                     None => "bestmove 0000".to_string(),
