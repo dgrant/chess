@@ -23,18 +23,50 @@ def wait_for(p, token, timeout=30):
         if token in line: return line
     return None
 
+def parse_info_score(line):
+    """Extracts cp score from a UCI 'info ... score cp N ...' line, or
+    converts 'score mate N' to a large signed cp value (positive = engine
+    delivers mate, negative = engine gets mated). Returns None if no usable
+    score, or if the line is a 'lowerbound'/'upperbound' partial.
+    Score is from the engine's POV (UCI standard)."""
+    toks = line.split()
+    try:
+        i = toks.index("score")
+    except ValueError:
+        return None
+    if "lowerbound" in toks[i:] or "upperbound" in toks[i:]:
+        return None
+    if i + 2 >= len(toks):
+        return None
+    kind = toks[i + 1]
+    val = int(toks[i + 2])
+    if kind == "cp":
+        return val
+    if kind == "mate":
+        # +20000 for "engine mates in N", -20000 for "engine gets mated in N"
+        return 20000 if val > 0 else -20000
+    return None
+
 def get_bestmove(p, timeout=60):
-    """Returns (move_str | None, status) where status is 'ok' | 'crash' | 'timeout'."""
+    """Returns (move_str | None, status, last_score) where status is
+    'ok' | 'crash' | 'timeout' | 'eof' and last_score is the latest cp/mate
+    score the engine reported for this search, or None."""
     deadline = time.time() + timeout
+    last_score = None
     while time.time() < deadline:
         line = p.stdout.readline()
         if not line:
-            return None, "crash" if p.poll() is not None else "eof"
+            return None, ("crash" if p.poll() is not None else "eof"), last_score
+        if line.startswith("info "):
+            s = parse_info_score(line)
+            if s is not None:
+                last_score = s
+            continue
         if line.startswith("bestmove"):
             parts = line.split()
             mv = parts[1] if len(parts) > 1 else None
-            return mv, "ok"
-    return None, "timeout"
+            return mv, "ok", last_score
+    return None, "timeout", last_score
 
 def init(p, options):
     send(p, "uci"); wait_for(p, "uciok")
@@ -45,36 +77,57 @@ def init(p, options):
 def newgame(p):
     send(p, "ucinewgame"); send(p, "isready"); wait_for(p, "readyok")
 
-def play_game(white_cmd, black_cmd, white_opts, black_opts, movetime_ms, max_plies=200, per_move_timeout=30.0, opening=None):
+def play_game(white_cmd, black_cmd, white_opts, black_opts, movetime_ms,
+              max_plies=200, per_move_timeout=30.0, opening=None,
+              resign_cp=500, resign_window=8, resign_min_ply=20):
     """Returns ('1-0' | '0-1' | '1/2-1/2', moves_list, reason).
 
-    opening: optional list of UCI moves to seed the position before play
-    starts. Both engines see the seed via 'position startpos moves ...'.
+    Score-based adjudication: if the side-to-move's reported cp score has
+    been <= -resign_cp for resign_window consecutive plies (after
+    resign_min_ply), the other side wins. This converts "obviously winning
+    but engine can't deliver mate within max_plies" games from draws into
+    decisive results.
     """
     w = open_engine(white_cmd); b = open_engine(black_cmd)
     init(w, white_opts); init(b, black_opts)
     newgame(w); newgame(b)
     moves = list(opening) if opening else []
-    # Side to move = white if even number of plies so far, else black
     side, other = (w, b) if len(moves) % 2 == 0 else (b, w)
+    # Per-side rolling window of recent cp scores reported by that engine.
+    recent = {"white": [], "black": []}
     try:
         start_ply = len(moves)
         for ply in range(start_ply, max_plies):
             send(side, f"position startpos moves {' '.join(moves)}" if moves else "position startpos")
             send(side, f"go movetime {movetime_ms}")
-            mv, status = get_bestmove(side, timeout=per_move_timeout)
+            mv, status, score = get_bestmove(side, timeout=per_move_timeout)
             who = "white" if ply % 2 == 0 else "black"
             if status == "crash":
-                # The engine that crashed loses on technical grounds, but flag it loud.
                 result = "0-1" if who == "white" else "1-0"
                 return result, moves, f"CRASH: {who} engine died on ply {ply}"
             if status in ("timeout", "eof"):
                 result = "0-1" if who == "white" else "1-0"
                 return result, moves, f"TIMEOUT/EOF: {who} on ply {ply} ({status})"
             if mv is None or mv == "(none)" or mv == "0000":
-                # Legitimate no-legal-move from the engine.
                 result = "0-1" if who == "white" else "1-0"
                 return result, moves, f"no legal move from {who} on ply {ply}"
+
+            # Track this side's reported score and check for adjudication.
+            if score is not None:
+                recent[who].append(score)
+                if len(recent[who]) > resign_window:
+                    recent[who] = recent[who][-resign_window:]
+            if (ply >= resign_min_ply
+                    and len(recent[who]) == resign_window
+                    and all(s <= -resign_cp for s in recent[who])):
+                # 'who' has reported a sustained losing eval - other side wins.
+                result = "0-1" if who == "white" else "1-0"
+                worst = min(recent[who])
+                return result, moves + [mv], (
+                    f"adjudicated: {who} eval <= -{resign_cp} for {resign_window} plies "
+                    f"(latest {recent[who][-1]}, worst {worst}) at ply {ply}"
+                )
+
             moves.append(mv)
             side, other = other, side
         return "1/2-1/2", moves, f"ply limit {max_plies} reached"
@@ -113,6 +166,9 @@ def main():
     ap.add_argument("--per-move-timeout", type=float, default=30.0, help="harness ceiling per move (s); decoupled from movetime since some engines ignore movetime and search at fixed depth")
     ap.add_argument("--max-plies", type=int, default=200)
     ap.add_argument("--logdir", default="/tmp/bench_games", help="where to dump per-game move logs")
+    ap.add_argument("--resign-cp", type=int, default=500, help="adjudicate as loss if side-to-move reports cp <= -N for resign-window consecutive plies (0 disables)")
+    ap.add_argument("--resign-window", type=int, default=8, help="how many consecutive bad plies before adjudication")
+    ap.add_argument("--resign-min-ply", type=int, default=20, help="don't adjudicate before this ply (avoids early-game eval noise)")
     args = ap.parse_args()
 
     import os
@@ -135,7 +191,15 @@ def main():
         else:
             white, black = args.opponent, args.engine
         t0 = time.time()
-        result, moves, reason = play_game(white, black, {}, {}, args.movetime, args.max_plies, args.per_move_timeout, opening)
+        result, moves, reason = play_game(
+            white, black, {}, {}, args.movetime,
+            max_plies=args.max_plies,
+            per_move_timeout=args.per_move_timeout,
+            opening=opening,
+            resign_cp=args.resign_cp,
+            resign_window=args.resign_window,
+            resign_min_ply=args.resign_min_ply,
+        )
         dt = time.time() - t0
         if result == "1-0":
             outcome = "win" if engine_is_white else "loss"
