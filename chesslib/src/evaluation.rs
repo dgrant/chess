@@ -9,7 +9,11 @@ const CHECKMATE_BONUS: i64 = 100000;     // Large bonus for checkmate
 // const DRAW_SCORE: i64 = 0;               // Score for drawn positions
 const CASTLED_BONUS: i64 = 75;           // Bonus for having castled (king safety)
 const CASTLING_RIGHTS_BONUS: i64 = 20;   // Bonus for each available castling right
-const MOBILITY_BONUS: i64 = 5;           // Bonus per available move for piece mobility
+// Disabled (set to 0) while PSTs are providing the positional signal.
+// PeSTO's PSTs are tuned standalone; double-counting with explicit mobility
+// caused a -173 ELO regression on the bench. Try non-zero values via this
+// constant and re-bench if you want to put mobility back.
+const MOBILITY_BONUS: i64 = 0;
 
 use crate::board::Board;
 use crate::types::{Color, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE};
