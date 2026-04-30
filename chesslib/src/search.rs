@@ -14,6 +14,13 @@ use crate::types::Move;
 /// more plies for captures, so 64 is generous.
 pub const MAX_SEARCH_PLY: usize = 64;
 
+/// Mate score returned by the search when the side-to-move is checkmated.
+/// Used as `-MATE_SCORE + ply` so closer mates score larger in magnitude
+/// (the engine prefers shorter mates). Anything ≥ MATE_SCORE - MAX_SEARCH_PLY
+/// in absolute value is "a mate score." Sized well above any plausible
+/// material/positional eval (a queen is 900cp, the whole board ~5000cp).
+pub const MATE_SCORE: i64 = 30000;
+
 pub struct SearchState {
     /// Two killer slots per ply. A "killer" is a quiet move that caused
     /// a beta cutoff at this ply somewhere else in the tree — likely

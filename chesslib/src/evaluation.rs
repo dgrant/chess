@@ -5,28 +5,25 @@
 const CENTER_CONTROL_BONUS: i64 = 10; // Bonus for controlling center squares
 const CHECK_BONUS: i64 = 50; // Bonus for giving check
 const BISHOP_PAIR_BONUS: i64 = 25; // Bonus for having both bishops
-const CHECKMATE_BONUS: i64 = 100000; // Large bonus for checkmate
-                                     // const DRAW_SCORE: i64 = 0;               // Score for drawn positions
 const CASTLED_BONUS: i64 = 75; // Bonus for having castled (king safety)
 const CASTLING_RIGHTS_BONUS: i64 = 20; // Bonus for each available castling right
 const MOBILITY_BONUS: i64 = 5; // Bonus per available move for piece mobility
 
 use crate::board::Board;
 use crate::move_generation::{bishop_moves, knight_legal_moves, rook_moves};
-use crate::types::{Color, BISHOP_VALUE, KNIGHT_VALUE, PAWN_VALUE, QUEEN_VALUE, ROOK_VALUE};
+use crate::types::{BISHOP_VALUE, KNIGHT_VALUE, PAWN_VALUE, QUEEN_VALUE, ROOK_VALUE};
 use crate::Square;
 
 impl Board {
     /// Evaluates the current position from White's perspective.
+    ///
+    /// Mate is intentionally NOT detected here. The search owns mate scoring
+    /// via `MATE_SCORE` so it can prefer shorter mates by ply. If this
+    /// function returned a constant +/-MATE_SCORE for mated leaves, the
+    /// search couldn't tell mate-in-1 from mate-in-N (both would score the
+    /// same). The search instead checks `moves.is_empty()` at every node
+    /// and returns a ply-aware mate score there.
     pub fn evaluate(&self) -> i64 {
-        // Check for terminal positions first
-        let mut board = self.clone();
-        if board.side_to_move == Color::Black && board.is_checkmate() {
-            return CHECKMATE_BONUS;
-        } else if board.is_checkmate() {
-            return -CHECKMATE_BONUS;
-        }
-
         let mut score = 0;
 
         // Material evaluation

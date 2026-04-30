@@ -4,7 +4,7 @@ use crate::move_generation::{
     b_pawns_attack_targets, bishop_moves, king_legal_moves, knight_legal_moves, rook_moves,
     w_pawns_attack_targets,
 };
-use crate::search::SearchState;
+use crate::search::{SearchState, MATE_SCORE};
 use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use std::time::{Duration, Instant};
 
@@ -1706,19 +1706,30 @@ impl Board {
         beta: i64,
         ss: &mut SearchState,
     ) -> i64 {
-        if depth == 0 {
-            return self.quiesce(alpha, beta);
-        }
-
+        // Generate moves up-front so we can detect mate/stalemate before
+        // deciding whether to drop into quiescence. If we did the depth==0
+        // check first, mates discovered exactly at the horizon would be
+        // missed (quiescence's stand-pat doesn't recognise them) and the
+        // engine would happily delay a forced mate by extra plies.
         let mut moves = Vec::new();
         self.get_all_raw_moves_append(&mut moves);
 
         if moves.is_empty() {
-            if self.is_checkmate() {
-                return -30000 + depth as i64;
+            let in_check = match self.side_to_move {
+                Color::White => self.white_king_in_check,
+                Color::Black => self.black_king_in_check,
+            };
+            // Ply-aware mate score: closer mates score larger in magnitude
+            // so the search prefers them. Stalemate scores 0.
+            return if in_check {
+                -MATE_SCORE + ply as i64
             } else {
-                return 0;
-            }
+                0
+            };
+        }
+
+        if depth == 0 {
+            return self.quiesce(alpha, beta);
         }
 
         // Order moves with cheap heuristics: MVV-LVA captures > killers > history > rest.
@@ -1767,10 +1778,31 @@ impl Board {
         depth: i32,
         ss: &mut SearchState,
     ) -> (Option<Move>, i64) {
-        let mut best_score = i64::MIN;
-        let mut best_move = None;
         let mut moves = Vec::new();
         self.get_all_raw_moves_append(&mut moves);
+
+        // No legal moves at root: position is mate (in check) or stalemate.
+        // Return a ply-aware mate score (ply=0 here) or 0 for stalemate so
+        // callers don't have to special-case this.
+        if moves.is_empty() {
+            let in_check = match self.side_to_move {
+                Color::White => self.white_king_in_check,
+                Color::Black => self.black_king_in_check,
+            };
+            let score_pov = if in_check { -MATE_SCORE } else { 0 };
+            // Caller wants white-POV. Flip if black-to-move.
+            let white_pov = if self.side_to_move == Color::Black {
+                -score_pov
+            } else {
+                score_pov
+            };
+            return (None, white_pov);
+        }
+
+        // best_score lives in side-to-move's POV. Use MIN+1 so that the final
+        // negation for black is safe (-(MIN) overflows; -(MIN+1) = MAX).
+        let mut best_score = i64::MIN + 1;
+        let mut best_move = None;
 
         // Order moves with the same heuristics negamax_ab uses internally.
         moves.sort_unstable_by(|a, b| self.order_score(b, ss, 0).cmp(&self.order_score(a, ss, 0)));
