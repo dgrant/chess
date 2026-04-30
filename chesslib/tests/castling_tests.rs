@@ -16,9 +16,9 @@ mod castling_tests {
         let mut board = get_starting_board();
 
         // Move white king and verify castling rights are lost
-        board.apply_move_from_string("e2e4");  // Move pawn to allow king movement
-        board.apply_move_from_string("e7e5");  // Black response
-        board.apply_move_from_string("e1e2");  // Move white king
+        board.apply_move_from_string("e2e4"); // Move pawn to allow king movement
+        board.apply_move_from_string("e7e5"); // Black response
+        board.apply_move_from_string("e1e2"); // Move white king
 
         assert!(!board.white_kingside_castle_rights);
         assert!(!board.white_queenside_castle_rights);
@@ -31,9 +31,9 @@ mod castling_tests {
         let mut board = get_starting_board();
 
         // Move kingside rook and verify only kingside rights are lost
-        board.apply_move_from_string("h2h4");  // Move pawn to allow rook movement
-        board.apply_move_from_string("e7e6");  // Black response
-        board.apply_move_from_string("h1h3");  // Move kingside rook
+        board.apply_move_from_string("h2h4"); // Move pawn to allow rook movement
+        board.apply_move_from_string("e7e6"); // Black response
+        board.apply_move_from_string("h1h3"); // Move kingside rook
 
         assert!(!board.white_kingside_castle_rights);
         assert!(board.white_queenside_castle_rights);

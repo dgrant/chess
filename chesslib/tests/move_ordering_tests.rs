@@ -1,7 +1,7 @@
 use chesslib::board::Board;
 use chesslib::fen::load_fen;
-use chesslib::Square;
 use chesslib::types::Move;
+use chesslib::Square;
 
 // #[test]
 // fn test_move_ordering_captures_first_white() {
@@ -57,7 +57,6 @@ fn test_move_ordering_captures_first_black() {
     // d6d5 (pawn pushes to center)
     assert_eq!(moves[0], "d4d2");
     assert_eq!(moves[1], "b4c3");
-
 }
 
 #[test]
@@ -69,10 +68,12 @@ fn test_move_ordering_center_control() {
     let moves = board.get_raw_moves(-1);
 
     // Find moves to e4 and d4
-    let e4_moves: Vec<&Move> = moves.iter()
+    let e4_moves: Vec<&Move> = moves
+        .iter()
         .filter(|m| m.target == Square::try_from("e4").unwrap())
         .collect();
-    let d4_moves: Vec<&Move> = moves.iter()
+    let d4_moves: Vec<&Move> = moves
+        .iter()
         .filter(|m| m.target == Square::try_from("d4").unwrap())
         .collect();
 
@@ -80,12 +81,24 @@ fn test_move_ordering_center_control() {
     assert!(!d4_moves.is_empty(), "Should find d4 move");
 
     // These central moves should be among the first moves (after any captures)
-    let e4_index = moves.iter().position(|m| m.target == Square::try_from("e4").unwrap()).unwrap();
-    let d4_index = moves.iter().position(|m| m.target == Square::try_from("d4").unwrap()).unwrap();
+    let e4_index = moves
+        .iter()
+        .position(|m| m.target == Square::try_from("e4").unwrap())
+        .unwrap();
+    let d4_index = moves
+        .iter()
+        .position(|m| m.target == Square::try_from("d4").unwrap())
+        .unwrap();
 
     // Should be in the first half of all moves
-    assert!(e4_index < moves.len() / 2, "e4 should be among the first moves");
-    assert!(d4_index < moves.len() / 2, "d4 should be among the first moves");
+    assert!(
+        e4_index < moves.len() / 2,
+        "e4 should be among the first moves"
+    );
+    assert!(
+        d4_index < moves.len() / 2,
+        "d4 should be among the first moves"
+    );
 }
 
 #[test]
@@ -100,7 +113,11 @@ fn test_move_selection_count() {
     assert_eq!(one_move.len(), 1, "Should get exactly one move when n=1");
 
     let five_moves = board.get_raw_moves(5);
-    assert_eq!(five_moves.len(), 5, "Should get exactly five moves when n=5");
+    assert_eq!(
+        five_moves.len(),
+        5,
+        "Should get exactly five moves when n=5"
+    );
 
     let all_moves = board.get_raw_moves(-1);
     assert!(all_moves.len() > 15, "Should get all legal moves when n=-1");
@@ -123,10 +140,16 @@ fn test_check_ordering() {
         if board.black_king_in_check {
             found_check_move = true;
             // Check-giving moves should be among the first moves
-            assert!(i < moves.len() / 2, "Check-giving moves should be among the first moves");
+            assert!(
+                i < moves.len() / 2,
+                "Check-giving moves should be among the first moves"
+            );
         }
         board.undo_last_move();
     }
 
-    assert!(found_check_move, "Should find at least one check-giving move");
+    assert!(
+        found_check_move,
+        "Should find at least one check-giving move"
+    );
 }

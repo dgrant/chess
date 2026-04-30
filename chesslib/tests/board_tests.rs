@@ -1,9 +1,12 @@
 extern crate chesslib;
-use chesslib::move_generation::{b_pawns_able_to_double_push, b_pawns_able_to_push, w_pawns_able_to_double_push, w_pawns_able_to_push};
-use chesslib::Square;
-use chesslib::types::{Color, Move, Piece, PieceType};
 use chesslib::board::Board;
 use chesslib::board_utils::{bitboard_to_string, get_empty_board, get_starting_board, is_bit_set};
+use chesslib::move_generation::{
+    b_pawns_able_to_double_push, b_pawns_able_to_push, w_pawns_able_to_double_push,
+    w_pawns_able_to_push,
+};
+use chesslib::types::{Color, Move, Piece, PieceType};
+use chesslib::Square;
 
 #[test]
 fn test_initial_board_pawns() {
@@ -20,10 +23,14 @@ fn test_initial_board_pawns() {
             5 => Square::F2,
             6 => Square::G2,
             7 => Square::H2,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
-        assert!(is_bit_set(board.white_pawns, square.to_bit_index()), 
-            "White pawn should be present at {}{}", ('a' as u8 + file) as char, 2);
+        assert!(
+            is_bit_set(board.white_pawns, square.to_bit_index()),
+            "White pawn should be present at {}{}",
+            ('a' as u8 + file) as char,
+            2
+        );
     }
 
     // Test black pawns are in correct position (seventh rank)
@@ -37,14 +44,16 @@ fn test_initial_board_pawns() {
             5 => Square::F7,
             6 => Square::G7,
             7 => Square::H7,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
-        assert!(is_bit_set(board.black_pawns, square.to_bit_index()),
-            "Black pawn should be present at {}{}", ('a' as u8 + file) as char, 7);
+        assert!(
+            is_bit_set(board.black_pawns, square.to_bit_index()),
+            "Black pawn should be present at {}{}",
+            ('a' as u8 + file) as char,
+            7
+        );
     }
 }
-
-
 
 //
 // #[test]
@@ -99,7 +108,11 @@ fn test_w_pawns_able_to_push() {
     let white_pawns_push = w_pawns_able_to_push(board.white_pawns, board.empty);
     let expected_white_pawns_push = 0x000000000000FF00;
     let diff_white_pawns_push = white_pawns_push ^ expected_white_pawns_push;
-    assert_eq!(diff_white_pawns_push, 0, "White pawns able to push mismatch: diff = {:064b}", diff_white_pawns_push);
+    assert_eq!(
+        diff_white_pawns_push, 0,
+        "White pawns able to push mismatch: diff = {:064b}",
+        diff_white_pawns_push
+    );
 }
 
 #[test]
@@ -110,7 +123,11 @@ fn test_w_pawns_able_to_double_push() {
     let white_pawns_double_push = w_pawns_able_to_double_push(board.white_pawns, board.empty);
     let expected_white_pawns_double_push = 0x000000000000FF00; // Adjusted expected value
     let diff_white_pawns_double_push = white_pawns_double_push ^ expected_white_pawns_double_push;
-    assert_eq!(diff_white_pawns_double_push, 0, "White pawns able to double push mismatch: diff = {:064b}", diff_white_pawns_double_push);
+    assert_eq!(
+        diff_white_pawns_double_push, 0,
+        "White pawns able to double push mismatch: diff = {:064b}",
+        diff_white_pawns_double_push
+    );
 }
 
 #[test]
@@ -121,7 +138,11 @@ fn test_b_pawns_able_to_push() {
     let black_pawns_push = b_pawns_able_to_push(board.black_pawns, board.empty);
     let expected_black_pawns_push = 0x00FF000000000000;
     let diff_black_pawns_push = black_pawns_push ^ expected_black_pawns_push;
-    assert_eq!(diff_black_pawns_push, 0, "Black pawns able to push mismatch: diff = {:064b}", diff_black_pawns_push);
+    assert_eq!(
+        diff_black_pawns_push, 0,
+        "Black pawns able to push mismatch: diff = {:064b}",
+        diff_black_pawns_push
+    );
 }
 
 #[test]
@@ -132,12 +153,16 @@ fn test_b_pawns_able_to_double_push() {
     let black_pawns_double_push = b_pawns_able_to_double_push(board.black_pawns, board.empty);
     let expected_black_pawns_double_push = 0x00FF000000000000; // Adjusted expected value
     let diff_black_pawns_double_push = black_pawns_double_push ^ expected_black_pawns_double_push;
-    assert_eq!(diff_black_pawns_double_push, 0, "Black pawns able to double push mismatch: diff = {:064b}", diff_black_pawns_double_push);
+    assert_eq!(
+        diff_black_pawns_double_push, 0,
+        "Black pawns able to double push mismatch: diff = {:064b}",
+        diff_black_pawns_double_push
+    );
 }
 
 #[test]
 fn test_random_pawn_moves_no_capture() {
-    use chesslib::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push};
+    use chesslib::move_generation::{b_pawns_able_to_push, w_pawns_able_to_push};
 
     let mut board = get_starting_board();
     let mut iteration_count = 0;
@@ -162,10 +187,17 @@ fn test_random_pawn_moves_no_capture() {
             if let Some(mv) = possible_moves.as_slice().choose(&mut rand::thread_rng()) {
                 println!("Applying move: {}", mv);
                 board.apply_moves_from_strings(std::iter::once(mv.to_string()));
-                assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap!");
+                assert_eq!(
+                    board.white_pawns & board.black_pawns,
+                    0,
+                    "White and black pawns overlap!"
+                );
 
                 println!("Current board state after move {}:", mv);
-                println!("{}", bitboard_to_string(board.white_pawns | board.black_pawns));
+                println!(
+                    "{}",
+                    bitboard_to_string(board.white_pawns | board.black_pawns)
+                );
             }
         }
 
@@ -176,11 +208,31 @@ fn test_random_pawn_moves_no_capture() {
     println!("White pawns:\n{}", bitboard_to_string(board.white_pawns));
     println!("Black pawns:\n{}", bitboard_to_string(board.black_pawns));
     // Verify final board state is valid
-    assert_eq!(board.white_pawns & board.black_pawns, 0, "White and black pawns overlap in final position");
-    assert_eq!(board.white_pawns & board.empty, 0, "White pawns overlap with empty squares");
-    assert_eq!(board.black_pawns & board.empty, 0, "Black pawns overlap with empty squares");
-    assert_eq!(board.any_white & board.empty, 0, "White pieces overlap with empty squares");
-    assert_eq!(board.any_black & board.empty, 0, "Black pieces overlap with empty squares");
+    assert_eq!(
+        board.white_pawns & board.black_pawns,
+        0,
+        "White and black pawns overlap in final position"
+    );
+    assert_eq!(
+        board.white_pawns & board.empty,
+        0,
+        "White pawns overlap with empty squares"
+    );
+    assert_eq!(
+        board.black_pawns & board.empty,
+        0,
+        "Black pawns overlap with empty squares"
+    );
+    assert_eq!(
+        board.any_white & board.empty,
+        0,
+        "White pieces overlap with empty squares"
+    );
+    assert_eq!(
+        board.any_black & board.empty,
+        0,
+        "Black pieces overlap with empty squares"
+    );
 }
 
 #[test]
@@ -198,18 +250,29 @@ fn test_invalid_black_move() {
     for mv in &possible_moves {
         let from_square = mv.src;
         let to_square = mv.target;
-        
+
         // Check that black pawns are moving in the right direction (down the board)
-        assert!(to_square.get_rank() < from_square.get_rank(), 
-                "Black pawn moving in wrong direction: {} to {}", from_square, to_square);
-                
+        assert!(
+            to_square.get_rank() < from_square.get_rank(),
+            "Black pawn moving in wrong direction: {} to {}",
+            from_square,
+            to_square
+        );
+
         // Check that no black pawn is coming from e2
-        assert_ne!(from_square, Square::E2, "Invalid move generated for black: {}", mv);
+        assert_ne!(
+            from_square,
+            Square::E2,
+            "Invalid move generated for black: {}",
+            mv
+        );
     }
 
-    assert!(!possible_moves.is_empty(), "No moves were generated for black");
+    assert!(
+        !possible_moves.is_empty(),
+        "No moves were generated for black"
+    );
 }
-
 
 #[test]
 fn test_starting_board_side_to_move() {
@@ -290,8 +353,14 @@ fn test_starting_board_bitboard_representation() {
     let board = get_starting_board();
 
     // Verify exact bitboard representations
-    assert_eq!(board.white_pawns, 0b0000000000000000000000000000000000000000000000001111111100000000);
-    assert_eq!(board.black_pawns, 0b0000000011111111000000000000000000000000000000000000000000000000);
+    assert_eq!(
+        board.white_pawns,
+        0b0000000000000000000000000000000000000000000000001111111100000000
+    );
+    assert_eq!(
+        board.black_pawns,
+        0b0000000011111111000000000000000000000000000000000000000000000000
+    );
 }
 
 #[test]
@@ -327,29 +396,77 @@ fn test_complete_bitboard_representation() {
     let board = get_starting_board();
 
     // White pieces bitboard patterns
-    assert_eq!(board.white_pawns, 0b0000000000000000000000000000000000000000000000001111111100000000);
-    assert_eq!(board.white_knights, 0b0000000000000000000000000000000000000000000000000000000001000010);
-    assert_eq!(board.white_bishops, 0b0000000000000000000000000000000000000000000000000000000000100100);
-    assert_eq!(board.white_rooks, 0b0000000000000000000000000000000000000000000000000000000010000001);
-    assert_eq!(board.white_queen, 0b0000000000000000000000000000000000000000000000000000000000001000);
-    assert_eq!(board.white_king, 0b0000000000000000000000000000000000000000000000000000000000010000);
+    assert_eq!(
+        board.white_pawns,
+        0b0000000000000000000000000000000000000000000000001111111100000000
+    );
+    assert_eq!(
+        board.white_knights,
+        0b0000000000000000000000000000000000000000000000000000000001000010
+    );
+    assert_eq!(
+        board.white_bishops,
+        0b0000000000000000000000000000000000000000000000000000000000100100
+    );
+    assert_eq!(
+        board.white_rooks,
+        0b0000000000000000000000000000000000000000000000000000000010000001
+    );
+    assert_eq!(
+        board.white_queen,
+        0b0000000000000000000000000000000000000000000000000000000000001000
+    );
+    assert_eq!(
+        board.white_king,
+        0b0000000000000000000000000000000000000000000000000000000000010000
+    );
 
     // Black pieces bitboard patterns
-    assert_eq!(board.black_pawns, 0b0000000011111111000000000000000000000000000000000000000000000000);
-    assert_eq!(board.black_knights, 0b0100001000000000000000000000000000000000000000000000000000000000);
-    assert_eq!(board.black_bishops, 0b0010010000000000000000000000000000000000000000000000000000000000);
-    assert_eq!(board.black_rooks, 0b1000000100000000000000000000000000000000000000000000000000000000);
-    assert_eq!(board.black_queen, 0b0000100000000000000000000000000000000000000000000000000000000000);
-    assert_eq!(board.black_king, 0b0001000000000000000000000000000000000000000000000000000000000000);
+    assert_eq!(
+        board.black_pawns,
+        0b0000000011111111000000000000000000000000000000000000000000000000
+    );
+    assert_eq!(
+        board.black_knights,
+        0b0100001000000000000000000000000000000000000000000000000000000000
+    );
+    assert_eq!(
+        board.black_bishops,
+        0b0010010000000000000000000000000000000000000000000000000000000000
+    );
+    assert_eq!(
+        board.black_rooks,
+        0b1000000100000000000000000000000000000000000000000000000000000000
+    );
+    assert_eq!(
+        board.black_queen,
+        0b0000100000000000000000000000000000000000000000000000000000000000
+    );
+    assert_eq!(
+        board.black_king,
+        0b0001000000000000000000000000000000000000000000000000000000000000
+    );
 
     // Composite bitboards
-    assert_eq!(board.any_white,
-               board.white_pawns | board.white_knights | board.white_bishops |
-                   board.white_rooks | board.white_queen | board.white_king);
+    assert_eq!(
+        board.any_white,
+        board.white_pawns
+            | board.white_knights
+            | board.white_bishops
+            | board.white_rooks
+            | board.white_queen
+            | board.white_king
+    );
 
-    assert_eq!(board.any_black,
-               board.black_pawns | board.black_knights | board.black_bishops |
-                   board.black_rooks | board.black_queen | board.black_king);
+    assert_eq!(
+        board.any_black,
+        board.black_pawns
+            | board.black_knights
+            | board.black_bishops
+            | board.black_rooks
+            | board.black_queen
+            | board.black_king
+    );
 
     assert_eq!(board.empty, !(board.any_white | board.any_black));
 
@@ -387,12 +504,20 @@ fn test_apply_move() {
     let mut board = get_starting_board();
 
     // Test moving a white pawn from e2 to e4
-    board.apply_move(&Move { src: Square::E2, target: Square::E4, promotion: None });
+    board.apply_move(&Move {
+        src: Square::E2,
+        target: Square::E4,
+        promotion: None,
+    });
     assert!(is_bit_set(board.white_pawns, Square::E4.to_bit_index()));
     assert!(!is_bit_set(board.white_pawns, Square::E2.to_bit_index()));
 
     // Test moving a black pawn from d7 to d5
-    board.apply_move(&Move { src: Square::D7, target: Square::D5, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::D7,
+        target: Square::D5,
+        promotion: None,
+    });
     assert!(is_bit_set(board.black_pawns, Square::D5.to_bit_index()));
     assert!(!is_bit_set(board.black_pawns, Square::D7.to_bit_index()));
 
@@ -406,15 +531,27 @@ fn test_side_to_move_after_sequence() {
     assert_eq!(board.side_to_move, Color::White);
 
     // First move: White e2e4
-    board.apply_move(&Move { src: Square::E2, target: Square::E4, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::E2,
+        target: Square::E4,
+        promotion: None,
+    });
     assert_eq!(board.side_to_move, Color::Black);
 
     // Second move: Black d7d6
-    board.apply_move(&Move { src: Square::D7, target: Square::D6, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::D7,
+        target: Square::D6,
+        promotion: None,
+    });
     assert_eq!(board.side_to_move, Color::White);
 
     // Third move: White g2g4
-    board.apply_move(&Move { src: Square::G2, target: Square::G4, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::G2,
+        target: Square::G4,
+        promotion: None,
+    });
     assert_eq!(board.side_to_move, Color::Black);
 
     // Get next move - should suggest a black move
@@ -436,7 +573,8 @@ fn test_side_to_move_after_sequence() {
             next_move.starts_with("d8") ||
             // King
             next_move.starts_with("e8"),
-        "Move {} should be a valid black piece move", next_move
+        "Move {} should be a valid black piece move",
+        next_move
     );
 }
 
@@ -446,12 +584,20 @@ fn test_apply_move_same_side_twice_fails() {
     let mut board = get_starting_board();
 
     // Test moving a white pawn from e2 to e4
-    board.apply_move(&Move { src: Square::E2, target: Square::E4, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::E2,
+        target: Square::E4,
+        promotion: None,
+    });
     assert!(is_bit_set(board.white_pawns, Square::E4.to_bit_index()));
     assert!(!is_bit_set(board.white_pawns, Square::E2.to_bit_index()));
 
     // Test moving another white pawn from d2 to d4 - should panic
-    board.apply_move(&Move { src: Square::D2, target: Square::D4, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::D2,
+        target: Square::D4,
+        promotion: None,
+    });
 }
 
 #[test]
@@ -459,19 +605,31 @@ fn test_knight_moves() {
     let mut board = get_starting_board();
 
     // Move white knight from b1 to c3
-    board.apply_move(&Move { src: Square::B1, target: Square::C3, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::B1,
+        target: Square::C3,
+        promotion: None,
+    });
     assert!(is_bit_set(board.white_knights, Square::C3.to_bit_index()));
     assert!(!is_bit_set(board.white_knights, Square::B1.to_bit_index()));
     assert_eq!(board.side_to_move, Color::Black);
 
     // Move black knight from g8 to f6
-    board.apply_move(&Move { src: Square::G8, target: Square::F6, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::G8,
+        target: Square::F6,
+        promotion: None,
+    });
     assert!(is_bit_set(board.black_knights, Square::F6.to_bit_index()));
     assert!(!is_bit_set(board.black_knights, Square::G8.to_bit_index()));
     assert_eq!(board.side_to_move, Color::White);
 
     // Test a capture: white knight takes black pawn
-    board.apply_move(&Move { src: Square::C3, target: Square::D5, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::C3,
+        target: Square::D5,
+        promotion: None,
+    });
     assert!(is_bit_set(board.white_knights, Square::D5.to_bit_index()));
     assert!(!is_bit_set(board.white_knights, Square::C3.to_bit_index()));
     assert!(!is_bit_set(board.black_pawns, Square::D5.to_bit_index()));
@@ -482,14 +640,22 @@ fn test_bitboard_to_moves() {
     let mut board = get_starting_board();
 
     // Test with a single source and multiple targets
-    let source = Square::B1.to_bitboard();  // Knight on b1
+    let source = Square::B1.to_bitboard(); // Knight on b1
     let targets = Square::A3.to_bitboard() | Square::C3.to_bitboard();
 
     let moves = board.bitboard_to_moves(source, targets);
 
     // Verify the moves are generated correctly
-    assert!(moves.contains(&Move { src: Square::B1, target: Square::A3, promotion: None }));
-    assert!(moves.contains(&Move { src: Square::B1, target: Square::C3, promotion: None }));
+    assert!(moves.contains(&Move {
+        src: Square::B1,
+        target: Square::A3,
+        promotion: None
+    }));
+    assert!(moves.contains(&Move {
+        src: Square::B1,
+        target: Square::C3,
+        promotion: None
+    }));
     assert_eq!(moves.len(), 2);
 }
 
@@ -498,13 +664,17 @@ fn test_bitboard_to_moves2() {
     let mut board = get_starting_board();
 
     // Test with a different single source and single target
-    let source = Square::G1.to_bitboard();  // Knight on g1
-    let target = Square::F3.to_bitboard();  // Target square f3
+    let source = Square::G1.to_bitboard(); // Knight on g1
+    let target = Square::F3.to_bitboard(); // Target square f3
 
     let moves = board.bitboard_to_moves(source, target);
 
     // Verify move is generated correctly
-    assert!(moves.contains(&Move { src: Square::G1, target: Square::F3, promotion: None }));
+    assert!(moves.contains(&Move {
+        src: Square::G1,
+        target: Square::F3,
+        promotion: None
+    }));
     assert_eq!(moves.len(), 1);
 }
 
@@ -513,20 +683,24 @@ fn test_bitboard_to_moves3() {
     let mut board = get_starting_board();
 
     // Test b1 knight separately
-    let source = Square::B1.to_bitboard();  // Knight on b1
-    let target = Square::C3.to_bitboard();  // Target square c3
+    let source = Square::B1.to_bitboard(); // Knight on b1
+    let target = Square::C3.to_bitboard(); // Target square c3
 
     let moves = board.bitboard_to_moves(source, target);
 
     // Verify move is generated correctly
-    assert!(moves.contains(&Move { src: Square::B1, target: Square::C3, promotion: None }));
+    assert!(moves.contains(&Move {
+        src: Square::B1,
+        target: Square::C3,
+        promotion: None
+    }));
     assert_eq!(moves.len(), 1);
 }
 
 #[test]
 fn test_bitboard_to_moves4() {
     let mut board = get_starting_board();
-    let source = Square::E4.to_bitboard();  // Knight on e4
+    let source = Square::E4.to_bitboard(); // Knight on e4
 
     // Test with no target squares (should produce empty move list)
     assert!(board.bitboard_to_moves(source, 0).is_empty());
@@ -539,31 +713,56 @@ fn test_get_next_move() {
 
     // White's first move should be either a pawn move or knight move
     let first_moves = board.get_next_moves(-1);
-    assert_eq!(first_moves.len(), 20, "Starting position should have exactly 20 possible moves");
-    assert!(first_moves.iter().all(|mv| {
-        mv.eq("a2a3") || mv.eq("a2a4")||
-        mv.eq("b2b3") || mv.eq("b2b4") ||
-        mv.eq("c2c3") || mv.eq("c2c4") ||
-        mv.eq("d2d3") || mv.eq("d2d4") ||
-        mv.eq("e2e3") || mv.eq("e2e4") ||
-        mv.eq("f2f3") || mv.eq("f2f4") ||
-        mv.eq("g2g3") || mv.eq("g2g4") ||
-        mv.eq("h2h3") || mv.eq("h2h4") ||
-        mv.eq("b1a3") || mv.eq("b1c3") ||
-        mv.eq("g1h3") || mv.eq("g1f3")
-    }), "All first moves should be valid white pawn or knight moves");
+    assert_eq!(
+        first_moves.len(),
+        20,
+        "Starting position should have exactly 20 possible moves"
+    );
+    assert!(
+        first_moves.iter().all(|mv| {
+            mv.eq("a2a3")
+                || mv.eq("a2a4")
+                || mv.eq("b2b3")
+                || mv.eq("b2b4")
+                || mv.eq("c2c3")
+                || mv.eq("c2c4")
+                || mv.eq("d2d3")
+                || mv.eq("d2d4")
+                || mv.eq("e2e3")
+                || mv.eq("e2e4")
+                || mv.eq("f2f3")
+                || mv.eq("f2f4")
+                || mv.eq("g2g3")
+                || mv.eq("g2g4")
+                || mv.eq("h2h3")
+                || mv.eq("h2h4")
+                || mv.eq("b1a3")
+                || mv.eq("b1c3")
+                || mv.eq("g1h3")
+                || mv.eq("g1f3")
+        }),
+        "All first moves should be valid white pawn or knight moves"
+    );
 
     // Apply the first move and get a response from black
     board.apply_move_from_string(first_moves[0].as_str());
     assert_eq!(board.side_to_move, Color::Black);
 
     let black_move = board.get_next_move_random();
-    assert!(black_move.starts_with("a7") || black_move.starts_with("b7") ||
-                black_move.starts_with("c7") || black_move.starts_with("d7") ||
-                black_move.starts_with("e7") || black_move.starts_with("f7") ||
-                black_move.starts_with("g7") || black_move.starts_with("h7") ||
-                black_move.starts_with("b8") || black_move.starts_with("g8"),
-            "Move {} should be a black pawn or knight move", black_move);
+    assert!(
+        black_move.starts_with("a7")
+            || black_move.starts_with("b7")
+            || black_move.starts_with("c7")
+            || black_move.starts_with("d7")
+            || black_move.starts_with("e7")
+            || black_move.starts_with("f7")
+            || black_move.starts_with("g7")
+            || black_move.starts_with("h7")
+            || black_move.starts_with("b8")
+            || black_move.starts_with("g8"),
+        "Move {} should be a black pawn or knight move",
+        black_move
+    );
 
     // Apply black's move and get another white move
     board.apply_move_from_string(&black_move);
@@ -571,9 +770,17 @@ fn test_get_next_move() {
 
     // Get another move - make sure it's still valid format
     let next_move = board.get_next_move_random();
-    assert_eq!(next_move.len(), 4, "Move should be in format 'e2e4', got {}", next_move);
-    assert!(next_move.chars().all(|c| c.is_ascii_alphanumeric()),
-            "Move should only contain letters and numbers, got {}", next_move);
+    assert_eq!(
+        next_move.len(),
+        4,
+        "Move should be in format 'e2e4', got {}",
+        next_move
+    );
+    assert!(
+        next_move.chars().all(|c| c.is_ascii_alphanumeric()),
+        "Move should only contain letters and numbers, got {}",
+        next_move
+    );
 }
 
 #[test]
@@ -590,17 +797,28 @@ fn test_get_next_moves() {
 
     // Test getting multiple moves
     let five_moves = board.get_next_moves(5);
-    assert!(five_moves.len() <= 5, "Should not return more moves than requested");
+    assert!(
+        five_moves.len() <= 5,
+        "Should not return more moves than requested"
+    );
     assert!(!five_moves.is_empty(), "Should return at least one move");
 
     // Verify all moves are valid white moves from starting position
     for mv in five_moves {
-        assert!(mv.starts_with("a2") || mv.starts_with("b2") ||
-                    mv.starts_with("c2") || mv.starts_with("d2") ||
-                    mv.starts_with("e2") || mv.starts_with("f2") ||
-                    mv.starts_with("g2") || mv.starts_with("h2") ||
-                    mv.starts_with("b1") || mv.starts_with("g1"),
-                "Move {} should be a white pawn or knight move", mv);
+        assert!(
+            mv.starts_with("a2")
+                || mv.starts_with("b2")
+                || mv.starts_with("c2")
+                || mv.starts_with("d2")
+                || mv.starts_with("e2")
+                || mv.starts_with("f2")
+                || mv.starts_with("g2")
+                || mv.starts_with("h2")
+                || mv.starts_with("b1")
+                || mv.starts_with("g1"),
+            "Move {} should be a white pawn or knight move",
+            mv
+        );
     }
 
     // Test getting all moves (n = -1)
@@ -609,7 +827,11 @@ fn test_get_next_moves() {
     // In starting position, each pawn can move 1 or 2 squares (16 moves)
     // and each knight has 2 possible moves (4 moves total)
     // So we expect exactly 20 possible moves
-    assert_eq!(all_moves.len(), 20, "Starting position should have exactly 20 possible moves");
+    assert_eq!(
+        all_moves.len(),
+        20,
+        "Starting position should have exactly 20 possible moves"
+    );
 }
 
 #[test]
@@ -626,32 +848,61 @@ fn test_is_square_attacked_pawns() {
     assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::Black));
 
     // After 1.e4, e4 is not attacked by any pieces
-    board.apply_move(&Move { src: Square::E2, target: Square::E4, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::E2,
+        target: Square::E4,
+        promotion: None,
+    });
     assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::White)); // This is false because white pieces can't attack squares occupied by white pieces
     assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::Black)); // This is false because the pawn on e4 isn't attacked by any black pieces yet.
 
     // Black responds with pawn to d5
-    board.apply_move(&Move { src: Square::D7, target: Square::D5, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::D7,
+        target: Square::D5,
+        promotion: None,
+    });
     // d5 is attacked by white pawn on e4
     assert!(board.is_square_attacked(Square::D5.to_bit_index(), Color::White));
     assert!(!board.is_square_attacked(Square::D5.to_bit_index(), Color::Black)); // Just double-check make sure that black can't attack black's own pawn
-    // e4 is attacked by black pawn on d5
+                                                                                 // e4 is attacked by black pawn on d5
     assert!(board.is_square_attacked(Square::E4.to_bit_index(), Color::Black));
-    assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::White)); // Just double-check make sure that white can't attack white's own pawn
+    assert!(!board.is_square_attacked(Square::E4.to_bit_index(), Color::White));
+    // Just double-check make sure that white can't attack white's own pawn
 }
 
 #[test]
 fn test_is_square_attacked_knights() {
     let mut board = get_starting_board();
-    board.apply_move(&Move { src: Square::E2, target: Square::E4, promotion: None  });
-    board.apply_move(&Move { src: Square::D7, target: Square::D5, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::E2,
+        target: Square::E4,
+        promotion: None,
+    });
+    board.apply_move(&Move {
+        src: Square::D7,
+        target: Square::D5,
+        promotion: None,
+    });
 
     // Test knight attacks
-    board.apply_move(&Move { src: Square::B1, target: Square::C3, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::B1,
+        target: Square::C3,
+        promotion: None,
+    });
     // Just a dummy move for black
-    board.apply_move(&Move { src: Square::H7, target: Square::H6, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::H7,
+        target: Square::H6,
+        promotion: None,
+    });
     // move the e pawn up so it's not being attacked, or attacking the D pawn anymore:
-    board.apply_move(&Move { src: Square::E4, target: Square::E5, promotion: None  });
+    board.apply_move(&Move {
+        src: Square::E4,
+        target: Square::E5,
+        promotion: None,
+    });
     assert!(board.is_square_attacked(Square::D5.to_bit_index(), Color::White)); // White knight attacks black pawn on d5
     assert!(board.is_square_attacked(Square::E4.to_bit_index(), Color::Black)); // E4 is empty but is being attacked by the black pawn on d5
 }
@@ -668,7 +919,8 @@ fn test_is_square_attacked_bishops() {
     assert!(attack_test_board.is_square_attacked(Square::D5.to_bit_index(), Color::White)); // Bishop attacks e6
     assert!(attack_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // Bishop attacks e6
     assert!(attack_test_board.is_square_attacked(Square::F7.to_bit_index(), Color::White)); // Bishop attacks e6
-    assert!(!attack_test_board.is_square_attacked(Square::G8.to_bit_index(), Color::White)); // Bishop attack blocked by queen
+    assert!(!attack_test_board.is_square_attacked(Square::G8.to_bit_index(), Color::White));
+    // Bishop attack blocked by queen
 
     // TODO: Add more bishop tests for different positions
 }
@@ -685,7 +937,8 @@ fn test_is_square_attacked_rooks() {
     assert!(rook_test_board.is_square_attacked(Square::E5.to_bit_index(), Color::White)); // Rook attacks e5
     assert!(rook_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // Rook attacks e5
     assert!(!rook_test_board.is_square_attacked(Square::E7.to_bit_index(), Color::White)); // Rook attack blocked by pawn
-    assert!(!rook_test_board.is_square_attacked(Square::E8.to_bit_index(), Color::White)); // Rook attack blocked by pawn
+    assert!(!rook_test_board.is_square_attacked(Square::E8.to_bit_index(), Color::White));
+    // Rook attack blocked by pawn
 }
 
 #[test]
@@ -711,15 +964,19 @@ fn test_is_square_attacked_queen() {
     assert!(queen_test_board.is_square_attacked(Square::E4.to_bit_index(), Color::White)); // Queen attacks horizontally right
     assert!(queen_test_board.is_square_attacked(Square::F4.to_bit_index(), Color::White)); // Queen attacks horizontally right
     assert!(queen_test_board.is_square_attacked(Square::G4.to_bit_index(), Color::White)); // Queen attacks horizontally right
-    assert!(queen_test_board.is_square_attacked(Square::H4.to_bit_index(), Color::White)); // Queen attacks horizontally right
-
+    assert!(queen_test_board.is_square_attacked(Square::H4.to_bit_index(), Color::White));
+    // Queen attacks horizontally right
 }
 
 #[test]
 fn test_is_legal_move() {
     // Test 1: Starting position, any legal move is valid
     let mut board = get_starting_board();
-    assert!(board.is_legal_move(&Move { src: Square::E2, target: Square::E4, promotion: None  }));
+    assert!(board.is_legal_move(&Move {
+        src: Square::E2,
+        target: Square::E4,
+        promotion: None
+    }));
 }
 
 #[test]
@@ -759,16 +1016,39 @@ fn test_is_legal_move_complex() {
     assert!(check_board.white_king_in_check);
 
     // Legal moves that escape check
-    assert!(check_board.is_legal_move(&Move { src: Square::E1, target: Square::F1, promotion: None  })); // King escapes sideways
-    assert!(check_board.is_legal_move(&Move { src: Square::E1, target: Square::D1, promotion: None  })); // King escapes other way
-    assert!(check_board.is_legal_move(&Move { src: Square::D7, target: Square::E8, promotion: None  })); // Bishop captures rook
-    assert!(check_board.is_legal_move(&Move { src: Square::D2, target: Square::E2, promotion: None  })); // Queen blocks check
+    assert!(check_board.is_legal_move(&Move {
+        src: Square::E1,
+        target: Square::F1,
+        promotion: None
+    })); // King escapes sideways
+    assert!(check_board.is_legal_move(&Move {
+        src: Square::E1,
+        target: Square::D1,
+        promotion: None
+    })); // King escapes other way
+    assert!(check_board.is_legal_move(&Move {
+        src: Square::D7,
+        target: Square::E8,
+        promotion: None
+    })); // Bishop captures rook
+    assert!(check_board.is_legal_move(&Move {
+        src: Square::D2,
+        target: Square::E2,
+        promotion: None
+    })); // Queen blocks check
 
     // Illegal moves that don't escape check
-    assert!(!check_board.is_legal_move(&Move { src: Square::D2, target: Square::D3, promotion: None  })); // Queen moves away
-    assert!(!check_board.is_legal_move(&Move { src: Square::E1, target: Square::E2, promotion: None  })); // King moves into check
+    assert!(!check_board.is_legal_move(&Move {
+        src: Square::D2,
+        target: Square::D3,
+        promotion: None
+    })); // Queen moves away
+    assert!(!check_board.is_legal_move(&Move {
+        src: Square::E1,
+        target: Square::E2,
+        promotion: None
+    })); // King moves into check
 }
-
 
 #[test]
 fn test_is_square_attacked_king() {
@@ -792,23 +1072,31 @@ fn test_is_square_attacked_king() {
     assert!(!king_test_board.is_square_attacked(Square::E6.to_bit_index(), Color::White)); // King can't attack 2 squares away
     assert!(!king_test_board.is_square_attacked(Square::C4.to_bit_index(), Color::White)); // King can't attack 2 squares away
     assert!(!king_test_board.is_square_attacked(Square::G4.to_bit_index(), Color::White)); // King can't attack 2 squares away
-    assert!(!king_test_board.is_square_attacked(Square::E2.to_bit_index(), Color::White)); // King can't attack 2 squares away
+    assert!(!king_test_board.is_square_attacked(Square::E2.to_bit_index(), Color::White));
+    // King can't attack 2 squares away
 }
 
 #[test]
 fn test_apply_move_promotion() {
     let mut board = Board {
         white_king: Square::A1.to_bitboard(),  // Place white king away
-        black_king: Square::H8.to_bitboard(),   // Place black king on H8, it will be in check after promotion
-        white_pawns: Square::E7.to_bitboard(),  // White pawn ready to promote
+        black_king: Square::H8.to_bitboard(), // Place black king on H8, it will be in check after promotion
+        white_pawns: Square::E7.to_bitboard(), // White pawn ready to promote
         ..get_empty_board()
     };
     board.rebuild_piece_map();
 
-    assert_eq!(board.get_piece_at_square_fast(Square::E7.to_bit_index()), Some(Piece::WhitePawn));
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::E7.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
 
     // Move a white pawn to promotion square
-    board.apply_move(&Move { src: Square::E7, target: Square::E8, promotion: Some(PieceType::Queen) });
+    board.apply_move(&Move {
+        src: Square::E7,
+        target: Square::E8,
+        promotion: Some(PieceType::Queen),
+    });
     assert!(is_bit_set(board.white_queen, Square::E8.to_bit_index())); // The pawn is now queen
     assert_eq!(board.white_pawns, 0); // No more pawns
     assert_eq!(board.black_king_in_check, true); // Black king should be in check after promotion
@@ -819,9 +1107,9 @@ fn test_apply_move_promotion() {
 fn test_pawn_promotion_moves() {
     // Test white pawn promotion
     let mut white_promotion_board = Board {
-        white_pawns: Square::E7.to_bitboard(),  // White pawn ready to promote
-        black_king: Square::H8.to_bitboard(),   // Place black king away from promotion square
-        white_king: Square::A1.to_bitboard(),   // Place white king away
+        white_pawns: Square::E7.to_bitboard(), // White pawn ready to promote
+        black_king: Square::H8.to_bitboard(),  // Place black king away from promotion square
+        white_king: Square::A1.to_bitboard(),  // Place white king away
         ..get_empty_board()
     };
     white_promotion_board.update_composite_bitboards();
@@ -830,9 +1118,12 @@ fn test_pawn_promotion_moves() {
     // Ensure side to move is White
     assert_eq!(white_promotion_board.side_to_move, Color::White);
 
-    println!("White pawn bitboard: {:064b}", white_promotion_board.white_pawns);
+    println!(
+        "White pawn bitboard: {:064b}",
+        white_promotion_board.white_pawns
+    );
 
-    let white_moves = white_promotion_board.get_raw_moves(-1);  // Get all possible moves
+    let white_moves = white_promotion_board.get_raw_moves(-1); // Get all possible moves
 
     println!("Generated {} raw moves for white", white_moves.len());
     for mv in &white_moves {
@@ -842,49 +1133,64 @@ fn test_pawn_promotion_moves() {
     let white_moves_strings = white_promotion_board.get_next_moves(-1);
 
     // Remove white moves that start with "a1" (king moves)
-    let white_moves_filtered: Vec<String> = white_moves_strings.into_iter()
+    let white_moves_filtered: Vec<String> = white_moves_strings
+        .into_iter()
         .filter(|m| !m.starts_with("a1"))
         .collect();
 
     println!("Filtered moves: {:?}", white_moves_filtered);
 
     let expected_promotions = vec![
-        "e7e8q", "e7e8r", "e7e8b", "e7e8n"  // All possible promotion moves
+        "e7e8q", "e7e8r", "e7e8b", "e7e8n", // All possible promotion moves
     ];
 
-    assert_eq!(white_moves_filtered.len(), 4, "Expected 4 promotion moves, got {}: {:?}",
-               white_moves_filtered.len(), white_moves_filtered);
+    assert_eq!(
+        white_moves_filtered.len(),
+        4,
+        "Expected 4 promotion moves, got {}: {:?}",
+        white_moves_filtered.len(),
+        white_moves_filtered
+    );
 
     for move_str in expected_promotions {
-        assert!(white_moves_filtered.contains(&move_str.to_string()),
-                "Missing expected promotion move: {}", move_str);
+        assert!(
+            white_moves_filtered.contains(&move_str.to_string()),
+            "Missing expected promotion move: {}",
+            move_str
+        );
     }
 
     // Test black pawn promotion
     let mut black_promotion_board = Board {
-        black_pawns: Square::E2.to_bitboard(),  // Black pawn ready to promote
-        black_king: Square::H8.to_bitboard(), // Black king out of the way
-        white_king: Square::A1.to_bitboard(),   // Place white king away from promotion square
-        side_to_move: Color::Black,  // Set side to move to Black
+        black_pawns: Square::E2.to_bitboard(), // Black pawn ready to promote
+        black_king: Square::H8.to_bitboard(),  // Black king out of the way
+        white_king: Square::A1.to_bitboard(),  // Place white king away from promotion square
+        side_to_move: Color::Black,            // Set side to move to Black
         ..get_empty_board()
     };
     black_promotion_board.update_composite_bitboards();
     black_promotion_board.rebuild_piece_map();
 
-    let black_moves = black_promotion_board.get_next_moves(-1);  // Get all possible moves
-    let black_moves_filtered: Vec<String> = black_moves.into_iter()
+    let black_moves = black_promotion_board.get_next_moves(-1); // Get all possible moves
+    let black_moves_filtered: Vec<String> = black_moves
+        .into_iter()
         .filter(|m| !m.starts_with("h8"))
         .collect();
     let expected_black_promotions = vec![
-        "e2e1q", "e2e1r", "e2e1b", "e2e1n"  // All possible promotion moves
+        "e2e1q", "e2e1r", "e2e1b", "e2e1n", // All possible promotion moves
     ];
-    assert_eq!(black_moves_filtered.len(), 4, "Should have 4 promotion moves for black");
+    assert_eq!(
+        black_moves_filtered.len(),
+        4,
+        "Should have 4 promotion moves for black"
+    );
     for move_str in expected_black_promotions {
-        assert!(black_moves_filtered.contains(&move_str.to_string()),
-                "Missing expected promotion move: {}", move_str);
+        assert!(
+            black_moves_filtered.contains(&move_str.to_string()),
+            "Missing expected promotion move: {}",
+            move_str
+        );
     }
-
-
 }
 
 #[test]

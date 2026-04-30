@@ -15,7 +15,7 @@ mod pawn_promotion_tests {
         board.apply_move_from_string("h6h5"); // black
         board.apply_move_from_string("d6c7"); // white
         board.apply_move_from_string("h5h4"); // black
-        board.apply_move_from_string("c7b8q");  // Promote to queen
+        board.apply_move_from_string("c7b8q"); // Promote to queen
 
         // Verify promotion
         // TODO: Fix this to now use fen, just use existing enums
@@ -40,6 +40,6 @@ mod pawn_promotion_tests {
 
         // Verify promotion
         // TODO: Fix this to now use fen, just use existing enums
-        assert_eq!(board.get_piece_at_coordinate_as_fen("g1"), "q");  // lowercase for black pieces
+        assert_eq!(board.get_piece_at_coordinate_as_fen("g1"), "q"); // lowercase for black pieces
     }
 }

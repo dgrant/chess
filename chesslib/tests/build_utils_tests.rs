@@ -1,6 +1,6 @@
 use chesslib::board_utils::get_starting_board;
-use chesslib::Square;
 use chesslib::types::Piece;
+use chesslib::Square;
 
 #[test]
 fn test_get_starting_board() {
@@ -23,40 +23,136 @@ fn test_get_starting_board() {
     assert!(!board.black_king_in_check);
 
     // White pieces:
-    assert_eq!(board.get_piece_at_square_fast(Square::A1.to_bit_index()), Some(Piece::WhiteRook));
-    assert_eq!(board.get_piece_at_square_fast(Square::B1.to_bit_index()), Some(Piece::WhiteKnight));
-    assert_eq!(board.get_piece_at_square_fast(Square::C1.to_bit_index()), Some(Piece::WhiteBishop));
-    assert_eq!(board.get_piece_at_square_fast(Square::D1.to_bit_index()), Some(Piece::WhiteQueen));
-    assert_eq!(board.get_piece_at_square_fast(Square::E1.to_bit_index()), Some(Piece::WhiteKing));
-    assert_eq!(board.get_piece_at_square_fast(Square::F1.to_bit_index()), Some(Piece::WhiteBishop));
-    assert_eq!(board.get_piece_at_square_fast(Square::G1.to_bit_index()), Some(Piece::WhiteKnight));
-    assert_eq!(board.get_piece_at_square_fast(Square::H1.to_bit_index()),  Some(Piece::WhiteRook));
-    assert_eq!(board.get_piece_at_square_fast(Square::A2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::B2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::C2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::D2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::E2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::F2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::G2.to_bit_index()), Some(Piece::WhitePawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::H2.to_bit_index()), Some(Piece::WhitePawn));
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::A1.to_bit_index()),
+        Some(Piece::WhiteRook)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::B1.to_bit_index()),
+        Some(Piece::WhiteKnight)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::C1.to_bit_index()),
+        Some(Piece::WhiteBishop)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::D1.to_bit_index()),
+        Some(Piece::WhiteQueen)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::E1.to_bit_index()),
+        Some(Piece::WhiteKing)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::F1.to_bit_index()),
+        Some(Piece::WhiteBishop)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::G1.to_bit_index()),
+        Some(Piece::WhiteKnight)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::H1.to_bit_index()),
+        Some(Piece::WhiteRook)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::A2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::B2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::C2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::D2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::E2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::F2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::G2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::H2.to_bit_index()),
+        Some(Piece::WhitePawn)
+    );
 
     // Black pieces:
-    assert_eq!(board.get_piece_at_square_fast(Square::A8.to_bit_index()), Some(Piece::BlackRook));
-    assert_eq!(board.get_piece_at_square_fast(Square::B8.to_bit_index()), Some(Piece::BlackKnight));
-    assert_eq!(board.get_piece_at_square_fast(Square::C8.to_bit_index()), Some(Piece::BlackBishop));
-    assert_eq!(board.get_piece_at_square_fast(Square::D8.to_bit_index()), Some(Piece::BlackQueen));
-    assert_eq!(board.get_piece_at_square_fast(Square::E8.to_bit_index()), Some(Piece::BlackKing));
-    assert_eq!(board.get_piece_at_square_fast(Square::F8.to_bit_index()), Some(Piece::BlackBishop));
-    assert_eq!(board.get_piece_at_square_fast(Square::G8.to_bit_index()), Some(Piece::BlackKnight));
-    assert_eq!(board.get_piece_at_square_fast(Square::H8.to_bit_index()),  Some(Piece::BlackRook));
-    assert_eq!(board.get_piece_at_square_fast(Square::A7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::B7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::C7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::D7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::E7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::F7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::G7.to_bit_index()), Some(Piece::BlackPawn));
-    assert_eq!(board.get_piece_at_square_fast(Square::H7.to_bit_index()), Some(Piece::BlackPawn));
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::A8.to_bit_index()),
+        Some(Piece::BlackRook)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::B8.to_bit_index()),
+        Some(Piece::BlackKnight)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::C8.to_bit_index()),
+        Some(Piece::BlackBishop)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::D8.to_bit_index()),
+        Some(Piece::BlackQueen)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::E8.to_bit_index()),
+        Some(Piece::BlackKing)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::F8.to_bit_index()),
+        Some(Piece::BlackBishop)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::G8.to_bit_index()),
+        Some(Piece::BlackKnight)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::H8.to_bit_index()),
+        Some(Piece::BlackRook)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::A7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::B7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::C7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::D7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::E7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::F7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::G7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
+    assert_eq!(
+        board.get_piece_at_square_fast(Square::H7.to_bit_index()),
+        Some(Piece::BlackPawn)
+    );
 
     // Castling rights
     assert!(board.white_kingside_castle_rights);
@@ -74,8 +170,24 @@ fn test_get_starting_board() {
     //     assert_eq!(board.piece_map[square.to_bit_index()], Some(board.get_piece_at_square_fast(square.to_bit_index())));
     // }
     // Composite bitboards
-    assert_eq!(board.any_white, board.white_pawns | board.white_knights | board.white_bishops | board.white_rooks | board.white_queen | board.white_king);
-    assert_eq!(board.any_black, board.black_pawns | board.black_knights | board.black_bishops | board.black_rooks | board.black_queen | board.black_king);
+    assert_eq!(
+        board.any_white,
+        board.white_pawns
+            | board.white_knights
+            | board.white_bishops
+            | board.white_rooks
+            | board.white_queen
+            | board.white_king
+    );
+    assert_eq!(
+        board.any_black,
+        board.black_pawns
+            | board.black_knights
+            | board.black_bishops
+            | board.black_rooks
+            | board.black_queen
+            | board.black_king
+    );
     assert_eq!(board.empty, !(board.any_white | board.any_black));
     // Ensure the board is valid
     // assert!(board.is_valid());
@@ -92,6 +204,4 @@ fn test_get_starting_board() {
     // // Ensure the board is not in stalemate
     // assert!(!board.is_stalemate(chesslib::Color::White));
     // assert!(!board.is_stalemate(chesslib::Color::Black));
-
-
 }

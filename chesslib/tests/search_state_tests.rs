@@ -2,7 +2,11 @@ use chesslib::search::SearchState;
 use chesslib::types::{Move, Square};
 
 fn mv(src: Square, target: Square) -> Move {
-    Move { src, target, promotion: None }
+    Move {
+        src,
+        target,
+        promotion: None,
+    }
 }
 
 #[test]
@@ -84,7 +88,7 @@ fn ply_out_of_range_is_a_no_op_not_a_panic() {
     let mut ss = SearchState::new();
     let m = mv(Square::E2, Square::E4);
     ss.record_cutoff(1000, m, 5, false); // way past MAX_SEARCH_PLY
-    // History is indexed by squares (always 0-63), so it should still update.
+                                         // History is indexed by squares (always 0-63), so it should still update.
     let from = Square::E2 as usize;
     let to = Square::E4 as usize;
     assert_eq!(ss.history[from][to], 25);

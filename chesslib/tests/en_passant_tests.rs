@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
-    use chesslib::types::Square;
     use chesslib::board_utils::get_starting_board;
+    use chesslib::types::Square;
 
     #[test]
     fn test_white_en_passant_after_black_double_push() {
@@ -10,12 +10,18 @@ mod tests {
         // Move white pawn to e4
         board.apply_move_from_string("e2e4");
         // Verify en-passant target is set correctly
-        assert_eq!(board.en_passant_target, Some(Square::try_from("e3").unwrap()));
+        assert_eq!(
+            board.en_passant_target,
+            Some(Square::try_from("e3").unwrap())
+        );
 
         // Move black pawn to f7 to f5 (double push)
         board.apply_move_from_string("f7f5");
         // Verify en-passant target is set correctly
-        assert_eq!(board.en_passant_target, Some(Square::try_from("f6").unwrap()));
+        assert_eq!(
+            board.en_passant_target,
+            Some(Square::try_from("f6").unwrap())
+        );
 
         // Get all moves for white
         let moves = board.get_next_moves(-1);
@@ -25,7 +31,10 @@ mod tests {
         assert_eq!(board.en_passant_target, None);
         board.apply_move_from_string("d7d5"); // black move d7 to d5 (this pawn can be captured en-passant)
 
-        assert_eq!(board.en_passant_target, Some(Square::try_from("d6").unwrap()));
+        assert_eq!(
+            board.en_passant_target,
+            Some(Square::try_from("d6").unwrap())
+        );
         // Now white can capture en-passant from e5 to d6 (capturing the black pawn on d5)
         board.apply_move_from_string("e5d6");
 
@@ -40,7 +49,10 @@ mod tests {
         // Move white pawn from e2 to e4 (double push)
         board.apply_move_from_string("e2e4");
         // Verify en-passant target is set correctly
-        assert_eq!(board.en_passant_target, Some(Square::try_from("e3").unwrap()));
+        assert_eq!(
+            board.en_passant_target,
+            Some(Square::try_from("e3").unwrap())
+        );
 
         // Move black pawn to f5 (double push)
         board.apply_move_from_string("f7f5");
@@ -58,7 +70,10 @@ mod tests {
         board.apply_move_from_string("g2g4");
 
         // Verify en-passant target is set correctly
-        assert_eq!(board.en_passant_target, Some(Square::try_from("g3").unwrap()));
+        assert_eq!(
+            board.en_passant_target,
+            Some(Square::try_from("g3").unwrap())
+        );
 
         // Get all moves for black
         let moves = board.get_next_moves(-1);

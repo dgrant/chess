@@ -3,9 +3,9 @@ use crate::logger::log_to_file;
 use crate::types::Color;
 use std::sync::Mutex;
 
-use lazy_static::lazy_static;
 use crate::board_utils::get_starting_board;
 use crate::fen::load_fen;
+use lazy_static::lazy_static;
 
 lazy_static! {
     static ref BOARD_STATE: Mutex<Option<Board>> = Mutex::new(None);
@@ -20,9 +20,11 @@ pub fn handle_uci_command(input: &str) -> String {
             let mut board_state = BOARD_STATE.lock().unwrap();
             *board_state = Some(get_starting_board()); // Reset the board state
             "".to_string()
-        },
+        }
         command if command.starts_with("position") => {
-            let mut board_state = BOARD_STATE.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+            let mut board_state = BOARD_STATE
+                .lock()
+                .unwrap_or_else(|poisoned| poisoned.into_inner());
             // Always reset to starting position when "startpos" is used
             if command.contains("startpos") {
                 *board_state = Some(get_starting_board());
@@ -31,7 +33,10 @@ pub fn handle_uci_command(input: &str) -> String {
                         let moves = moves_str.split_whitespace();
                         for move_str in moves {
                             board.apply_moves_from_strings(std::iter::once(move_str.to_string()));
-                            log_to_file(&format!("Position after {}: {}", move_str, board.to_fen()), true);
+                            log_to_file(
+                                &format!("Position after {}: {}", move_str, board.to_fen()),
+                                true,
+                            );
                         }
                     } else {
                         // Log initial position
@@ -44,9 +49,12 @@ pub fn handle_uci_command(input: &str) -> String {
                 let (fen_part, moves_part) = match command.find(" moves ") {
                     Some(moves_index) => {
                         let (fen, moves) = command.split_at(moves_index);
-                        (fen.strip_prefix("position fen ").unwrap(), Some(moves.strip_prefix(" moves ").unwrap()))
-                    },
-                    None => (command.strip_prefix("position fen ").unwrap(), None)
+                        (
+                            fen.strip_prefix("position fen ").unwrap(),
+                            Some(moves.strip_prefix(" moves ").unwrap()),
+                        )
+                    }
+                    None => (command.strip_prefix("position fen ").unwrap(), None),
                 };
 
                 // Load the FEN position
@@ -64,12 +72,17 @@ pub fn handle_uci_command(input: &str) -> String {
                             if let Some(board) = board_state.as_mut() {
                                 let moves = moves_str.split_whitespace();
                                 for move_str in moves {
-                                    board.apply_moves_from_strings(std::iter::once(move_str.to_string()));
-                                    log_to_file(&format!("Position after {}: {}", move_str, board.to_fen()), true);
+                                    board.apply_moves_from_strings(std::iter::once(
+                                        move_str.to_string(),
+                                    ));
+                                    log_to_file(
+                                        &format!("Position after {}: {}", move_str, board.to_fen()),
+                                        true,
+                                    );
                                 }
                             }
                         }
-                    },
+                    }
                     Err(e) => {
                         log_to_file(&format!("Error loading FEN position: {}", e), true);
                         *board_state = Some(get_starting_board());
@@ -85,7 +98,7 @@ pub fn handle_uci_command(input: &str) -> String {
                 }
             }
             "position set".to_string()
-        },
+        }
         command if command.starts_with("go") => {
             let mut board_state = BOARD_STATE.lock().unwrap();
             if let Some(board) = board_state.as_mut() {
@@ -126,7 +139,11 @@ pub fn handle_uci_command(input: &str) -> String {
                         // UCI: 'score cp' is from the engine's perspective (side to
                         // move), positive = engine is winning. Our find_best_move
                         // returns it in White's POV, so flip when Black is to move.
-                        let cp = if board.side_to_move == Color::Black { -score } else { score };
+                        let cp = if board.side_to_move == Color::Black {
+                            -score
+                        } else {
+                            score
+                        };
                         println!("info depth {} score cp {} pv {}", depth, cp, mv);
                         format!("bestmove {}", mv)
                     }
@@ -135,7 +152,7 @@ pub fn handle_uci_command(input: &str) -> String {
             } else {
                 "bestmove e2e4".to_string() // Default move if no position is set
             }
-        },
+        }
         "stop" => "calculation stopped".to_string(),
         _ => "Unknown command".to_string(),
     }

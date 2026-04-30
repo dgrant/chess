@@ -74,16 +74,28 @@ pub fn get_empty_board() -> Board {
 }
 
 pub fn get_starting_board() -> Board {
-    let white_pawns = (1 << (8 + 0)) + (1 << (8 + 1)) + (1 << (8 + 2)) + (1 << (8 + 3)) +
-                     (1 << (8 + 4)) + (1 << (8 + 5)) + (1 << (8 + 6)) + (1 << (8 + 7));
+    let white_pawns = (1 << (8 + 0))
+        + (1 << (8 + 1))
+        + (1 << (8 + 2))
+        + (1 << (8 + 3))
+        + (1 << (8 + 4))
+        + (1 << (8 + 5))
+        + (1 << (8 + 6))
+        + (1 << (8 + 7));
     let white_knights = (1 << (0 + 1)) + (1 << (0 + 6));
     let white_bishops = (1 << (0 + 2)) + (1 << (0 + 5));
     let white_rooks = (1 << (0 + 0)) + (1 << (0 + 7));
     let white_queen = 1 << (0 + 3);
     let white_king = 1 << (0 + 4);
 
-    let black_pawns = (1 << (48 + 0)) + (1 << (48 + 1)) + (1 << (48 + 2)) + (1 << (48 + 3)) +
-                     (1 << (48 + 4)) + (1 << (48 + 5)) + (1 << (48 + 6)) + (1 << (48 + 7));
+    let black_pawns = (1 << (48 + 0))
+        + (1 << (48 + 1))
+        + (1 << (48 + 2))
+        + (1 << (48 + 3))
+        + (1 << (48 + 4))
+        + (1 << (48 + 5))
+        + (1 << (48 + 6))
+        + (1 << (48 + 7));
     let black_knights = (1 << (56 + 1)) + (1 << (56 + 6));
     let black_bishops = (1 << (56 + 2)) + (1 << (56 + 5));
     let black_rooks = (1 << (56 + 0)) + (1 << (56 + 7));
@@ -131,7 +143,7 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     let mut result = String::new();
     for rank in (0..8).rev() {
         for file in 0..8 {
-            let square = 1u64 << (rank * 8 + file);  // Use 1u64 to ensure 64-bit shift
+            let square = 1u64 << (rank * 8 + file); // Use 1u64 to ensure 64-bit shift
             if bitboard & square != 0 {
                 result.push('1'); // Occupied square
             } else {
@@ -142,4 +154,3 @@ pub fn bitboard_to_string(bitboard: u64) -> String {
     }
     result
 }
-

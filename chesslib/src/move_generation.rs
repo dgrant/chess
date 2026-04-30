@@ -1,27 +1,27 @@
 // File masks to prevent wrapping around the board edges
-const NOT_A_FILE: u64 = 0xfefefefefefefefe;  // ~(0x0101010101010101)
-const NOT_H_FILE: u64 = 0x7f7f7f7f7f7f7f7f;  // ~(0x8080808080808080)
+const NOT_A_FILE: u64 = 0xfefefefefefefefe; // ~(0x0101010101010101)
+const NOT_H_FILE: u64 = 0x7f7f7f7f7f7f7f7f; // ~(0x8080808080808080)
 
 // Additional file masks for knight moves
-const NOT_AB_FILE: u64 = 0xfcfcfcfcfcfcfcfc;  // ~(0x0303030303030303)
-const NOT_GH_FILE: u64 = 0x3f3f3f3f3f3f3f3f;  // ~(0xc0c0c0c0c0c0c0c0)
+const NOT_AB_FILE: u64 = 0xfcfcfcfcfcfcfcfc; // ~(0x0303030303030303)
+const NOT_GH_FILE: u64 = 0x3f3f3f3f3f3f3f3f; // ~(0xc0c0c0c0c0c0c0c0)
 
 // White pawn capture moves
 pub fn w_pawn_east_attacks(wp: u64) -> u64 {
-    (wp & NOT_H_FILE) << 9  // Must mask BEFORE shifting to prevent wrapping
+    (wp & NOT_H_FILE) << 9 // Must mask BEFORE shifting to prevent wrapping
 }
 
 pub fn w_pawn_west_attacks(wp: u64) -> u64 {
-    (wp & NOT_A_FILE) << 7  // Must mask BEFORE shifting to prevent wrapping
+    (wp & NOT_A_FILE) << 7 // Must mask BEFORE shifting to prevent wrapping
 }
 
 // Black pawn capture moves
 pub fn b_pawn_east_attacks(bp: u64) -> u64 {
-    (bp & NOT_H_FILE) >> 7  // Must mask BEFORE shifting to prevent wrapping
+    (bp & NOT_H_FILE) >> 7 // Must mask BEFORE shifting to prevent wrapping
 }
 
 pub fn b_pawn_west_attacks(bp: u64) -> u64 {
-    (bp & NOT_A_FILE) >> 9  // Must mask BEFORE shifting to prevent wrapping
+    (bp & NOT_A_FILE) >> 9 // Must mask BEFORE shifting to prevent wrapping
 }
 
 // Combine all pawn attacks for a side
@@ -53,7 +53,7 @@ pub fn w_pawns_able_to_double_push(wpawns: u64, empty: u64) -> u64 {
 }
 
 pub fn b_pawns_able_to_push(bpawns: u64, empty: u64) -> u64 {
-    (empty << 8) & bpawns  // Shift empty squares UP to check squares BELOW the pawns
+    (empty << 8) & bpawns // Shift empty squares UP to check squares BELOW the pawns
 }
 
 pub fn b_pawns_able_to_double_push(bpawns: u64, empty: u64) -> u64 {
@@ -67,20 +67,20 @@ pub fn knight_moves(knights: u64) -> u64 {
     let mut moves = 0u64;
 
     // North movements (up 2, left/right 1)
-    moves |= (knights & NOT_A_FILE) << 15;  // Up 2, left 1
-    moves |= (knights & NOT_H_FILE) << 17;  // Up 2, right 1
+    moves |= (knights & NOT_A_FILE) << 15; // Up 2, left 1
+    moves |= (knights & NOT_H_FILE) << 17; // Up 2, right 1
 
     // South movements (down 2, left/right 1)
-    moves |= (knights & NOT_A_FILE) >> 17;  // Down 2, left 1
-    moves |= (knights & NOT_H_FILE) >> 15;  // Down 2, right 1
+    moves |= (knights & NOT_A_FILE) >> 17; // Down 2, left 1
+    moves |= (knights & NOT_H_FILE) >> 15; // Down 2, right 1
 
     // East movements (right 2, up/down 1)
-    moves |= (knights & NOT_GH_FILE) << 10;  // Right 2, up 1
-    moves |= (knights & NOT_GH_FILE) >> 6;   // Right 2, down 1
+    moves |= (knights & NOT_GH_FILE) << 10; // Right 2, up 1
+    moves |= (knights & NOT_GH_FILE) >> 6; // Right 2, down 1
 
     // West movements (left 2, up/down 1)
-    moves |= (knights & NOT_AB_FILE) << 6;   // Left 2, up 1
-    moves |= (knights & NOT_AB_FILE) >> 10;  // Left 2, down 1
+    moves |= (knights & NOT_AB_FILE) << 6; // Left 2, up 1
+    moves |= (knights & NOT_AB_FILE) >> 10; // Left 2, down 1
 
     moves
 }
@@ -102,17 +102,18 @@ pub fn bishop_moves(bishops: u64, friendly_pieces: u64, enemy_pieces: u64) -> u6
 
     while working_bishops != 0 {
         let bishop_pos = working_bishops.trailing_zeros() as u8;
-        working_bishops &= working_bishops - 1;  // Clear the processed bit
+        working_bishops &= working_bishops - 1; // Clear the processed bit
 
         // Northeast diagonal
         let mut pos = bishop_pos;
-        while pos % 8 != 7 && pos < 56 { // While not on h-file and not on rank 8
+        while pos % 8 != 7 && pos < 56 {
+            // While not on h-file and not on rank 8
             pos += 9;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -120,13 +121,14 @@ pub fn bishop_moves(bishops: u64, friendly_pieces: u64, enemy_pieces: u64) -> u6
 
         // Southeast diagonal
         pos = bishop_pos;
-        while pos % 8 != 7 && pos >= 8 { // While not on h-file and not on rank 1
+        while pos % 8 != 7 && pos >= 8 {
+            // While not on h-file and not on rank 1
             pos -= 7;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -134,13 +136,14 @@ pub fn bishop_moves(bishops: u64, friendly_pieces: u64, enemy_pieces: u64) -> u6
 
         // Southwest diagonal
         pos = bishop_pos;
-        while pos % 8 != 0 && pos >= 8 { // While not on a-file and not on rank 1
+        while pos % 8 != 0 && pos >= 8 {
+            // While not on a-file and not on rank 1
             pos -= 9;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -148,13 +151,14 @@ pub fn bishop_moves(bishops: u64, friendly_pieces: u64, enemy_pieces: u64) -> u6
 
         // Northwest diagonal
         pos = bishop_pos;
-        while pos % 8 != 0 && pos < 56 { // While not on a-file and not on rank 8
+        while pos % 8 != 0 && pos < 56 {
+            // While not on a-file and not on rank 8
             pos += 7;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -174,17 +178,18 @@ pub fn rook_moves_impl1(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> 
 
     while working_rooks != 0 {
         let rook_pos = working_rooks.trailing_zeros() as u8;
-        working_rooks &= working_rooks - 1;  // Clear the processed bit
+        working_rooks &= working_rooks - 1; // Clear the processed bit
 
         // North (up)
         let mut pos = rook_pos;
-        while pos < 56 { // While not on rank 8
+        while pos < 56 {
+            // While not on rank 8
             pos += 8;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -192,13 +197,14 @@ pub fn rook_moves_impl1(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> 
 
         // South (down)
         pos = rook_pos;
-        while pos >= 8 { // While not on rank 1
+        while pos >= 8 {
+            // While not on rank 1
             pos -= 8;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -206,13 +212,14 @@ pub fn rook_moves_impl1(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> 
 
         // East (right)
         pos = rook_pos;
-        while pos % 8 != 7 { // While not on h-file
+        while pos % 8 != 7 {
+            // While not on h-file
             pos += 1;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -220,13 +227,14 @@ pub fn rook_moves_impl1(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> 
 
         // West (left)
         pos = rook_pos;
-        while pos % 8 != 0 { // While not on a-file
+        while pos % 8 != 0 {
+            // While not on a-file
             pos -= 1;
             let target = 1u64 << pos;
             if friendly_pieces & target != 0 {
                 break; // Stop at friendly piece
             }
-            moves |= target;  // Add this square as a valid move
+            moves |= target; // Add this square as a valid move
             if enemy_pieces & target != 0 {
                 break; // Stop after capturing enemy piece
             }
@@ -237,7 +245,8 @@ pub fn rook_moves_impl1(rooks: u64, friendly_pieces: u64, enemy_pieces: u64) -> 
 
 // Queen moves combine bishop and rook moves
 pub fn queen_moves(queens: u64, friendly_pieces: u64, enemy_pieces: u64) -> u64 {
-    bishop_moves(queens, friendly_pieces, enemy_pieces) | rook_moves(queens, friendly_pieces, enemy_pieces)
+    bishop_moves(queens, friendly_pieces, enemy_pieces)
+        | rook_moves(queens, friendly_pieces, enemy_pieces)
 }
 
 // Legal moves are already computed in queen_moves
@@ -250,16 +259,16 @@ pub fn king_moves(kings: u64) -> u64 {
     let mut moves = 0u64;
 
     // Orthogonal moves
-    moves |= (kings & NOT_H_FILE) << 1;     // Right
-    moves |= (kings & NOT_A_FILE) >> 1;     // Left
-    moves |= kings << 8;                    // Up
-    moves |= kings >> 8;                    // Down
+    moves |= (kings & NOT_H_FILE) << 1; // Right
+    moves |= (kings & NOT_A_FILE) >> 1; // Left
+    moves |= kings << 8; // Up
+    moves |= kings >> 8; // Down
 
     // Diagonal moves
-    moves |= (kings & NOT_H_FILE) << 9;     // Up-right
-    moves |= (kings & NOT_A_FILE) << 7;     // Up-left
-    moves |= (kings & NOT_H_FILE) >> 7;     // Down-right
-    moves |= (kings & NOT_A_FILE) >> 9;     // Down-left
+    moves |= (kings & NOT_H_FILE) << 9; // Up-right
+    moves |= (kings & NOT_A_FILE) << 7; // Up-left
+    moves |= (kings & NOT_H_FILE) >> 7; // Down-right
+    moves |= (kings & NOT_A_FILE) >> 9; // Down-left
 
     moves
 }
@@ -272,15 +281,21 @@ pub fn king_legal_moves(kings: u64, friendly_pieces: u64) -> u64 {
 // Get en-passant attack targets for pawns
 pub fn w_pawns_en_passant_targets(wp: u64, ep_square: u64) -> u64 {
     // It is assumed that ep_square is on the 6th rank.
-    assert !(ep_square & 0x0000FF0000000000 != 0, "En-passant square must be on the 6th rank");
-        
+    assert!(
+        ep_square & 0x0000FF0000000000 != 0,
+        "En-passant square must be on the 6th rank"
+    );
+
     // Calculate which pawns can make the en-passant capture
     w_pawn_attacks(wp) & ep_square
 }
 
 pub fn b_pawns_en_passant_targets(bp: u64, ep_square: u64) -> u64 {
     // It is assumed that ep_square is on the 3rd rank.
-    assert!(ep_square & 0x0000000000FF0000 != 0, "En-passant square must be on the 3rd rank");
+    assert!(
+        ep_square & 0x0000000000FF0000 != 0,
+        "En-passant square must be on the 3rd rank"
+    );
     // Calculate which pawns can make the en-passant capture
     b_pawn_attacks(bp) & ep_square
 }

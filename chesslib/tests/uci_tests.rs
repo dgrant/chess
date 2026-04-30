@@ -4,7 +4,10 @@ mod tests {
 
     #[test]
     fn test_handle_uci_command() {
-        assert_eq!(handle_uci_command("uci"), "id name ChessEngine\nid author YourName\nuciok");
+        assert_eq!(
+            handle_uci_command("uci"),
+            "id name ChessEngine\nid author YourName\nuciok"
+        );
         assert_eq!(handle_uci_command("isready"), "readyok");
         assert_eq!(handle_uci_command("quit"), "");
         assert_eq!(handle_uci_command("unknown"), "Unknown command");
@@ -18,14 +21,20 @@ mod tests {
 
     #[test]
     fn test_handle_uci_position() {
-        assert_eq!(handle_uci_command("position startpos moves e2e4"), "position set");
+        assert_eq!(
+            handle_uci_command("position startpos moves e2e4"),
+            "position set"
+        );
     }
 
     #[test]
     fn test_handle_uci_go() {
         handle_uci_command("position startpos moves e2e4"); // Set position
         let response = handle_uci_command("go");
-        assert!(response.starts_with("bestmove"), "Response should start with 'bestmove'");
+        assert!(
+            response.starts_with("bestmove"),
+            "Response should start with 'bestmove'"
+        );
     }
 
     #[test]
@@ -48,13 +57,18 @@ mod tests {
 
         // First character should be either a pawn move from rank 7 or a knight move from rank 8
         let rank = black_move.chars().nth(1).unwrap();
-        assert!(rank == '7' || rank == '8', "Should be Black's move from rank 7 (pawn) or rank 8 (knight)");
+        assert!(
+            rank == '7' || rank == '8',
+            "Should be Black's move from rank 7 (pawn) or rank 8 (knight)"
+        );
     }
 
     #[test]
     fn test_fen_position() {
         // Test loading a simple FEN position
-        let response = handle_uci_command("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1");
+        let response = handle_uci_command(
+            "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+        );
         assert_eq!(response, "position set");
 
         // Verify the position by making a move
@@ -65,15 +79,19 @@ mod tests {
     #[test]
     fn test_fen_position_with_moves() {
         // Test loading a FEN position and applying moves
-        let response = handle_uci_command("position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves e7e5");
+        let response = handle_uci_command(
+            "position fen rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1 moves e7e5",
+        );
         assert_eq!(response, "position set");
 
         // Verify it's white to move after black's e7e5
         let move_response = handle_uci_command("go");
         assert!(move_response.starts_with("bestmove"));
         let white_move = move_response.split_whitespace().nth(1).unwrap();
-        assert!(white_move.chars().nth(1).unwrap() == '1' || white_move.chars().nth(1).unwrap() == '2',
-               "Should be White's move from rank 1 or 2");
+        assert!(
+            white_move.chars().nth(1).unwrap() == '1' || white_move.chars().nth(1).unwrap() == '2',
+            "Should be White's move from rank 1 or 2"
+        );
     }
 
     #[test]
@@ -98,7 +116,8 @@ mod tests {
         assert!(go_response.starts_with("bestmove"));
 
         // Now try the move
-        let response = handle_uci_command("position fen 8/8/8/4k3/4P3/4K3/8/8 b - - 0 1 moves e5e4");
+        let response =
+            handle_uci_command("position fen 8/8/8/4k3/4P3/4K3/8/8 b - - 0 1 moves e5e4");
         assert_eq!(response, "position set");
 
         // Verify it's white to move after black's e5e4

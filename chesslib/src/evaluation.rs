@@ -2,18 +2,18 @@
 // they have a single home shared with Piece::material_value().
 
 /// Positional bonuses in centipawns
-const CENTER_CONTROL_BONUS: i64 = 10;    // Bonus for controlling center squares
-const CHECK_BONUS: i64 = 50;             // Bonus for giving check
-const BISHOP_PAIR_BONUS: i64 = 25;       // Bonus for having both bishops
-const CHECKMATE_BONUS: i64 = 100000;     // Large bonus for checkmate
-// const DRAW_SCORE: i64 = 0;               // Score for drawn positions
-const CASTLED_BONUS: i64 = 75;           // Bonus for having castled (king safety)
-const CASTLING_RIGHTS_BONUS: i64 = 20;   // Bonus for each available castling right
-const MOBILITY_BONUS: i64 = 5;           // Bonus per available move for piece mobility
+const CENTER_CONTROL_BONUS: i64 = 10; // Bonus for controlling center squares
+const CHECK_BONUS: i64 = 50; // Bonus for giving check
+const BISHOP_PAIR_BONUS: i64 = 25; // Bonus for having both bishops
+const CHECKMATE_BONUS: i64 = 100000; // Large bonus for checkmate
+                                     // const DRAW_SCORE: i64 = 0;               // Score for drawn positions
+const CASTLED_BONUS: i64 = 75; // Bonus for having castled (king safety)
+const CASTLING_RIGHTS_BONUS: i64 = 20; // Bonus for each available castling right
+const MOBILITY_BONUS: i64 = 5; // Bonus per available move for piece mobility
 
 use crate::board::Board;
-use crate::types::{Color, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE};
-use crate::move_generation::{knight_legal_moves, bishop_moves, rook_moves};
+use crate::move_generation::{bishop_moves, knight_legal_moves, rook_moves};
+use crate::types::{Color, BISHOP_VALUE, KNIGHT_VALUE, PAWN_VALUE, QUEEN_VALUE, ROOK_VALUE};
 use crate::Square;
 
 impl Board {
@@ -67,7 +67,7 @@ impl Board {
         // Bishop pair bonus
         if self.white_bishops.count_ones() >= 2 {
             score += BISHOP_PAIR_BONUS;
-        // Add a bonus for check (50 centipawns)
+            // Add a bonus for check (50 centipawns)
         }
         if self.black_bishops.count_ones() >= 2 {
             score -= BISHOP_PAIR_BONUS;
@@ -87,8 +87,10 @@ impl Board {
 
         // Extended center control (e3, e6, d3, d6, c4, c5, f4, f5)
         let extended_center = 0x00003C3C3C3C0000u64;
-        score += ((self.any_white & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
-        score -= ((self.any_black & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
+        score +=
+            ((self.any_white & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
+        score -=
+            ((self.any_black & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
 
         // Mobility evaluation for pieces
         score += self.evaluate_piece_mobility();
@@ -118,20 +120,22 @@ impl Board {
         }
 
         // Check if kings have moved to typical castled positions
-        let white_king_kingside = self.white_king & Square::G1.to_bitboard();  // g1
-        let white_king_queenside = self.white_king & Square::C1.to_bitboard();  // c1
-        let black_king_kingside = self.black_king & Square::G8.to_bitboard();  // g8
-        let black_king_queenside = self.black_king & Square::C8.to_bitboard();  // c8
+        let white_king_kingside = self.white_king & Square::G1.to_bitboard(); // g1
+        let white_king_queenside = self.white_king & Square::C1.to_bitboard(); // c1
+        let black_king_kingside = self.black_king & Square::G8.to_bitboard(); // g8
+        let black_king_queenside = self.black_king & Square::C8.to_bitboard(); // c8
 
         // Evaluate actual castled positions
         // We check if the king is in a castled position AND we've lost the corresponding castling right
         // This ensures we're detecting actual castling rather than just a king walk
-        if (white_king_kingside != 0 && !self.white_kingside_castle_rights) ||
-           (white_king_queenside != 0 && !self.white_queenside_castle_rights) {
+        if (white_king_kingside != 0 && !self.white_kingside_castle_rights)
+            || (white_king_queenside != 0 && !self.white_queenside_castle_rights)
+        {
             score += CASTLED_BONUS;
         }
-        if (black_king_kingside != 0 && !self.black_kingside_castle_rights) ||
-           (black_king_queenside != 0 && !self.black_queenside_castle_rights) {
+        if (black_king_kingside != 0 && !self.black_kingside_castle_rights)
+            || (black_king_queenside != 0 && !self.black_queenside_castle_rights)
+        {
             score -= CASTLED_BONUS;
         }
 

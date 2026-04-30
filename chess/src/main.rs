@@ -4,7 +4,7 @@ use std::io::{self, BufRead, Write};
 
 fn main() {
     chesslib::logger::set_log_path("/home/dgrant/git_personal/rust/chess/engine.log");
-    
+
     let stdin = io::stdin();
     let mut input = String::new();
 

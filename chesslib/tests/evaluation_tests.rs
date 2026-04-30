@@ -16,7 +16,10 @@ fn test_castling_bonus() {
     board.apply_move_from_string("e1g1"); // White castles kingside
 
     let after_white_castle = board.evaluate();
-    assert!(after_white_castle > initial_eval, "Evaluation should increase after white castles");
+    assert!(
+        after_white_castle > initial_eval,
+        "Evaluation should increase after white castles"
+    );
 
     // Castle black kingside
     board.apply_move_from_string("f8e7");
@@ -24,7 +27,10 @@ fn test_castling_bonus() {
     board.apply_move_from_string("e8g8"); // Black castles kingside
 
     let after_both_castle = board.evaluate();
-    assert!(after_both_castle < after_white_castle, "Evaluation should decrease after black also castles");
+    assert!(
+        after_both_castle < after_white_castle,
+        "Evaluation should decrease after black also castles"
+    );
 }
 
 #[test]
@@ -42,7 +48,7 @@ fn test_material_advantage() {
     assert_eq!(board.evaluate(), 45); // white gains some freedom for queen, and pawn in center
     board.apply_move_from_string("d7d5");
     assert_eq!(board.evaluate(), 0); // black gains the same, net even
-    // Capture a black pawn
+                                     // Capture a black pawn
     board.apply_move_from_string("e4d5");
     assert_eq!(board.evaluate(), 115); // white captures a pawn, and black has lost a pawn in center too
 

@@ -35,7 +35,10 @@ mod alpha_beta_tests {
         let mut board = load_fen(fen).expect("Valid FEN");
 
         let (best_move, _score) = board.find_best_move(4);
-        assert!(best_move.is_some(), "Should find a best move in tactical position");
+        assert!(
+            best_move.is_some(),
+            "Should find a best move in tactical position"
+        );
 
         // Verify the move is legal
         let mv = best_move.unwrap();
@@ -52,7 +55,10 @@ mod alpha_beta_tests {
         let duration = start.elapsed();
 
         assert!(best_move.is_some(), "Should find a move");
-        assert!(duration.as_secs() < 10, "Alpha-beta should complete in reasonable time");
+        assert!(
+            duration.as_secs() < 10,
+            "Alpha-beta should complete in reasonable time"
+        );
 
         println!("Alpha-beta search depth 4 took: {:?}", duration);
     }
@@ -66,9 +72,15 @@ mod alpha_beta_tests {
         // In a checkmate position, there should be no legal moves
         let (best_move, _score) = board.find_best_move(2);
         if board.is_checkmate() {
-            assert!(best_move.is_none(), "Should find no moves in checkmate position");
+            assert!(
+                best_move.is_none(),
+                "Should find no moves in checkmate position"
+            );
         } else {
-            assert!(best_move.is_some(), "Should find a move in non-checkmate position");
+            assert!(
+                best_move.is_some(),
+                "Should find a move in non-checkmate position"
+            );
         }
     }
 
@@ -86,6 +98,9 @@ mod alpha_beta_tests {
         // Apply the move and verify it makes sense
         board.apply_move(&mv);
         // The position should still be valid after the move
-        assert!(!board.is_checkmate(), "Position should not be checkmate after best move");
+        assert!(
+            !board.is_checkmate(),
+            "Position should not be checkmate after best move"
+        );
     }
 }

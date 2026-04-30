@@ -1,9 +1,9 @@
+use chrono::Local;
+use once_cell::sync::OnceCell;
 use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use std::sync::Mutex;
-use once_cell::sync::OnceCell;
-use chrono::Local;
 
 static LOG_PATH: OnceCell<PathBuf> = OnceCell::new();
 static LOG_FILE: OnceCell<Mutex<Option<File>>> = OnceCell::new();
@@ -36,7 +36,10 @@ fn get_log_path() -> PathBuf {
     } else {
         // Default path with date and time
         let datetime_str = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-        PathBuf::from(format!("/home/dgrant/git_personal/rust/chess/engine_{}.log", datetime_str))
+        PathBuf::from(format!(
+            "/home/dgrant/git_personal/rust/chess/engine_{}.log",
+            datetime_str
+        ))
     }
 }
 
@@ -89,7 +92,13 @@ pub fn log_to_file(message: &str, append: bool) {
             (write_result, flush_result)
         } else {
             // This shouldn't happen, but handle it gracefully
-            (Err(std::io::Error::new(std::io::ErrorKind::Other, "No file available")), Ok(()))
+            (
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "No file available",
+                )),
+                Ok(()),
+            )
         }
     }; // Lock is released here
 

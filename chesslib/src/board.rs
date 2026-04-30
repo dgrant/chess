@@ -1,13 +1,11 @@
 use crate::board_utils;
 use crate::board_utils::get_starting_board;
-use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use crate::move_generation::{
-    b_pawns_attack_targets, bishop_moves,
-    king_legal_moves, knight_legal_moves,
-    rook_moves,
+    b_pawns_attack_targets, bishop_moves, king_legal_moves, knight_legal_moves, rook_moves,
     w_pawns_attack_targets,
 };
 use crate::search::SearchState;
+use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
 use std::time::{Duration, Instant};
 
 /// Read once at startup. When set, suppresses random tie-breaking in move
@@ -27,7 +25,7 @@ pub struct BoardState {
     pub black_queenside_castle_rights: bool,
     pub en_passant_target: Option<Square>,
     pub last_move: Move,
-    pub rook_castle_move: Option<Move>,  // Stores the rook's move during castling
+    pub rook_castle_move: Option<Move>, // Stores the rook's move during castling
     pub captured_piece: Option<Piece>,
     pub captured_piece_square: Option<Square>,
 }
@@ -87,7 +85,7 @@ impl Board {
     fn move_piece_in_map(&mut self, from: u8, to: u8) {
         let p = self.piece_map[from as usize];
         self.piece_map[from as usize] = None;
-        self.piece_map[to   as usize] = p;
+        self.piece_map[to as usize] = p;
     }
 
     fn remove_piece_in_map(&mut self, at: u8) {
@@ -114,18 +112,18 @@ impl Board {
             }};
         }
 
-        fill!(self.white_pawns,   Piece::WhitePawn);
-        fill!(self.black_pawns,   Piece::BlackPawn);
+        fill!(self.white_pawns, Piece::WhitePawn);
+        fill!(self.black_pawns, Piece::BlackPawn);
         fill!(self.white_knights, Piece::WhiteKnight);
         fill!(self.black_knights, Piece::BlackKnight);
         fill!(self.white_bishops, Piece::WhiteBishop);
         fill!(self.black_bishops, Piece::BlackBishop);
-        fill!(self.white_rooks,   Piece::WhiteRook);
-        fill!(self.black_rooks,   Piece::BlackRook);
-        fill!(self.white_queen,   Piece::WhiteQueen);
-        fill!(self.black_queen,   Piece::BlackQueen);
-        fill!(self.white_king,    Piece::WhiteKing);
-        fill!(self.black_king,    Piece::BlackKing);
+        fill!(self.white_rooks, Piece::WhiteRook);
+        fill!(self.black_rooks, Piece::BlackRook);
+        fill!(self.white_queen, Piece::WhiteQueen);
+        fill!(self.black_queen, Piece::BlackQueen);
+        fill!(self.white_king, Piece::WhiteKing);
+        fill!(self.black_king, Piece::BlackKing);
     }
 
     /// Returns the Unicode character representation of the chess piece at the given coordinate
@@ -142,7 +140,7 @@ impl Board {
         let bitboard_index = Square::try_from(coordinate).unwrap().to_bit_index();
         match self.get_piece_at_square_fast(bitboard_index) {
             Some(piece) => piece.to_unicode(),
-            None => SPACE
+            None => SPACE,
         }
     }
 
@@ -150,7 +148,7 @@ impl Board {
         let bitboard_index = Square::try_from(coordinate).unwrap().to_bit_index();
         match self.get_piece_at_square_fast(bitboard_index) {
             Some(piece) => piece.to_fen(),
-            None => SPACE
+            None => SPACE,
         }
     }
 
@@ -165,11 +163,14 @@ impl Board {
         // Check if there is a piece at the source square
         // Check if the piece belongs to the side to move
         if source_piece.color() != self.side_to_move {
-            panic!("Piece at source square {} does not match side to move: {:?}", mv.src, self.side_to_move);
+            panic!(
+                "Piece at source square {} does not match side to move: {:?}",
+                mv.src, self.side_to_move
+            );
         }
 
         let piece = source_piece; // Now safe to unwrap and move
-        // Check for en-passant capture before storing state
+                                  // Check for en-passant capture before storing state
         let is_en_passant = match piece {
             Piece::WhitePawn | Piece::BlackPawn => {
                 if let Some(ep_square) = self.en_passant_target {
@@ -177,7 +178,7 @@ impl Board {
                 } else {
                     false
                 }
-            },
+            }
             _ => false,
         };
 
@@ -190,13 +191,10 @@ impl Board {
             };
             (
                 self.get_piece_at_square_fast(captured_pawn_square),
-                Some(Square::from_bit_index(captured_pawn_square))
+                Some(Square::from_bit_index(captured_pawn_square)),
             )
         } else {
-            (
-                target_piece.clone(),
-                Some(mv.target)
-            )
+            (target_piece.clone(), Some(mv.target))
         };
 
         // Now store the state with the correct captured piece
@@ -215,8 +213,6 @@ impl Board {
         // Store the state before making any changes
         self.move_history.push(current_state);
 
-
-
         // First, identify if this is a castling move
         // TODO: Use Square enum instead of target_idx for clarity
         let is_castle = match piece {
@@ -229,10 +225,14 @@ impl Board {
         if is_castle {
             match piece {
                 Piece::WhiteKing => {
-                    if target_idx == 6 {  // g1 - kingside castle
-                        debug_assert!(self.white_kingside_castle_rights, "Attempting kingside castle without rights");
+                    if target_idx == 6 {
+                        // g1 - kingside castle
+                        debug_assert!(
+                            self.white_kingside_castle_rights,
+                            "Attempting kingside castle without rights"
+                        );
                         // TODO: use Square enum instead of hardcoded indices
-                        self.white_rooks ^= (1u64 << 7) | (1u64 << 5);  // h1 to f1
+                        self.white_rooks ^= (1u64 << 7) | (1u64 << 5); // h1 to f1
                         self.move_piece_in_map(7, 5);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
@@ -242,10 +242,14 @@ impl Board {
                                 promotion: None,
                             });
                         }
-                    } else if target_idx == 2 {  // c1 - queenside castle
-                        debug_assert!(self.white_queenside_castle_rights, "Attempting queenside castle without rights");
+                    } else if target_idx == 2 {
+                        // c1 - queenside castle
+                        debug_assert!(
+                            self.white_queenside_castle_rights,
+                            "Attempting queenside castle without rights"
+                        );
                         // TODO: use Square enum instead of hardcoded indices
-                        self.white_rooks ^= 1u64 | (1u64 << 3);  // a1 to d1
+                        self.white_rooks ^= 1u64 | (1u64 << 3); // a1 to d1
                         self.move_piece_in_map(0, 3);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
@@ -256,12 +260,16 @@ impl Board {
                             });
                         }
                     }
-                },
+                }
                 Piece::BlackKing => {
-                    if target_idx == 62 {  // g8 - kingside castle
-                        debug_assert!(self.black_kingside_castle_rights, "Attempting kingside castle without rights");
+                    if target_idx == 62 {
+                        // g8 - kingside castle
+                        debug_assert!(
+                            self.black_kingside_castle_rights,
+                            "Attempting kingside castle without rights"
+                        );
                         // TODO: use Square enum instead of hardcoded indices
-                        self.black_rooks ^= (1u64 << 63) | (1u64 << 61);  // h8 to f8
+                        self.black_rooks ^= (1u64 << 63) | (1u64 << 61); // h8 to f8
                         self.move_piece_in_map(63, 61);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
@@ -271,10 +279,14 @@ impl Board {
                                 promotion: None,
                             });
                         }
-                    } else if target_idx == 58 {  // c8 - queenside castle
-                        debug_assert!(self.black_queenside_castle_rights, "Attempting queenside castle without rights");
+                    } else if target_idx == 58 {
+                        // c8 - queenside castle
+                        debug_assert!(
+                            self.black_queenside_castle_rights,
+                            "Attempting queenside castle without rights"
+                        );
                         // TODO: use Square enum instead of hardcoded indices
-                        self.black_rooks ^= (1u64 << 56) | (1u64 << 59);  // a8 to d8
+                        self.black_rooks ^= (1u64 << 56) | (1u64 << 59); // a8 to d8
                         self.move_piece_in_map(56, 59);
                         // Store the rook's move for undoing later
                         if let Some(state) = self.move_history.last_mut() {
@@ -285,7 +297,7 @@ impl Board {
                             });
                         }
                     }
-                },
+                }
                 _ => {}
             }
         }
@@ -322,7 +334,7 @@ impl Board {
                     Piece::BlackQueen => &mut self.black_queen,
                     Piece::BlackKing => &mut self.black_king,
                 };
-                *captured_bitboard &= !to_bit;  // Clear the captured piece's bit
+                *captured_bitboard &= !to_bit; // Clear the captured piece's bit
                 self.remove_piece_in_map(target_idx);
             }
         }
@@ -340,20 +352,24 @@ impl Board {
             Piece::WhiteRook => {
                 // Check if it's the kingside or queenside rook
                 // TODO: use Square enum instead of hardcoded indices
-                if src_idx == 7 { // h1
+                if src_idx == 7 {
+                    // h1
                     self.white_kingside_castle_rights = false;
                 // TODO: use Square enum instead of hardcoded indices
-                } else if src_idx == 0 { // a1
+                } else if src_idx == 0 {
+                    // a1
                     self.white_queenside_castle_rights = false;
                 }
             }
             Piece::BlackRook => {
                 // Check if it's the kingside or queenside rook
                 // TODO: use Square enum instead of hardcoded indices
-                if src_idx == 63 { // h8
+                if src_idx == 63 {
+                    // h8
                     self.black_kingside_castle_rights = false;
                 // TODO: use Square enum instead of hardcoded indices
-                } else if src_idx == 56 { // a8
+                } else if src_idx == 56 {
+                    // a8
                     self.black_queenside_castle_rights = false;
                 }
             }
@@ -365,19 +381,23 @@ impl Board {
             match target_piece.unwrap() {
                 Piece::WhiteRook => {
                     // TODO: use Square enum instead of hardcoded indices
-                    if target_idx == 7 { // h1
+                    if target_idx == 7 {
+                        // h1
                         self.white_kingside_castle_rights = false;
                     // TODO: use Square enum instead of hardcoded indices
-                    } else if target_idx == 0 { // a1
+                    } else if target_idx == 0 {
+                        // a1
                         self.white_queenside_castle_rights = false;
                     }
                 }
                 Piece::BlackRook => {
                     // TODO: use Square enum instead of hardcoded indices
-                    if target_idx == 63 { // h8
+                    if target_idx == 63 {
+                        // h8
                         self.black_kingside_castle_rights = false;
                     // TODO: use Square enum instead of hardcoded indices
-                    } else if target_idx == 56 { // a8
+                    } else if target_idx == 56 {
+                        // a8
                         self.black_queenside_castle_rights = false;
                     }
                 }
@@ -401,8 +421,8 @@ impl Board {
                 Piece::BlackQueen => &mut self.black_queen,
                 Piece::BlackKing => &mut self.black_king,
             };
-            *piece_bitboard ^= from_bit;  // Clear the source square
-            *piece_bitboard |= to_bit;    // Set the target square
+            *piece_bitboard ^= from_bit; // Clear the source square
+            *piece_bitboard |= to_bit; // Set the target square
         }
         self.move_piece_in_map(src_idx, target_idx);
 
@@ -411,23 +431,50 @@ impl Board {
             Piece::WhitePawn if src_idx / 8 == 1 && target_idx / 8 == 3 => {
                 // White pawn double push
                 Some(Square::from_bit_index(src_idx + 8))
-            },
+            }
             Piece::BlackPawn if src_idx / 8 == 6 && target_idx / 8 == 4 => {
                 // Black pawn double push
                 Some(Square::from_bit_index(src_idx - 8))
-            },
-            _ => None
+            }
+            _ => None,
         };
 
         // Handle promotions if any
         if mv.promotion.is_some() {
-            assert!(piece == Piece::WhitePawn || piece == Piece::BlackPawn, "Promotion can only be applied to pawns");
+            assert!(
+                piece == Piece::WhitePawn || piece == Piece::BlackPawn,
+                "Promotion can only be applied to pawns"
+            );
             // Handle promotion
             let promotion_piece = match mv.promotion.unwrap() {
-                PieceType::Queen => if piece == Piece::WhitePawn { Piece::WhiteQueen } else { Piece::BlackQueen },
-                PieceType::Rook => if piece == Piece::WhitePawn { Piece::WhiteRook } else { Piece::BlackRook },
-                PieceType::Bishop => if piece == Piece::WhitePawn { Piece::WhiteBishop } else { Piece::BlackBishop },
-                PieceType::Knight => if piece == Piece::WhitePawn { Piece::WhiteKnight } else { Piece::BlackKnight },
+                PieceType::Queen => {
+                    if piece == Piece::WhitePawn {
+                        Piece::WhiteQueen
+                    } else {
+                        Piece::BlackQueen
+                    }
+                }
+                PieceType::Rook => {
+                    if piece == Piece::WhitePawn {
+                        Piece::WhiteRook
+                    } else {
+                        Piece::BlackRook
+                    }
+                }
+                PieceType::Bishop => {
+                    if piece == Piece::WhitePawn {
+                        Piece::WhiteBishop
+                    } else {
+                        Piece::BlackBishop
+                    }
+                }
+                PieceType::Knight => {
+                    if piece == Piece::WhitePawn {
+                        Piece::WhiteKnight
+                    } else {
+                        Piece::BlackKnight
+                    }
+                }
                 _ => panic!("Invalid promotion piece type: {:?}", mv.promotion),
             };
             let piece_bitboard = match piece {
@@ -478,10 +525,18 @@ impl Board {
     /// This method should be called after any change to the individual piece bitboards
     /// to ensure that the composite bitboards reflect the current state of the board.
     pub fn update_composite_bitboards(&mut self) {
-        self.any_white = self.white_pawns | self.white_knights | self.white_bishops |
-                        self.white_rooks | self.white_queen | self.white_king;
-        self.any_black = self.black_pawns | self.black_knights | self.black_bishops |
-                        self.black_rooks | self.black_queen | self.black_king;
+        self.any_white = self.white_pawns
+            | self.white_knights
+            | self.white_bishops
+            | self.white_rooks
+            | self.white_queen
+            | self.white_king;
+        self.any_black = self.black_pawns
+            | self.black_knights
+            | self.black_bishops
+            | self.black_rooks
+            | self.black_queen
+            | self.black_king;
         self.empty = !(self.any_white | self.any_black);
     }
 
@@ -505,7 +560,9 @@ impl Board {
         }
     }
 
-    pub fn convert_moves(moves: impl Iterator<Item = String>) -> impl Iterator<Item = Result<Move, &'static str>> {
+    pub fn convert_moves(
+        moves: impl Iterator<Item = String>,
+    ) -> impl Iterator<Item = Result<Move, &'static str>> {
         moves.map(|mv| Move::try_from(mv.as_str()))
     }
 
@@ -539,20 +596,19 @@ impl Board {
             if n >= 1 {
                 // Return first n moves
                 possible_moves.into_iter().take(n).collect()
-            }
-            else {
+            } else {
                 possible_moves
             }
         }
     }
 
     pub fn get_all_raw_moves_append(&mut self, possible_moves: &mut Vec<Move>) {
-        use crate::move_generation::{w_pawns_able_to_push, b_pawns_able_to_push,
-                                   w_pawns_able_to_double_push, b_pawns_able_to_double_push,
-                                   w_pawns_attack_targets, b_pawns_attack_targets,
-                                   w_pawns_en_passant_targets, b_pawns_en_passant_targets,
-                                   knight_legal_moves, bishop_moves, rook_moves,
-                                   queen_legal_moves, king_legal_moves};
+        use crate::move_generation::{
+            b_pawns_able_to_double_push, b_pawns_able_to_push, b_pawns_attack_targets,
+            b_pawns_en_passant_targets, bishop_moves, king_legal_moves, knight_legal_moves,
+            queen_legal_moves, rook_moves, w_pawns_able_to_double_push, w_pawns_able_to_push,
+            w_pawns_attack_targets, w_pawns_en_passant_targets,
+        };
 
         if self.side_to_move == Color::Black {
             // Get all possible pawn moves
@@ -562,16 +618,20 @@ impl Board {
 
             // Add en-passant moves if available
             if let Some(ep_square) = self.en_passant_target {
-                let ep_targets = b_pawns_en_passant_targets(self.black_pawns, ep_square.to_bitboard());
+                let ep_targets =
+                    b_pawns_en_passant_targets(self.black_pawns, ep_square.to_bitboard());
                 if ep_targets != 0 {
                     // Find the source pawns that can make the en-passant capture
                     let mut working_pawns = self.black_pawns;
                     while working_pawns != 0 {
                         let from_square = working_pawns.trailing_zeros() as u8;
-                        working_pawns &= working_pawns - 1;  // Clear the processed bit
+                        working_pawns &= working_pawns - 1; // Clear the processed bit
                         let pawn = 1u64 << from_square;
                         if b_pawns_en_passant_targets(pawn, ep_square.to_bitboard()) != 0 {
-                            let mv = board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard());
+                            let mv = board_utils::bitboard_squares_to_move(
+                                pawn,
+                                ep_square.to_bitboard(),
+                            );
                             if self.is_legal_move(&mv) {
                                 possible_moves.push(mv);
                             }
@@ -583,13 +643,18 @@ impl Board {
             // Process regular pawn moves using existing board_utils functions
             self.bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, true);
             self.bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, true);
-            self.bitboard_to_pawn_capture_moves_append(possible_moves, self.black_pawns, attacking_pawns, true);
+            self.bitboard_to_pawn_capture_moves_append(
+                possible_moves,
+                self.black_pawns,
+                attacking_pawns,
+                true,
+            );
 
             // Process each black knight separately
             let mut working_knights = self.black_knights;
             while working_knights != 0 {
                 let knight_pos = working_knights.trailing_zeros() as u8;
-                working_knights &= working_knights - 1;  // Clear the processed bit
+                working_knights &= working_knights - 1; // Clear the processed bit
 
                 let single_knight = 1u64 << knight_pos;
                 // Get all legal moves for this knight (including both empty squares and captures)
@@ -632,27 +697,30 @@ impl Board {
             self.bitboard_to_moves_append(possible_moves, self.black_king, moves);
 
             // Add castling moves if legal
-            if self.is_castling_legal(true, false) {  // Black kingside castle
+            if self.is_castling_legal(true, false) {
+                // Black kingside castle
                 let mv = Move {
                     src: Square::E8,
                     target: Square::G8,
-                    promotion: None
+                    promotion: None,
                 };
-                if self.is_legal_move(&mv) {  // Check if the move is legal
+                if self.is_legal_move(&mv) {
+                    // Check if the move is legal
                     possible_moves.push(mv);
                 }
             }
-            if self.is_castling_legal(false, false) {  // Black queenside castle
+            if self.is_castling_legal(false, false) {
+                // Black queenside castle
                 let mv = Move {
                     src: Square::E8,
                     target: Square::C8,
-                    promotion: None
+                    promotion: None,
                 };
-                if self.is_legal_move(&mv) {  // Check if the move is legal
+                if self.is_legal_move(&mv) {
+                    // Check if the move is legal
                     possible_moves.push(mv);
                 }
             }
-
         } else {
             // Get all possible pawn moves
             let moveable_pawns = w_pawns_able_to_push(self.white_pawns, self.empty);
@@ -661,16 +729,20 @@ impl Board {
 
             // Add en-passant moves if available
             if let Some(ep_square) = self.en_passant_target {
-                let ep_targets = w_pawns_en_passant_targets(self.white_pawns, ep_square.to_bitboard());
+                let ep_targets =
+                    w_pawns_en_passant_targets(self.white_pawns, ep_square.to_bitboard());
                 if ep_targets != 0 {
                     // Find the source pawns that can make the en-passant capture
                     let mut working_pawns = self.white_pawns;
                     while working_pawns != 0 {
                         let from_square = working_pawns.trailing_zeros() as u8;
-                        working_pawns &= working_pawns - 1;  // Clear the processed bit
+                        working_pawns &= working_pawns - 1; // Clear the processed bit
                         let pawn = 1u64 << from_square;
                         if w_pawns_en_passant_targets(pawn, ep_square.to_bitboard()) != 0 {
-                            let mv = board_utils::bitboard_squares_to_move(pawn, ep_square.to_bitboard());
+                            let mv = board_utils::bitboard_squares_to_move(
+                                pawn,
+                                ep_square.to_bitboard(),
+                            );
                             if self.is_legal_move(&mv) {
                                 possible_moves.push(mv);
                             }
@@ -681,13 +753,18 @@ impl Board {
 
             self.bitboard_to_pawn_single_moves_append(possible_moves, moveable_pawns, false);
             self.bitboard_to_pawn_double_moves_append(possible_moves, double_moveable_pawns, false);
-            self.bitboard_to_pawn_capture_moves_append(possible_moves, self.white_pawns, attacking_pawns, false);
+            self.bitboard_to_pawn_capture_moves_append(
+                possible_moves,
+                self.white_pawns,
+                attacking_pawns,
+                false,
+            );
 
             // Process each white knight separately
             let mut working_knights = self.white_knights;
             while working_knights != 0 {
                 let knight_pos = working_knights.trailing_zeros() as u8;
-                working_knights &= working_knights - 1;  // Clear the bit we are processing, the lowest significant bit that is set
+                working_knights &= working_knights - 1; // Clear the bit we are processing, the lowest significant bit that is set
 
                 let single_knight = 1u64 << knight_pos;
                 // Get all legal moves for this knight (including both empty squares and captures)
@@ -733,23 +810,27 @@ impl Board {
             self.bitboard_to_moves_append(possible_moves, self.white_king, moves);
 
             // Add castling moves if legal
-            if self.is_castling_legal(true, true) {  // White kingside castle
+            if self.is_castling_legal(true, true) {
+                // White kingside castle
                 let mv = Move {
                     src: Square::E1,
                     target: Square::G1,
-                    promotion: None
+                    promotion: None,
                 };
-                if self.is_legal_move(&mv) {  // Check if the move is legal
+                if self.is_legal_move(&mv) {
+                    // Check if the move is legal
                     possible_moves.push(mv);
                 }
             };
-            if self.is_castling_legal(false, true) {  // White queenside castle
+            if self.is_castling_legal(false, true) {
+                // White queenside castle
                 let mv = Move {
                     src: Square::E1,
                     target: Square::C1,
-                    promotion: None
+                    promotion: None,
                 };
-                if self.is_legal_move(&mv) {  // Check if the move is legal
+                if self.is_legal_move(&mv) {
+                    // Check if the move is legal
                     possible_moves.push(mv);
                 }
             };
@@ -761,7 +842,8 @@ impl Board {
 
     pub fn get_next_moves(&mut self, n: i32) -> Vec<String> {
         // Use get_raw_moves and convert to strings
-        self.get_raw_moves(n).into_iter()
+        self.get_raw_moves(n)
+            .into_iter()
             .map(|mv| mv.to_string())
             .collect()
     }
@@ -806,7 +888,8 @@ impl Board {
     }
 
     pub fn get_next_move_timed(&mut self, time_budget_ms: u64) -> Option<(String, i64, i32)> {
-        let (best_move, score, depth) = self.find_best_move_within(Duration::from_millis(time_budget_ms));
+        let (best_move, score, depth) =
+            self.find_best_move_within(Duration::from_millis(time_budget_ms));
         best_move.map(|m| (m.to_string(), score, depth))
     }
 
@@ -817,7 +900,12 @@ impl Board {
     }
 
     // Generic helper function to convert a source bitboard and target bitboard into a list of moves
-    pub fn bitboard_to_moves_append(&mut self, possible_moves: &mut Vec<Move>, source_pieces: u64, target_squares: u64) {
+    pub fn bitboard_to_moves_append(
+        &mut self,
+        possible_moves: &mut Vec<Move>,
+        source_pieces: u64,
+        target_squares: u64,
+    ) {
         // 0 source pieces is fine — the loop simply does nothing. The original
         // assertion required exactly 1, but the implementation iterates over
         // any count, and search legitimately reaches positions with 0 pawns
@@ -827,18 +915,18 @@ impl Board {
         // For each source piece
         while working_source != 0 {
             let from_square = working_source.trailing_zeros() as u8;
-            working_source &= working_source - 1;  // Clear the processed bit
+            working_source &= working_source - 1; // Clear the processed bit
 
             // For each target square
             let mut current_targets = target_squares;
             while current_targets != 0 {
                 let to_square = current_targets.trailing_zeros() as u8;
-                current_targets &= current_targets - 1;  // Clear the processed bit
+                current_targets &= current_targets - 1; // Clear the processed bit
 
                 let mv = Move {
                     src: Square::from_bit_index(from_square),
                     target: Square::from_bit_index(to_square),
-                    promotion: None,  // Promotions are handled separately
+                    promotion: None, // Promotions are handled separately
                 };
                 if self.is_legal_move(&mv) {
                     possible_moves.push(mv);
@@ -847,24 +935,33 @@ impl Board {
         }
     }
 
-    pub fn bitboard_to_pawn_single_moves(&mut self, moveable_pawns: u64, is_black: bool) -> Vec<Move> {
+    pub fn bitboard_to_pawn_single_moves(
+        &mut self,
+        moveable_pawns: u64,
+        is_black: bool,
+    ) -> Vec<Move> {
         let mut moves = Vec::new();
         self.bitboard_to_pawn_single_moves_append(&mut moves, moveable_pawns, is_black);
         moves
     }
 
     /// Convert a bitboard of pawn single moves into a list of move strings
-    pub fn bitboard_to_pawn_single_moves_append(&mut self, possible_moves: &mut Vec<Move>, moveable_pawns: u64, is_black: bool) {
+    pub fn bitboard_to_pawn_single_moves_append(
+        &mut self,
+        possible_moves: &mut Vec<Move>,
+        moveable_pawns: u64,
+        is_black: bool,
+    ) {
         let mut working_pawns = moveable_pawns;
 
         while working_pawns != 0 {
             let from_square = working_pawns.trailing_zeros() as u8;
-            working_pawns &= working_pawns - 1;  // Clear the processed bit
+            working_pawns &= working_pawns - 1; // Clear the processed bit
 
             let to_square = if is_black {
-                from_square - 8  // Black pawns move down
+                from_square - 8 // Black pawns move down
             } else {
-                from_square + 8  // White pawns move up
+                from_square + 8 // White pawns move up
             };
 
             let to_rank = to_square / 8;
@@ -877,7 +974,12 @@ impl Board {
                     promotion: None,
                 };
 
-                for promotion in [PieceType::Bishop, PieceType::Knight, PieceType::Rook, PieceType::Queen] {
+                for promotion in [
+                    PieceType::Bishop,
+                    PieceType::Knight,
+                    PieceType::Rook,
+                    PieceType::Queen,
+                ] {
                     let mv = Move {
                         promotion: Some(promotion),
                         ..base_mv.clone()
@@ -897,27 +999,35 @@ impl Board {
                 }
             }
         }
-
     }
 
     /// Convert a bitboard of pawn double moves into a list of move strings
-    pub fn bitboard_to_pawn_double_moves(&mut self, moveable_pawns: u64, is_black: bool) -> Vec<Move> {
+    pub fn bitboard_to_pawn_double_moves(
+        &mut self,
+        moveable_pawns: u64,
+        is_black: bool,
+    ) -> Vec<Move> {
         let mut moves = Vec::new();
         self.bitboard_to_pawn_double_moves_append(&mut moves, moveable_pawns, is_black);
         moves
     }
 
-    pub fn bitboard_to_pawn_double_moves_append(&mut self, possible_moves: &mut Vec<Move>, moveable_pawns: u64, is_black: bool) {
+    pub fn bitboard_to_pawn_double_moves_append(
+        &mut self,
+        possible_moves: &mut Vec<Move>,
+        moveable_pawns: u64,
+        is_black: bool,
+    ) {
         let mut working_pawns = moveable_pawns;
 
         while working_pawns != 0 {
             let from_square = working_pawns.trailing_zeros() as u8;
-            working_pawns &= working_pawns - 1;  // Clear the processed bit
+            working_pawns &= working_pawns - 1; // Clear the processed bit
 
             let to_square = if is_black {
-                from_square - 16  // Black pawns move down two squares
+                from_square - 16 // Black pawns move down two squares
             } else {
-                from_square + 16  // White pawns move up two squares
+                from_square + 16 // White pawns move up two squares
             };
 
             let mv = Move {
@@ -932,20 +1042,36 @@ impl Board {
         }
     }
 
-    pub fn bitboard_to_pawn_capture_moves(&mut self, source_pawns: u64, target_squares: u64, is_black: bool) -> Vec<Move> {
+    pub fn bitboard_to_pawn_capture_moves(
+        &mut self,
+        source_pawns: u64,
+        target_squares: u64,
+        is_black: bool,
+    ) -> Vec<Move> {
         let mut moves = Vec::new();
-        self.bitboard_to_pawn_capture_moves_append(&mut moves, source_pawns, target_squares, is_black);
+        self.bitboard_to_pawn_capture_moves_append(
+            &mut moves,
+            source_pawns,
+            target_squares,
+            is_black,
+        );
         moves
     }
 
     /// Convert a bitboard of pawn capture moves into a list of move strings
-    pub fn bitboard_to_pawn_capture_moves_append(&mut self, possible_moves: &mut Vec<Move>, source_pawns: u64, target_squares: u64, is_black: bool) {
+    pub fn bitboard_to_pawn_capture_moves_append(
+        &mut self,
+        possible_moves: &mut Vec<Move>,
+        source_pawns: u64,
+        target_squares: u64,
+        is_black: bool,
+    ) {
         let mut working_pawns = source_pawns;
 
         // For each pawn
         while working_pawns != 0 {
             let from_square = working_pawns.trailing_zeros() as u8;
-            working_pawns &= working_pawns - 1;  // Clear the processed bit
+            working_pawns &= working_pawns - 1; // Clear the processed bit
 
             // Get this pawn's possible captures
             let pawn = 1u64 << from_square;
@@ -958,14 +1084,19 @@ impl Board {
             // For each capture
             while captures != 0 {
                 let to_square = captures.trailing_zeros() as u8;
-                captures &= captures - 1;  // Clear the processed bit
+                captures &= captures - 1; // Clear the processed bit
 
                 // Convert to algebraic notation
                 let to_rank_int = to_square / 8 + 1;
 
                 if (is_black && to_rank_int == 1) || (!is_black && to_rank_int == 8) {
                     // Promotion case
-                    for promotion in [PieceType::Bishop, PieceType::Knight, PieceType::Rook, PieceType::Queen] {
+                    for promotion in [
+                        PieceType::Bishop,
+                        PieceType::Knight,
+                        PieceType::Rook,
+                        PieceType::Queen,
+                    ] {
                         let mv = Move {
                             src: Square::from_bit_index(from_square),
                             target: Square::from_bit_index(to_square),
@@ -1026,12 +1157,18 @@ impl Board {
             }
 
             // Check for bishop/diagonal queen attacks
-            if bishop_moves(square_bb, self.any_black, self.any_white) & (self.white_bishops | self.white_queen) != 0 {
+            if bishop_moves(square_bb, self.any_black, self.any_white)
+                & (self.white_bishops | self.white_queen)
+                != 0
+            {
                 return true;
             }
 
             // Check for rook/straight queen attacks
-            if rook_moves(square_bb, self.any_black, self.any_white) & (self.white_rooks | self.white_queen) != 0 {
+            if rook_moves(square_bb, self.any_black, self.any_white)
+                & (self.white_rooks | self.white_queen)
+                != 0
+            {
                 return true;
             }
 
@@ -1053,12 +1190,18 @@ impl Board {
             }
 
             // Check for bishop/diagonal queen attacks
-            if bishop_moves(square_bb, self.any_white, self.any_black) & (self.black_bishops | self.black_queen) != 0 {
+            if bishop_moves(square_bb, self.any_white, self.any_black)
+                & (self.black_bishops | self.black_queen)
+                != 0
+            {
                 return true;
             }
 
             // Check for rook/straight queen attacks
-            if rook_moves(square_bb, self.any_white, self.any_black) & (self.black_rooks | self.black_queen) != 0 {
+            if rook_moves(square_bb, self.any_white, self.any_black)
+                & (self.black_rooks | self.black_queen)
+                != 0
+            {
                 return true;
             }
 
@@ -1098,7 +1241,7 @@ impl Board {
                 // If the move doesn't put the black king in check, it's legal
                 let ret = !self.black_king_in_check;
                 self.undo_last_move();
-                return  ret;
+                return ret;
             }
         }
 
@@ -1108,14 +1251,22 @@ impl Board {
 
         // The move is legal if it got us out of check
         if self.white_king_in_check {
-            assert_eq!(self.side_to_move, Color::White, "White king is in check, but side to move is not White");
+            assert_eq!(
+                self.side_to_move,
+                Color::White,
+                "White king is in check, but side to move is not White"
+            );
             self.apply_move(mv);
             let ret = !self.white_king_in_check;
             self.undo_last_move();
             ret
         } else {
             assert!(self.black_king_in_check);
-            assert_eq!(self.side_to_move, Color::Black, "Black king is in check, but side to move is not Black");
+            assert_eq!(
+                self.side_to_move,
+                Color::Black,
+                "Black king is in check, but side to move is not Black"
+            );
             // Assumed we are in check and moving black
             self.apply_move(mv);
             let ret = !self.black_king_in_check;
@@ -1154,7 +1305,7 @@ impl Board {
         let mut path = king_path;
         while path != 0 {
             let square = path.trailing_zeros() as u8;
-            path &= path - 1;  // Clear the processed bit
+            path &= path - 1; // Clear the processed bit
             if self.is_square_attacked(square, if is_white { Color::Black } else { Color::White }) {
                 return true;
             }
@@ -1166,9 +1317,17 @@ impl Board {
     fn is_castling_legal(&self, is_kingside: bool, is_white: bool) -> bool {
         // Check castling rights
         let has_rights = if is_white {
-            if is_kingside { self.white_kingside_castle_rights } else { self.white_queenside_castle_rights }
+            if is_kingside {
+                self.white_kingside_castle_rights
+            } else {
+                self.white_queenside_castle_rights
+            }
         } else {
-            if is_kingside { self.black_kingside_castle_rights } else { self.black_queenside_castle_rights }
+            if is_kingside {
+                self.black_kingside_castle_rights
+            } else {
+                self.black_queenside_castle_rights
+            }
         };
 
         // Early return if no castling rights
@@ -1234,7 +1393,8 @@ impl Board {
         if let Some(state) = self.move_history.pop() {
             let mv = &state.last_move;
 
-            let piece = self.get_piece_at_square_fast(mv.target.to_bit_index())
+            let piece = self
+                .get_piece_at_square_fast(mv.target.to_bit_index())
                 .expect("No piece at target square when undoing move");
 
             let src_bit = mv.src.to_bitboard();
@@ -1259,7 +1419,7 @@ impl Board {
                     Piece::WhiteKing => &mut self.white_king,
                     Piece::BlackKing => &mut self.black_king,
                 };
-                *promoted_piece_bb &= !target_bit;  // Remove from target square
+                *promoted_piece_bb &= !target_bit; // Remove from target square
                 self.remove_piece_in_map(target_idx);
 
                 // Restore the pawn
@@ -1286,8 +1446,8 @@ impl Board {
                     Piece::WhiteKing => &mut self.white_king,
                     Piece::BlackKing => &mut self.black_king,
                 };
-                *piece_bb &= !target_bit;  // Remove from target
-                *piece_bb |= src_bit;      // Add to source
+                *piece_bb &= !target_bit; // Remove from target
+                *piece_bb |= src_bit; // Add to source
                 self.move_piece_in_map(target_idx, src_index);
             }
 
@@ -1301,10 +1461,10 @@ impl Board {
                 // Determine if this was a white or black rook
                 if piece == Piece::WhiteKing {
                     self.white_rooks &= !rook_target_bit; // Remove from target square
-                    self.white_rooks |= rook_src_bit;     // Add to source square
+                    self.white_rooks |= rook_src_bit; // Add to source square
                 } else {
                     self.black_rooks &= !rook_target_bit; // Remove from target square
-                    self.black_rooks |= rook_src_bit;     // Add to source square
+                    self.black_rooks |= rook_src_bit; // Add to source square
                 }
                 self.move_piece_in_map(rook_target_index, rook_src_index);
             }
@@ -1394,17 +1554,22 @@ impl Board {
         output.push_str(&format!("Black rooks:   {:064b}\n", self.black_rooks));
         output.push_str(&format!("Black queen:   {:064b}\n", self.black_queen));
         output.push_str(&format!("Black king:    {:064b}\n", self.black_king));
-        output.push_str(&format!("Move history length: {}\n", self.move_history.len()));
+        output.push_str(&format!(
+            "Move history length: {}\n",
+            self.move_history.len()
+        ));
         output.push_str(&format!("Side to move: {:?}\n", self.side_to_move));
 
         // Add complete move history in algebraic notation
         if !self.move_history.is_empty() {
             output.push_str("\nComplete move history:\n");
             for (i, state) in self.move_history.iter().enumerate() {
-                output.push_str(&format!("{}. {} (captured: {:?})\n",
+                output.push_str(&format!(
+                    "{}. {} (captured: {:?})\n",
                     i + 1,
                     state.last_move,
-                    state.captured_piece));
+                    state.captured_piece
+                ));
             }
         }
         output
@@ -1412,13 +1577,16 @@ impl Board {
 
     /// Gets the complete move history in a format suitable for debugging
     pub fn get_move_history(&self) -> Vec<String> {
-        self.move_history.iter()
+        self.move_history
+            .iter()
             .enumerate()
             .map(|(i, state)| {
-                format!("{}. {} (captured: {:?})",
+                format!(
+                    "{}. {} (captured: {:?})",
                     i + 1,
                     state.last_move,
-                    state.captured_piece)
+                    state.captured_piece
+                )
             })
             .collect()
     }
@@ -1498,7 +1666,8 @@ impl Board {
     /// (target square occupied). Doesn't catch en-passant; that's a known
     /// limitation matching the quiescence implementation.
     fn move_is_capture(&self, mv: &Move) -> bool {
-        self.get_piece_at_square_fast(mv.target.to_bit_index()).is_some()
+        self.get_piece_at_square_fast(mv.target.to_bit_index())
+            .is_some()
     }
 
     /// Score a move for ordering inside the main search. Higher = try first.
@@ -1529,7 +1698,14 @@ impl Board {
 
     /// Recursive negamax with alpha-beta + quiescence + killer/history move ordering.
     /// `ply` is the distance from the root (0 at root); `depth` is remaining depth.
-    fn negamax_ab(&mut self, depth: i32, ply: usize, mut alpha: i64, beta: i64, ss: &mut SearchState) -> i64 {
+    fn negamax_ab(
+        &mut self,
+        depth: i32,
+        ply: usize,
+        mut alpha: i64,
+        beta: i64,
+        ss: &mut SearchState,
+    ) -> i64 {
         if depth == 0 {
             return self.quiesce(alpha, beta);
         }
@@ -1546,7 +1722,10 @@ impl Board {
         }
 
         // Order moves with cheap heuristics: MVV-LVA captures > killers > history > rest.
-        moves.sort_unstable_by(|a, b| self.order_score(b, ss, ply).cmp(&self.order_score(a, ss, ply)));
+        moves.sort_unstable_by(|a, b| {
+            self.order_score(b, ss, ply)
+                .cmp(&self.order_score(a, ss, ply))
+        });
 
         let mut best_score = i64::MIN + 1;
 
@@ -1583,7 +1762,11 @@ impl Board {
 
     /// Same as `find_best_move` but uses an externally-provided SearchState
     /// so killer and history info persist across iterative-deepening iterations.
-    pub fn find_best_move_with_state(&mut self, depth: i32, ss: &mut SearchState) -> (Option<Move>, i64) {
+    pub fn find_best_move_with_state(
+        &mut self,
+        depth: i32,
+        ss: &mut SearchState,
+    ) -> (Option<Move>, i64) {
         let mut best_score = i64::MIN;
         let mut best_move = None;
         let mut moves = Vec::new();
@@ -1616,35 +1799,34 @@ impl Board {
             (best_move, best_score)
         }
     }
-
 }
 
 impl PartialEq for Board {
     fn eq(&self, other: &Self) -> bool {
         // Compare all fields except move_history
-        self.white_pawns == other.white_pawns &&
-        self.white_knights == other.white_knights &&
-        self.white_bishops == other.white_bishops &&
-        self.white_rooks == other.white_rooks &&
-        self.white_queen == other.white_queen &&
-        self.white_king == other.white_king &&
-        self.black_pawns == other.black_pawns &&
-        self.black_knights == other.black_knights &&
-        self.black_bishops == other.black_bishops &&
-        self.black_rooks == other.black_rooks &&
-        self.black_queen == other.black_queen &&
-        self.black_king == other.black_king &&
-        self.any_white == other.any_white &&
-        self.any_black == other.any_black &&
-        self.empty == other.empty &&
-        self.side_to_move == other.side_to_move &&
-        self.white_king_in_check == other.white_king_in_check &&
-        self.black_king_in_check == other.black_king_in_check &&
-        self.white_kingside_castle_rights == other.white_kingside_castle_rights &&
-        self.white_queenside_castle_rights == other.white_queenside_castle_rights &&
-        self.black_kingside_castle_rights == other.black_kingside_castle_rights &&
-        self.black_queenside_castle_rights == other.black_queenside_castle_rights &&
-        self.en_passant_target == other.en_passant_target &&
-        self.piece_map == other.piece_map
+        self.white_pawns == other.white_pawns
+            && self.white_knights == other.white_knights
+            && self.white_bishops == other.white_bishops
+            && self.white_rooks == other.white_rooks
+            && self.white_queen == other.white_queen
+            && self.white_king == other.white_king
+            && self.black_pawns == other.black_pawns
+            && self.black_knights == other.black_knights
+            && self.black_bishops == other.black_bishops
+            && self.black_rooks == other.black_rooks
+            && self.black_queen == other.black_queen
+            && self.black_king == other.black_king
+            && self.any_white == other.any_white
+            && self.any_black == other.any_black
+            && self.empty == other.empty
+            && self.side_to_move == other.side_to_move
+            && self.white_king_in_check == other.white_king_in_check
+            && self.black_king_in_check == other.black_king_in_check
+            && self.white_kingside_castle_rights == other.white_kingside_castle_rights
+            && self.white_queenside_castle_rights == other.white_queenside_castle_rights
+            && self.black_kingside_castle_rights == other.black_kingside_castle_rights
+            && self.black_queenside_castle_rights == other.black_queenside_castle_rights
+            && self.en_passant_target == other.en_passant_target
+            && self.piece_map == other.piece_map
     }
 }
