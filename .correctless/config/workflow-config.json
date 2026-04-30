@@ -1,0 +1,63 @@
+{
+  "project": {
+    "name": "chess",
+    "language": "rust",
+    "description": "Rust chess engine — UCI-compatible. Cargo workspace: chess (binary) + chesslib (library)."
+  },
+  "commands": {
+    "test": "cargo test --workspace",
+    "test_verbose": "cargo test --workspace -- --nocapture",
+    "coverage": "",
+    "lint": "cargo clippy --workspace --all-targets -- -D warnings",
+    "build": "cargo build --workspace --release"
+  },
+  "patterns": {
+    "test_file": "**/tests/**/*.rs|**/*_test.rs|**/*_tests.rs",
+    "source_file": "**/src/**/*.rs",
+    "test_fail_pattern": "test result: FAILED|assertion .failed|panicked at",
+    "build_error_pattern": "^error(\\[E\\d+\\])?:"
+  },
+  "is_monorepo": true,
+  "monorepo_type": "cargo-workspace",
+  "packages": {
+    "chess": {
+      "path": "chess",
+      "language": "rust",
+      "test": "cargo test -p chess",
+      "lint": "cargo clippy -p chess --all-targets -- -D warnings",
+      "build": "cargo build -p chess --release",
+      "role": "binary"
+    },
+    "chesslib": {
+      "path": "chesslib",
+      "language": "rust",
+      "test": "cargo test -p chesslib",
+      "lint": "cargo clippy -p chesslib --all-targets -- -D warnings",
+      "build": "cargo build -p chesslib --release",
+      "role": "library"
+    }
+  },
+  "workflow": {
+    "min_qa_rounds": 1,
+    "require_review": true,
+    "auto_update_antipatterns": true,
+    "git_trailers": false,
+    "git_notes": false,
+    "intensity": "standard",
+    "branching_strategy": "feature-branches",
+    "merge_strategy": "squash",
+    "intensity_calibration_mode": "passive"
+  },
+  "mcp": {
+    "serena": false,
+    "context7": false
+  },
+  "setup": {
+    "architecture_state": "existing",
+    "agent_context_state": "existing"
+  },
+  "release": {
+    "version_file": null,
+    "version_pattern": null
+  }
+}
