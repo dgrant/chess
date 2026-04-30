@@ -25,6 +25,10 @@ This position:
 rn4k1/pppb1Q2/6B1/6p1/1P6/P1N5/1BPq2PP/R3R2K b - - 0 1
 has trouble getting a next move
 
-This position:
+~~This position:
 rn2k2r/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 b kq - 0 1
-Engine thinks best next move is: e8f8 which makes no sense, why is it not choosing to castle?
+Engine thinks best next move is: e8f8 which makes no sense, why is it not choosing to castle?~~
+
+Fixed by quiescence search + MVV-LVA + the PST revert. At depth 4 the engine now
+scores O-O at 125 (tied for best) and Kf8 at 205 (~80cp worse). Pinned by
+`chesslib/tests/castling_regression_tests.rs`.
