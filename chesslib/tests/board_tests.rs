@@ -1006,6 +1006,8 @@ fn test_is_legal_move_complex() {
         black_kingside_castle_rights: false,
         black_queenside_castle_rights: false,
         en_passant_target: None,
+        halfmove_clock: 0,
+        fullmove_number: 1,
         move_history: Vec::new(),
         piece_map: [None; 64],
     };

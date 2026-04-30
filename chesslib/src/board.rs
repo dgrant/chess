@@ -24,6 +24,8 @@ pub struct BoardState {
     pub black_kingside_castle_rights: bool,
     pub black_queenside_castle_rights: bool,
     pub en_passant_target: Option<Square>,
+    pub halfmove_clock: u32,
+    pub fullmove_number: u32,
     pub last_move: Move,
     pub rook_castle_move: Option<Move>, // Stores the rook's move during castling
     pub captured_piece: Option<Piece>,
@@ -65,6 +67,14 @@ pub struct Board {
     /// The square where an en-passant capture is possible (if any)
     /// This is set when a pawn makes a double move and cleared after each move
     pub en_passant_target: Option<Square>,
+
+    /// Plies since the last pawn move or capture. Resets to 0 on either.
+    /// Drives the fifty-move rule (not yet enforced) and FEN round-trip.
+    pub halfmove_clock: u32,
+
+    /// Full move counter: starts at 1 and increments after each black move
+    /// (FEN convention). Used only for FEN round-trip.
+    pub fullmove_number: u32,
 
     /// Represents a snapshot of board state that can be restored when undoing a move
     pub move_history: Vec<BoardState>,
@@ -204,6 +214,8 @@ impl Board {
             black_kingside_castle_rights: self.black_kingside_castle_rights,
             black_queenside_castle_rights: self.black_queenside_castle_rights,
             en_passant_target: self.en_passant_target,
+            halfmove_clock: self.halfmove_clock,
+            fullmove_number: self.fullmove_number,
             last_move: mv.clone(),
             rook_castle_move: None, // Initialize as None, will be updated if castling
             captured_piece: captured_piece.clone(),
@@ -513,6 +525,21 @@ impl Board {
 
         self.update_composite_bitboards();
         self.update_check_state();
+
+        // Update FEN counters before flipping side to move so we can use
+        // self.side_to_move (the side that just moved) directly.
+        let is_pawn_move = matches!(piece, Piece::WhitePawn | Piece::BlackPawn);
+        let is_capture = captured_piece.is_some();
+        if is_pawn_move || is_capture {
+            self.halfmove_clock = 0;
+        } else {
+            self.halfmove_clock = self.halfmove_clock.saturating_add(1);
+        }
+        if self.side_to_move == Color::Black {
+            // Black just moved → increment fullmove number per FEN convention.
+            self.fullmove_number = self.fullmove_number.saturating_add(1);
+        }
+
         self.side_to_move = match self.side_to_move {
             Color::White => Color::Black,
             Color::Black => Color::White,
@@ -1500,6 +1527,10 @@ impl Board {
             // Restore en-passant state
             self.en_passant_target = state.en_passant_target;
 
+            // Restore FEN counters
+            self.halfmove_clock = state.halfmove_clock;
+            self.fullmove_number = state.fullmove_number;
+
             // Update composite bitboards
             self.update_composite_bitboards();
 
@@ -1835,7 +1866,9 @@ impl Board {
 
 impl PartialEq for Board {
     fn eq(&self, other: &Self) -> bool {
-        // Compare all fields except move_history
+        // Compare playable position only. move_history, halfmove_clock,
+        // and fullmove_number are game-history metadata and intentionally
+        // excluded so transpositions compare equal.
         self.white_pawns == other.white_pawns
             && self.white_knights == other.white_knights
             && self.white_bishops == other.white_bishops

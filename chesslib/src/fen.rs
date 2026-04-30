@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::board_utils::get_empty_board;
-use crate::types::Color;
+use crate::types::{Color, Square};
 
 impl Board {
     pub fn to_fen(&self) -> String {
@@ -63,21 +63,29 @@ impl Board {
         fen.push_str(castling_str.as_str());
         fen.push(' ');
 
-        // En passant target square - TODO: Implement actual en passant logic
-        let en_passant_str = "-";
-        fen.push_str(en_passant_str);
+        // En passant target square
+        match self.en_passant_target {
+            Some(sq) => fen.push_str(&square_to_algebraic(sq)),
+            None => fen.push('-'),
+        }
         fen.push(' ');
 
-        // Halfmove clock and fullmove number - TODO: Implement actual game state tracking
-        let halfmove_clock = 0; // Placeholder for halfmove clock (how many moves both players have made since the last pawn advance or piece capture)
-        let fullmove_number = 1; // Placeholder for fullmove number (incremented after each black move)
-        fen.push_str(&halfmove_clock.to_string());
+        // Halfmove clock and fullmove number
+        fen.push_str(&self.halfmove_clock.to_string());
         fen.push(' ');
-        fen.push_str(&fullmove_number.to_string());
+        fen.push_str(&self.fullmove_number.to_string());
 
-        // Final FEN string
         fen
     }
+}
+
+/// Convert a Square to its algebraic name like "e3". Inverse of
+/// `Square::try_from(&str)`.
+fn square_to_algebraic(sq: Square) -> String {
+    let idx = sq.to_bit_index();
+    let file = (idx % 8) as u8;
+    let rank = idx / 8 + 1;
+    format!("{}{}", (b'a' + file) as char, rank)
 }
 
 pub fn load_fen(fen: &str) -> Result<Board, &'static str> {
@@ -146,6 +154,29 @@ pub fn load_fen(fen: &str) -> Result<Board, &'static str> {
         board.white_queenside_castle_rights = parts[2].contains('Q');
         board.black_kingside_castle_rights = parts[2].contains('k');
         board.black_queenside_castle_rights = parts[2].contains('q');
+    }
+
+    // En passant target square
+    if parts.len() > 3 {
+        board.en_passant_target = if parts[3] == "-" {
+            None
+        } else {
+            Some(Square::try_from(parts[3]).map_err(|_| "Invalid FEN: bad en passant square")?)
+        };
+    }
+
+    // Halfmove clock
+    if parts.len() > 4 {
+        board.halfmove_clock = parts[4]
+            .parse::<u32>()
+            .map_err(|_| "Invalid FEN: bad halfmove clock")?;
+    }
+
+    // Fullmove number
+    if parts.len() > 5 {
+        board.fullmove_number = parts[5]
+            .parse::<u32>()
+            .map_err(|_| "Invalid FEN: bad fullmove number")?;
     }
 
     board.rebuild_piece_map();

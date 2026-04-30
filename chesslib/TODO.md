@@ -5,19 +5,27 @@ wen we generate possible moves, if the king is in check, we must only consider m
 I assume a simple way to do this, is to try making the move, then check the board's state to see if the king is in check.
 
 v0.1 - still random moves, just correctly generates moves for all pieces
-king moves - just had a case where a king move was generated that would have put the king in check, I think I didn't handle king attacking squares.
-pawn promotion - done
-castling - done
-en passant - todo
-proper fen generation of move numbers
-perft for accuracy
+king moves - DONE (king-walks-into-check is filtered by is_legal_move).
+pawn promotion - DONE.
+castling - DONE.
+en passant - DONE (move generation works; FEN round-trip also done).
+proper fen generation of move numbers - DONE (halfmove + fullmove counters
+   tracked through apply_move/undo_last_move and round-tripped via load_fen
+   and to_fen). Pinned by chesslib/tests/fen_roundtrip_tests.rs.
+perft for accuracy - DONE (chesslib/tests/perft_tests.rs).
 
-v0.2 - actually evaluate positions
-compare positions maybe only based on piece values initially, and only return the best move
+v0.2 - actually evaluate positions - DONE (chesslib/src/evaluation.rs).
 
 v0.3 - actually descend a tree, maybe just very shallow, like 2 or 3 moves deep
+   DONE — negamax + alpha-beta + iterative deepening (caps at depth 20),
+   quiescence at the depth-0 horizon, MVV-LVA capture ordering, killer
+   moves + history heuristic for quiet-move ordering.
 
-Maybe better evaluation? Based on more than just material, maybe positional evaluation, like how many squares a piece controls, how many pieces are attacking a square, etc.
+Better evaluation - PARTIAL. Material, piece-square tables (PeSTO),
+mobility (currently disabled), king safety / castling, bishop pair, check
+bonus. Open: pawn structure (was tried + reverted), passed-pawn bonuses,
+king-tropism, transposition table (the next likely perf step per
+ARCHITECTURE.md).
 
 # Bugs
 
