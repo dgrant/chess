@@ -84,7 +84,7 @@ pub fn handle_uci_command(input: &str) -> String {
                         }
                     }
                     Err(e) => {
-                        log_to_file(&format!("Error loading FEN position: {}", e), true);
+                        log_to_file(&format!("Error loading FEN position: {e}"), true);
                         *board_state = Some(get_starting_board());
                     }
                 }
@@ -144,8 +144,8 @@ pub fn handle_uci_command(input: &str) -> String {
                         } else {
                             score
                         };
-                        println!("info depth {} score cp {} pv {}", depth, cp, mv);
-                        format!("bestmove {}", mv)
+                        println!("info depth {depth} score cp {cp} pv {mv}");
+                        format!("bestmove {mv}")
                     }
                     None => "bestmove 0000".to_string(),
                 }

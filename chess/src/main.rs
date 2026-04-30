@@ -20,13 +20,13 @@ fn main() {
         log_to_file(&format!("Received: {}", input.trim()), true);
 
         let response = handle_uci_command(&input);
-        log_to_file(&format!("Responded: {}", response), true);
+        log_to_file(&format!("Responded: {response}"), true);
 
         if input.trim() == "quit" {
             break; // Exit on "quit" command
         }
 
-        println!("{}", response);
+        println!("{response}");
         io::stdout().flush().unwrap();
     }
 

@@ -60,7 +60,7 @@ mod alpha_beta_tests {
             "Alpha-beta should complete in reasonable time"
         );
 
-        println!("Alpha-beta search depth 4 took: {:?}", duration);
+        println!("Alpha-beta search depth 4 took: {duration:?}");
     }
 
     #[test]

@@ -31,7 +31,7 @@ fn kh8_is_the_only_legal_move() {
     let mut b = board();
     let mut moves = Vec::new();
     b.get_all_raw_moves_append(&mut moves);
-    assert_eq!(moves.len(), 1, "only Kh8 should be legal, got: {:?}", moves);
+    assert_eq!(moves.len(), 1, "only Kh8 should be legal, got: {moves:?}");
     let m = &moves[0];
     assert_eq!(m.src, Square::G8);
     assert_eq!(m.target, Square::H8);
@@ -42,13 +42,11 @@ fn engine_returns_kh8_at_every_depth() {
     for depth in 1..=4 {
         let mut b = board();
         let (mv, _score) = b.find_best_move(depth);
-        let m = mv.unwrap_or_else(|| panic!("engine returned None at depth {}", depth));
+        let m = mv.unwrap_or_else(|| panic!("engine returned None at depth {depth}"));
         assert_eq!(
             (m.src, m.target),
             (Square::G8, Square::H8),
-            "engine returned wrong move at depth {}: {:?}",
-            depth,
-            m
+            "engine returned wrong move at depth {depth}: {m:?}"
         );
     }
 }

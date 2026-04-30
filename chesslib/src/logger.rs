@@ -37,8 +37,7 @@ fn get_log_path() -> PathBuf {
         // Default path with date and time
         let datetime_str = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
         PathBuf::from(format!(
-            "/home/dgrant/git_personal/rust/chess/engine_{}.log",
-            datetime_str
+            "/home/dgrant/git_personal/rust/chess/engine_{datetime_str}.log"
         ))
     }
 }
@@ -85,20 +84,14 @@ pub fn log_to_file(message: &str, append: bool) {
 
         // Write to file if available
         if let Some(ref mut file) = *file_option {
-            let write_result = writeln!(file, "{}", message);
+            let write_result = writeln!(file, "{message}");
             let flush_result = file.flush();
 
             // Return both results so we can handle them outside the lock
             (write_result, flush_result)
         } else {
             // This shouldn't happen, but handle it gracefully
-            (
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "No file available",
-                )),
-                Ok(()),
-            )
+            (Err(std::io::Error::other("No file available")), Ok(()))
         }
     }; // Lock is released here
 

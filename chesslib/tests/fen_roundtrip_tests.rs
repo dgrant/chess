@@ -43,8 +43,7 @@ fn to_fen_emits_en_passant_target() {
     let fen = b.to_fen();
     assert!(
         fen.contains(" e3 "),
-        "after 1.e4 the FEN should contain en-passant target e3, got: {}",
-        fen
+        "after 1.e4 the FEN should contain en-passant target e3, got: {fen}"
     );
 }
 
@@ -54,8 +53,7 @@ fn to_fen_emits_no_en_passant_when_none() {
     let fen = b.to_fen();
     assert!(
         fen.contains(" - 0 "),
-        "starting position FEN should have '-' for en passant, got: {}",
-        fen
+        "starting position FEN should have '-' for en passant, got: {fen}"
     );
 }
 
@@ -68,8 +66,7 @@ fn to_fen_emits_halfmove_clock_after_quiet_moves() {
     let fen = b.to_fen();
     assert!(
         fen.ends_with(" 2 2"),
-        "expected halfmove=2 fullmove=2 after 1.Nf3 Nf6, got tail of: {}",
-        fen
+        "expected halfmove=2 fullmove=2 after 1.Nf3 Nf6, got tail of: {fen}"
     );
 }
 
@@ -84,8 +81,7 @@ fn to_fen_resets_halfmove_clock_on_pawn_move() {
     assert_eq!(
         trailing,
         vec!["2", "0"],
-        "after 1.Nf3 e5 expect halfmove=0 fullmove=2, got: {}",
-        fen
+        "after 1.Nf3 e5 expect halfmove=0 fullmove=2, got: {fen}"
     );
 }
 

@@ -12,7 +12,7 @@ impl Board {
             let mut empty_count = 0;
             for file in 0..8 {
                 let file_as_str = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'][file];
-                let coord = format!("{}{}", file_as_str, rank);
+                let coord = format!("{file_as_str}{rank}");
                 let piece = self.get_piece_at_coordinate_as_fen(&coord);
 
                 if piece == " " {
@@ -83,7 +83,7 @@ impl Board {
 /// `Square::try_from(&str)`.
 fn square_to_algebraic(sq: Square) -> String {
     let idx = sq.to_bit_index();
-    let file = (idx % 8) as u8;
+    let file = idx % 8;
     let rank = idx / 8 + 1;
     format!("{}{}", (b'a' + file) as char, rank)
 }
@@ -93,7 +93,7 @@ pub fn load_fen(fen: &str) -> Result<Board, &'static str> {
 
     // Split FEN into its components
     let parts: Vec<&str> = fen.split_whitespace().collect();
-    if parts.len() < 1 {
+    if parts.is_empty() {
         return Err("Invalid FEN: not enough parts");
     }
 
@@ -107,7 +107,7 @@ pub fn load_fen(fen: &str) -> Result<Board, &'static str> {
     for (rank_idx, rank) in ranks.iter().enumerate() {
         let mut file = 0;
         for c in rank.chars() {
-            if c.is_digit(10) {
+            if c.is_ascii_digit() {
                 file += c.to_digit(10).unwrap() as usize;
             } else {
                 if file >= 8 {

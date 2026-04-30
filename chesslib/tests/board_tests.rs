@@ -28,7 +28,7 @@ fn test_initial_board_pawns() {
         assert!(
             is_bit_set(board.white_pawns, square.to_bit_index()),
             "White pawn should be present at {}{}",
-            ('a' as u8 + file) as char,
+            (b'a' + file) as char,
             2
         );
     }
@@ -49,7 +49,7 @@ fn test_initial_board_pawns() {
         assert!(
             is_bit_set(board.black_pawns, square.to_bit_index()),
             "Black pawn should be present at {}{}",
-            ('a' as u8 + file) as char,
+            (b'a' + file) as char,
             7
         );
     }
@@ -110,8 +110,7 @@ fn test_w_pawns_able_to_push() {
     let diff_white_pawns_push = white_pawns_push ^ expected_white_pawns_push;
     assert_eq!(
         diff_white_pawns_push, 0,
-        "White pawns able to push mismatch: diff = {:064b}",
-        diff_white_pawns_push
+        "White pawns able to push mismatch: diff = {diff_white_pawns_push:064b}"
     );
 }
 
@@ -125,8 +124,7 @@ fn test_w_pawns_able_to_double_push() {
     let diff_white_pawns_double_push = white_pawns_double_push ^ expected_white_pawns_double_push;
     assert_eq!(
         diff_white_pawns_double_push, 0,
-        "White pawns able to double push mismatch: diff = {:064b}",
-        diff_white_pawns_double_push
+        "White pawns able to double push mismatch: diff = {diff_white_pawns_double_push:064b}"
     );
 }
 
@@ -140,8 +138,7 @@ fn test_b_pawns_able_to_push() {
     let diff_black_pawns_push = black_pawns_push ^ expected_black_pawns_push;
     assert_eq!(
         diff_black_pawns_push, 0,
-        "Black pawns able to push mismatch: diff = {:064b}",
-        diff_black_pawns_push
+        "Black pawns able to push mismatch: diff = {diff_black_pawns_push:064b}"
     );
 }
 
@@ -155,8 +152,7 @@ fn test_b_pawns_able_to_double_push() {
     let diff_black_pawns_double_push = black_pawns_double_push ^ expected_black_pawns_double_push;
     assert_eq!(
         diff_black_pawns_double_push, 0,
-        "Black pawns able to double push mismatch: diff = {:064b}",
-        diff_black_pawns_double_push
+        "Black pawns able to double push mismatch: diff = {diff_black_pawns_double_push:064b}"
     );
 }
 
@@ -185,7 +181,7 @@ fn test_random_pawn_moves_no_capture() {
         if !possible_moves.is_empty() {
             use rand::seq::SliceRandom;
             if let Some(mv) = possible_moves.as_slice().choose(&mut rand::thread_rng()) {
-                println!("Applying move: {}", mv);
+                println!("Applying move: {mv}");
                 board.apply_moves_from_strings(std::iter::once(mv.to_string()));
                 assert_eq!(
                     board.white_pawns & board.black_pawns,
@@ -193,7 +189,7 @@ fn test_random_pawn_moves_no_capture() {
                     "White and black pawns overlap!"
                 );
 
-                println!("Current board state after move {}:", mv);
+                println!("Current board state after move {mv}:");
                 println!(
                     "{}",
                     bitboard_to_string(board.white_pawns | board.black_pawns)
@@ -204,7 +200,7 @@ fn test_random_pawn_moves_no_capture() {
         iteration_count += 1;
     }
 
-    println!("Final board state after {} iterations:", iteration_count);
+    println!("Final board state after {iteration_count} iterations:");
     println!("White pawns:\n{}", bitboard_to_string(board.white_pawns));
     println!("Black pawns:\n{}", bitboard_to_string(board.black_pawns));
     // Verify final board state is valid
@@ -254,17 +250,14 @@ fn test_invalid_black_move() {
         // Check that black pawns are moving in the right direction (down the board)
         assert!(
             to_square.get_rank() < from_square.get_rank(),
-            "Black pawn moving in wrong direction: {} to {}",
-            from_square,
-            to_square
+            "Black pawn moving in wrong direction: {from_square} to {to_square}"
         );
 
         // Check that no black pawn is coming from e2
         assert_ne!(
             from_square,
             Square::E2,
-            "Invalid move generated for black: {}",
-            mv
+            "Invalid move generated for black: {mv}"
         );
     }
 
@@ -573,8 +566,7 @@ fn test_side_to_move_after_sequence() {
             next_move.starts_with("d8") ||
             // King
             next_move.starts_with("e8"),
-        "Move {} should be a valid black piece move",
-        next_move
+        "Move {next_move} should be a valid black piece move"
     );
 }
 
@@ -760,8 +752,7 @@ fn test_get_next_move() {
             || black_move.starts_with("h7")
             || black_move.starts_with("b8")
             || black_move.starts_with("g8"),
-        "Move {} should be a black pawn or knight move",
-        black_move
+        "Move {black_move} should be a black pawn or knight move"
     );
 
     // Apply black's move and get another white move
@@ -773,13 +764,11 @@ fn test_get_next_move() {
     assert_eq!(
         next_move.len(),
         4,
-        "Move should be in format 'e2e4', got {}",
-        next_move
+        "Move should be in format 'e2e4', got {next_move}"
     );
     assert!(
         next_move.chars().all(|c| c.is_ascii_alphanumeric()),
-        "Move should only contain letters and numbers, got {}",
-        next_move
+        "Move should only contain letters and numbers, got {next_move}"
     );
 }
 
@@ -816,8 +805,7 @@ fn test_get_next_moves() {
                 || mv.starts_with("h2")
                 || mv.starts_with("b1")
                 || mv.starts_with("g1"),
-            "Move {} should be a white pawn or knight move",
-            mv
+            "Move {mv} should be a white pawn or knight move"
         );
     }
 
@@ -1101,7 +1089,7 @@ fn test_apply_move_promotion() {
     });
     assert!(is_bit_set(board.white_queen, Square::E8.to_bit_index())); // The pawn is now queen
     assert_eq!(board.white_pawns, 0); // No more pawns
-    assert_eq!(board.black_king_in_check, true); // Black king should be in check after promotion
+    assert!(board.black_king_in_check); // Black king should be in check after promotion
     assert_eq!(board.side_to_move, Color::Black); // Should switch
 }
 
@@ -1140,7 +1128,7 @@ fn test_pawn_promotion_moves() {
         .filter(|m| !m.starts_with("a1"))
         .collect();
 
-    println!("Filtered moves: {:?}", white_moves_filtered);
+    println!("Filtered moves: {white_moves_filtered:?}");
 
     let expected_promotions = vec![
         "e7e8q", "e7e8r", "e7e8b", "e7e8n", // All possible promotion moves
@@ -1157,8 +1145,7 @@ fn test_pawn_promotion_moves() {
     for move_str in expected_promotions {
         assert!(
             white_moves_filtered.contains(&move_str.to_string()),
-            "Missing expected promotion move: {}",
-            move_str
+            "Missing expected promotion move: {move_str}"
         );
     }
 
@@ -1189,8 +1176,7 @@ fn test_pawn_promotion_moves() {
     for move_str in expected_black_promotions {
         assert!(
             black_moves_filtered.contains(&move_str.to_string()),
-            "Missing expected promotion move: {}",
-            move_str
+            "Missing expected promotion move: {move_str}"
         );
     }
 }

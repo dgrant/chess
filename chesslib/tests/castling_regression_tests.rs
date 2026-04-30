@@ -74,9 +74,7 @@ fn castle_scores_at_least_as_well_as_kf8() {
     assert!(
         s_castle <= s_kf8,
         "O-O (e8g8) should not score worse than Kf8 (e8f8): \
-         s_castle={}, s_kf8={}",
-        s_castle,
-        s_kf8
+         s_castle={s_castle}, s_kf8={s_kf8}"
     );
 }
 

@@ -28,7 +28,7 @@ fn test_random_positions() {
             let next_move_str =
                 std::panic::catch_unwind(AssertUnwindSafe(|| board.get_next_move_random()));
             match next_move_str {
-                Ok(mv) => board.apply_move_from_string(&*mv),
+                Ok(mv) => board.apply_move_from_string(&mv),
                 Err(_) => panic!("get_next_move panicked, board: {}", board.to_fen()),
             }
         }

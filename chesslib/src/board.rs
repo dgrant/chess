@@ -82,6 +82,12 @@ pub struct Board {
     pub piece_map: [Option<Piece>; 64],
 }
 
+impl Default for Board {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Board {
     pub fn new() -> Self {
         get_starting_board()
@@ -204,7 +210,7 @@ impl Board {
                 Some(Square::from_bit_index(captured_pawn_square)),
             )
         } else {
-            (target_piece.clone(), Some(mv.target))
+            (target_piece, Some(mv.target))
         };
 
         // Now store the state with the correct captured piece
@@ -216,9 +222,9 @@ impl Board {
             en_passant_target: self.en_passant_target,
             halfmove_clock: self.halfmove_clock,
             fullmove_number: self.fullmove_number,
-            last_move: mv.clone(),
+            last_move: *mv,
             rook_castle_move: None, // Initialize as None, will be updated if castling
-            captured_piece: captured_piece.clone(),
+            captured_piece,
             captured_piece_square,
         };
 
@@ -332,7 +338,7 @@ impl Board {
                     self.remove_piece_in_map(captured_pawn_square_idx);
                 }
             } else if target_piece.is_some() {
-                let captured_bitboard = match target_piece.clone().unwrap() {
+                let captured_bitboard = match target_piece.unwrap() {
                     Piece::WhitePawn => &mut self.white_pawns,
                     Piece::BlackPawn => &mut self.black_pawns,
                     Piece::WhiteRook => &mut self.white_rooks,
@@ -571,7 +577,7 @@ impl Board {
         if let Ok(mv) = Move::try_from(mv_str) {
             self.apply_move(&mv);
         } else {
-            panic!("Invalid move string: {}", mv_str);
+            panic!("Invalid move string: {mv_str}");
         }
     }
 
@@ -1009,7 +1015,7 @@ impl Board {
                 ] {
                     let mv = Move {
                         promotion: Some(promotion),
-                        ..base_mv.clone()
+                        ..base_mv
                     };
                     if self.is_legal_move(&mv) {
                         possible_moves.push(mv);
@@ -1349,12 +1355,10 @@ impl Board {
             } else {
                 self.white_queenside_castle_rights
             }
+        } else if is_kingside {
+            self.black_kingside_castle_rights
         } else {
-            if is_kingside {
-                self.black_kingside_castle_rights
-            } else {
-                self.black_queenside_castle_rights
-            }
+            self.black_queenside_castle_rights
         };
 
         // Early return if no castling rights
@@ -1836,7 +1840,8 @@ impl Board {
         let mut best_move = None;
 
         // Order moves with the same heuristics negamax_ab uses internally.
-        moves.sort_unstable_by(|a, b| self.order_score(b, ss, 0).cmp(&self.order_score(a, ss, 0)));
+        // Highest order_score first (Reverse flips std's ascending sort).
+        moves.sort_unstable_by_key(|m| std::cmp::Reverse(self.order_score(m, ss, 0)));
 
         for mv in moves {
             self.apply_move(&mv);

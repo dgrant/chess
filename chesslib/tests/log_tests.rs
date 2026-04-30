@@ -12,7 +12,7 @@ mod tests {
 
         // Return the actual path with datetime that the logger will create
         let datetime_str = Local::now().format("%Y-%m-%d_%H-%M-%S").to_string();
-        temp_dir().join(format!("test_engine_{}.log", datetime_str))
+        temp_dir().join(format!("test_engine_{datetime_str}.log"))
     }
 
     #[test]

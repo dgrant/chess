@@ -182,7 +182,7 @@ impl std::fmt::Display for Square {
             _ => unreachable!(),
         };
         let rank = (self.get_rank() + 1).to_string();
-        write!(f, "{}{}", file, rank)
+        write!(f, "{file}{rank}")
     }
 }
 
@@ -253,15 +253,15 @@ impl CastlingRights {
     }
 }
 
-pub static SPACE: &'static str = " ";
-pub static A: &'static str = "a";
-pub static B: &'static str = "b";
-pub static C: &'static str = "c";
-pub static D: &'static str = "d";
-pub static E: &'static str = "e";
-pub static F: &'static str = "f";
-pub static G: &'static str = "g";
-pub static H: &'static str = "h";
+pub static SPACE: &str = " ";
+pub static A: &str = "a";
+pub static B: &str = "b";
+pub static C: &str = "c";
+pub static D: &str = "d";
+pub static E: &str = "e";
+pub static F: &str = "f";
+pub static G: &str = "g";
+pub static H: &str = "h";
 
 /// Material values in centipawns. Used by both static evaluation
 /// (bitboard population counts) and ordering heuristics like MVV-LVA

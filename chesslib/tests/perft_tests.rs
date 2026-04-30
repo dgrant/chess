@@ -12,7 +12,7 @@ mod perft_tests {
         // Fool's mate moves: 1. f3 e5 2. g4 Qh4#
         let moves = ["f2f3", "e7e5", "g2g4", "d8h4"];
         for mv in moves {
-            eprintln!("Applying move: {}", mv);
+            eprintln!("Applying move: {mv}");
             board.apply_move_from_string(mv);
         }
 
@@ -24,19 +24,13 @@ mod perft_tests {
 
         eprintln!("Running perft at depth 0...");
         let (nodes, checkmates) = board.perft(0);
-        eprintln!(
-            "Depth 0 results: {} nodes, {} checkmates",
-            nodes, checkmates
-        );
+        eprintln!("Depth 0 results: {nodes} nodes, {checkmates} checkmates");
         assert_eq!(nodes, 1, "Should be exactly 1 node at depth 0");
         assert_eq!(checkmates, 1, "Should be exactly 1 checkmate at depth 0");
 
         eprintln!("Running perft at depth 1...");
         let (nodes, checkmates) = board.perft(1);
-        eprintln!(
-            "Depth 1 results: {} nodes, {} checkmates",
-            nodes, checkmates
-        );
+        eprintln!("Depth 1 results: {nodes} nodes, {checkmates} checkmates");
         assert_eq!(
             nodes, 0,
             "Should be 0 nodes at depth 1 in a checkmate position"
@@ -72,7 +66,7 @@ mod perft_tests {
         let depths = [(2, 400), (3, 8_902), (4, 197_281), (5, 4_865_609)];
 
         for (depth, expected_nodes) in depths {
-            eprintln!("\nRunning perft at depth {}...", depth);
+            eprintln!("\nRunning perft at depth {depth}...");
             let start = Instant::now();
             let (nodes, checkmates) = board.perft(depth);
             let duration = start.elapsed();
@@ -85,13 +79,12 @@ mod perft_tests {
             );
             assert_eq!(
                 nodes, expected_nodes,
-                "Incorrect node count at depth {}",
-                depth
+                "Incorrect node count at depth {depth}"
             );
 
             // Print stats about checkmates
             if checkmates > 0 {
-                eprintln!("Found {} checkmates at depth {}", checkmates, depth);
+                eprintln!("Found {checkmates} checkmates at depth {depth}");
             }
         }
     }
@@ -108,40 +101,28 @@ mod perft_tests {
         // Try depth 1 first to see move generation working
         eprintln!("\nTesting depth 1...");
         let (nodes1, checkmates1) = board.perft(1);
-        eprintln!(
-            "Depth 1 completed successfully: {} nodes, {} checkmates",
-            nodes1, checkmates1
-        );
+        eprintln!("Depth 1 completed successfully: {nodes1} nodes, {checkmates1} checkmates");
         eprintln!("Move history after depth 1: {:?}", board.get_move_history());
         assert_eq!(nodes1, 20);
 
         // Then try depth 2
         eprintln!("\nTesting depth 2...");
         let (nodes2, checkmates2) = board.perft(2);
-        eprintln!(
-            "Depth 2 completed successfully: {} nodes, {} checkmates",
-            nodes2, checkmates2
-        );
+        eprintln!("Depth 2 completed successfully: {nodes2} nodes, {checkmates2} checkmates");
         eprintln!("Move history after depth 2: {:?}", board.get_move_history());
         assert_eq!(nodes2, 400);
 
         // Now try depth 3 which should still work
         eprintln!("\nTesting depth 3...");
         let (nodes3, checkmates3) = board.perft(3);
-        eprintln!(
-            "Depth 3 completed successfully: {} nodes, {} checkmates",
-            nodes3, checkmates3
-        );
+        eprintln!("Depth 3 completed successfully: {nodes3} nodes, {checkmates3} checkmates");
         eprintln!("Move history after depth 3: {:?}", board.get_move_history());
         assert_eq!(nodes3, 8_902);
 
         // Try depth 4
         eprintln!("\nTesting depth 4...");
         let (nodes4, checkmates4) = board.perft(4);
-        eprintln!(
-            "Depth 4 completed successfully: {} nodes, {} checkmates",
-            nodes4, checkmates4
-        );
+        eprintln!("Depth 4 completed successfully: {nodes4} nodes, {checkmates4} checkmates");
         eprintln!("Move history after depth 4: {:?}", board.get_move_history());
         assert_eq!(nodes4, 197_281);
         assert_eq!(checkmates4, 8);
@@ -154,10 +135,7 @@ mod perft_tests {
 
         eprintln!("\nNow attempting depth 5...");
         let (nodes5, checkmates5) = board.perft(5);
-        eprintln!(
-            "Depth 5 results: {} nodes, {} checkmates",
-            nodes5, checkmates5
-        );
+        eprintln!("Depth 5 results: {nodes5} nodes, {checkmates5} checkmates");
         eprintln!("Final move history: {:?}", board.get_move_history());
         assert_eq!(nodes5, 4_865_609);
         assert_eq!(checkmates5, 347);
@@ -170,10 +148,7 @@ mod perft_tests {
         eprintln!("Starting perft depth 6 test...");
 
         let (nodes6, checkmates6) = board.perft(6);
-        eprintln!(
-            "Depth 6 results: {} nodes, {} checkmates",
-            nodes6, checkmates6
-        );
+        eprintln!("Depth 6 results: {nodes6} nodes, {checkmates6} checkmates");
         eprintln!("Final move history: {:?}", board.get_move_history());
         assert_eq!(nodes6, 119_060_324);
         assert_eq!(checkmates6, 10_828);
@@ -234,7 +209,7 @@ mod perft_tests {
         for (i, mv) in test_moves.iter().enumerate() {
             eprintln!("\nMove {}: {}", i + 1, mv);
             board.apply_move_from_string(mv);
-            eprintln!("After move {}:", mv);
+            eprintln!("After move {mv}:");
             eprintln!("Complete move history: {:?}", board.get_move_history());
             eprintln!("{}", board.get_debug_state());
         }
