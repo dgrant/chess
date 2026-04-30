@@ -10,6 +10,15 @@ use crate::move_generation::{
 use crate::search::SearchState;
 use std::time::{Duration, Instant};
 
+/// Read once at startup. When set, suppresses random tie-breaking in move
+/// selection so that benchmarks become deterministic (same engine + same
+/// opponent + same position + same time control = same game every run).
+fn deterministic_search() -> bool {
+    use std::sync::OnceLock;
+    static FLAG: OnceLock<bool> = OnceLock::new();
+    *FLAG.get_or_init(|| std::env::var("CHESS_DETERMINISTIC").is_ok())
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct BoardState {
     pub white_kingside_castle_rights: bool,
@@ -1591,7 +1600,9 @@ impl Board {
             if score > best_score {
                 best_score = score;
                 best_move = Some(mv);
-            } else if score == best_score {
+            } else if score == best_score && !deterministic_search() {
+                // Random tie-break adds opening variety in real play but
+                // makes benchmarks noisy. Disabled when CHESS_DETERMINISTIC=1.
                 if rand::random::<bool>() {
                     best_move = Some(mv);
                 }

@@ -5,12 +5,17 @@ adjudicates by basic rules (50-move, threefold via FEN repetition,
 checkmate / stalemate detection delegated to engines via 'no legal moves'
 heuristic), and reports W/D/L plus rough ELO difference.
 """
-import subprocess, sys, time, argparse, re, math
+import subprocess, sys, time, argparse, re, math, os
 from collections import Counter
 
 def open_engine(cmd):
+    # Set CHESS_DETERMINISTIC so our engine suppresses its random tie-breaking
+    # in move selection. This makes the bench reproducible: same engine + same
+    # opponent + same time control + same opening = same game outcome every run.
+    # Stockfish ignores this env var, which is fine.
+    env = {**os.environ, "CHESS_DETERMINISTIC": "1"}
     return subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                            text=True, bufsize=1)
+                            text=True, bufsize=1, env=env)
 
 def send(p, line):
     p.stdin.write(line + "\n"); p.stdin.flush()
