@@ -10,8 +10,6 @@ const CHECKMATE_BONUS: i64 = 100000;     // Large bonus for checkmate
 const CASTLED_BONUS: i64 = 75;           // Bonus for having castled (king safety)
 const CASTLING_RIGHTS_BONUS: i64 = 20;   // Bonus for each available castling right
 const MOBILITY_BONUS: i64 = 5;           // Bonus per available move for piece mobility
-const DOUBLED_PAWN_PENALTY: i64 = -15;   // Per "extra" pawn on the same file (a + b doubled = -15, a + b + c tripled = -30)
-const ISOLATED_PAWN_PENALTY: i64 = -20;  // Per pawn with no friendly pawn on either neighbouring file
 
 use crate::board::Board;
 use crate::types::{Color, PAWN_VALUE, KNIGHT_VALUE, BISHOP_VALUE, ROOK_VALUE, QUEEN_VALUE};
@@ -97,48 +95,6 @@ impl Board {
 
         // Castling evaluation
         score += self.evaluate_castling();
-
-        // Pawn structure (doubled, isolated)
-        score += self.evaluate_pawn_structure();
-
-        score
-    }
-
-    /// Penalises poor pawn structure: doubled (multiple pawns on the same
-    /// file) and isolated (no friendly pawn on either adjacent file).
-    /// Returns score from White's perspective.
-    fn evaluate_pawn_structure(&self) -> i64 {
-        let mut score = 0;
-
-        // Doubled pawns: per file, count pawns; each pawn beyond the first
-        // contributes one DOUBLED_PAWN_PENALTY.
-        for file in 0..8u32 {
-            let file_mask = 0x0101010101010101u64 << file;
-            let w = (self.white_pawns & file_mask).count_ones();
-            let b = (self.black_pawns & file_mask).count_ones();
-            if w > 1 { score += (w as i64 - 1) * DOUBLED_PAWN_PENALTY; }
-            if b > 1 { score -= (b as i64 - 1) * DOUBLED_PAWN_PENALTY; }
-        }
-
-        // Isolated pawns: a pawn whose neighbour-file mask has no friendly pawn.
-        for file in 0..8u32 {
-            let file_mask = 0x0101010101010101u64 << file;
-            let neighbour_mask = {
-                let mut m = 0u64;
-                if file > 0 { m |= 0x0101010101010101u64 << (file - 1); }
-                if file < 7 { m |= 0x0101010101010101u64 << (file + 1); }
-                m
-            };
-
-            let w_on_file = self.white_pawns & file_mask;
-            if w_on_file != 0 && (self.white_pawns & neighbour_mask) == 0 {
-                score += (w_on_file.count_ones() as i64) * ISOLATED_PAWN_PENALTY;
-            }
-            let b_on_file = self.black_pawns & file_mask;
-            if b_on_file != 0 && (self.black_pawns & neighbour_mask) == 0 {
-                score -= (b_on_file.count_ones() as i64) * ISOLATED_PAWN_PENALTY;
-            }
-        }
 
         score
     }
