@@ -2,6 +2,43 @@
 
 Cargo workspace: `chess/` (binary, UCI loop) + `chesslib/` (engine library, where the tests live).
 
+## Constitutional goal: human readability
+
+**Readability is the top-priority quality of this codebase, treated as a hard
+constraint, second only to correctness and performance.** A reader who has
+never seen the file before should be able to understand what the code does,
+why it does it that way, and what the surrounding constraints are — without
+having to dig through git history or other files.
+
+This OVERRIDES any default tendency to write terse code or avoid comments.
+For this project specifically:
+
+- **Comment generously.** Explain the *why*, the chess-engine-specific
+  invariants, the bitboard tricks, the score-sign conventions, the
+  "we tried X and reverted because Y" history, and anything a non-expert
+  reader would have to puzzle over. Multi-line `///` doc comments on
+  non-trivial functions are encouraged. Inline comments explaining
+  non-obvious bitboard math, sign flips, or chess rules are encouraged.
+- **Name things fully.** Prefer `score_from_white_pov` over `s` even at
+  cost of a few extra characters. Cryptic abbreviations (`mv`, `bb`, `sq`)
+  are fine when ubiquitous in the chess-engine domain, but spell out
+  anything domain-specific (e.g., `mvv_lva` should be expanded somewhere
+  in a comment if it appears).
+- **Show the chess intent.** When a piece of code maps to a chess concept
+  (e.g., "this resets the halfmove clock per the 50-move rule," "this
+  checks for the king-passes-through-attacked-square castling rule"),
+  say so in a comment. Future maintainers may not know the rule by name.
+- **Performance still wins when forced to choose.** If the readable form
+  is genuinely slower in a hot path, write the fast form AND comment it
+  — never silently sacrifice clarity for performance without explaining
+  what was traded. The default should be readable; performance hacks
+  should look like deliberate exceptions with a `// PERF:` comment.
+- **No half-explained magic numbers.** Constants like `0xfefefefefefefefe`
+  must have a one-line comment explaining what they are (`NOT_A_FILE`).
+
+This is a hard constitutional goal. When in doubt, err on the side of more
+explanation, longer names, and more comments — not less.
+
 ## Build / test / lint
 
 Run cargo from the repo root. The workspace `Cargo.toml` covers both crates.
