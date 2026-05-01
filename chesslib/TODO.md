@@ -27,6 +27,23 @@ bonus. Open: pawn structure (was tried + reverted), passed-pawn bonuses,
 king-tropism, transposition table (the next likely perf step per
 ARCHITECTURE.md).
 
+# Features
+
+Hint support — engine returns its preferred move for the side to move
+*without* requiring `go` semantics or moving the game forward. Use cases:
+GUI "show hint" button for human players, training tools, analysis mode.
+
+Open design questions:
+  - Protocol surface: xboard/winboard has a literal `hint` command;
+    UCI doesn't. We could (a) add an xboard mode, (b) extend our UCI
+    handler with a non-standard `hint` command, or (c) expose hint
+    via a separate non-UCI library entry point.
+  - Depth/time policy: a hint is typically expected to be cheap —
+    sub-second, not a full search. Probably "go to depth 6" or
+    "search 200ms" rather than full time-control rules.
+  - Should the hint search reuse the session's transposition table
+    (when we have one) so a "hint then go" sequence is fast?
+
 # Bugs
 
 ~~This position:

@@ -11,6 +11,7 @@
 
 use chesslib::board::Board;
 use chesslib::fen::load_fen;
+use chesslib::search::Searcher;
 use chesslib::types::{Move, Square};
 
 const FEN: &str = "rn2k2r/ppp2ppp/4bn2/q1b1N3/8/2NB4/PPPP1PPP/R1BQR1K1 b kq - 0 1";
@@ -53,7 +54,7 @@ fn castle_scores_at_least_as_well_as_kf8() {
     fn score_after(mv: Move) -> i64 {
         let mut b = board();
         b.apply_move(&mv);
-        let (_resp, score_for_white) = b.find_best_move(3);
+        let (_resp, score_for_white) = Searcher::new().find_best_move(&mut b, 3);
         score_for_white
     }
 
@@ -87,7 +88,7 @@ fn castle_scores_at_least_as_well_as_kf8() {
 fn engine_does_not_pick_kf8_at_depth_4() {
     for _ in 0..5 {
         let mut b = board();
-        let (mv, _score) = b.find_best_move(4);
+        let (mv, _score) = Searcher::new().find_best_move(&mut b, 4);
         let mv = mv.unwrap();
         assert!(
             !(mv.src == Square::E8 && mv.target == Square::F8),

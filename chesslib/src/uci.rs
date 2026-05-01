@@ -1,7 +1,9 @@
 use crate::board::Board;
 use crate::logger::log_to_file;
+use crate::search::Searcher;
 use crate::types::Color;
 use std::sync::Mutex;
+use std::time::Duration;
 
 use crate::board_utils::get_starting_board;
 use crate::fen::load_fen;
@@ -9,6 +11,14 @@ use lazy_static::lazy_static;
 
 lazy_static! {
     static ref BOARD_STATE: Mutex<Option<Board>> = Mutex::new(None);
+
+    /// One Searcher per process. Killer/history (and the future
+    /// transposition table) survive across `go` commands within a
+    /// session — a depth-N search after a depth-(N-1) search reuses
+    /// the previous iteration's move-ordering signals. This is also
+    /// the reason `Searcher` is stateful (see `chesslib::search` for
+    /// the design rationale). Reset on `ucinewgame`.
+    static ref SEARCHER: Mutex<Searcher> = Mutex::new(Searcher::new());
 }
 
 pub fn handle_uci_command(input: &str) -> String {
@@ -19,6 +29,10 @@ pub fn handle_uci_command(input: &str) -> String {
         "ucinewgame" => {
             let mut board_state = BOARD_STATE.lock().unwrap();
             *board_state = Some(get_starting_board()); // Reset the board state
+                                                       // Fresh game → fresh searcher. Drops killer/history from
+                                                       // the previous game so stale move-ordering signals don't
+                                                       // contaminate the new one.
+            *SEARCHER.lock().unwrap() = Searcher::new();
             "".to_string()
         }
         command if command.starts_with("position") => {
@@ -120,8 +134,9 @@ pub fn handle_uci_command(input: &str) -> String {
 
                 // 'go depth N' is exact. Otherwise use a time budget from movetime
                 // or 1/30th of our remaining clock, default 1s if no info.
+                let mut searcher = SEARCHER.lock().unwrap();
                 let result = if let Some(d) = fixed_depth {
-                    let (mv, score) = board.find_best_move(d);
+                    let (mv, score) = searcher.find_best_move(board, d);
                     mv.map(|m| (m.to_string(), score, d))
                 } else {
                     let budget_ms: u64 = movetime.map(|t| t as u64).unwrap_or_else(|| {
@@ -131,7 +146,9 @@ pub fn handle_uci_command(input: &str) -> String {
                         };
                         our_ms.map(|t| (t as u64 / 30).max(50)).unwrap_or(1000)
                     });
-                    board.get_next_move_timed(budget_ms)
+                    let (mv, score, depth) =
+                        searcher.find_best_move_within(board, Duration::from_millis(budget_ms));
+                    mv.map(|m| (m.to_string(), score, depth))
                 };
 
                 match result {

@@ -1,4 +1,5 @@
 use chesslib::board::Board;
+use chesslib::search::Searcher;
 use chesslib::types::Square;
 
 #[test]
@@ -10,7 +11,7 @@ fn test_negamax_basic_tactics() {
     // Move black pawn to d5
     board.apply_move_from_string("e7e5");
     // White can capture the undefended pawn
-    let (best_move, _score) = board.find_best_move(3);
+    let (best_move, _score) = Searcher::new().find_best_move(&mut board, 3);
     assert!(best_move.is_some());
     assert_eq!(best_move.unwrap().to_string(), "f4e5");
 
@@ -24,7 +25,7 @@ fn test_negamax_basic_tactics() {
     board.apply_move_from_string("f1b5"); // Bishop to b5
     board.apply_move_from_string("c7c6"); // Threatens the bishop
 
-    let (best_move, _score) = board.find_best_move(3);
+    let (best_move, _score) = Searcher::new().find_best_move(&mut board, 3);
     assert!(best_move.is_some());
     // Bishop should move away to safety
     assert_eq!(best_move.unwrap().src, Square::B5);
@@ -43,7 +44,7 @@ fn test_negamax_checkmate() {
     board.apply_move_from_string("g8f6");
 
     // White can checkmate with Qxf7#
-    let (best_move, _score) = board.find_best_move(3);
+    let (best_move, _score) = Searcher::new().find_best_move(&mut board, 3);
     assert!(best_move.is_some());
     assert_eq!(best_move.unwrap().to_string(), "h5f7");
 }

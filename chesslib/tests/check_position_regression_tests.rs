@@ -12,6 +12,7 @@
 
 use chesslib::board::Board;
 use chesslib::fen::load_fen;
+use chesslib::search::Searcher;
 use chesslib::types::Square;
 
 const FEN: &str = "rn4k1/pppb1Q2/6B1/6p1/1P6/P1N5/1BPq2PP/R3R2K b - - 0 1";
@@ -41,7 +42,7 @@ fn kh8_is_the_only_legal_move() {
 fn engine_returns_kh8_at_every_depth() {
     for depth in 1..=4 {
         let mut b = board();
-        let (mv, _score) = b.find_best_move(depth);
+        let (mv, _score) = Searcher::new().find_best_move(&mut b, depth);
         let m = mv.unwrap_or_else(|| panic!("engine returned None at depth {depth}"));
         assert_eq!(
             (m.src, m.target),
@@ -55,7 +56,8 @@ fn engine_returns_kh8_at_every_depth() {
 fn engine_returns_kh8_within_time_budget() {
     use std::time::Duration;
     let mut b = board();
-    let (mv, _score, _depth) = b.find_best_move_within(Duration::from_millis(500));
+    let (mv, _score, _depth) =
+        Searcher::new().find_best_move_within(&mut b, Duration::from_millis(500));
     let m = mv.expect("engine should always return a move within budget");
     assert_eq!((m.src, m.target), (Square::G8, Square::H8));
 }
@@ -90,7 +92,7 @@ fn after_kh8_white_plays_a_mate_in_1_at_every_depth() {
         for _ in 0..6 {
             let mut b = board();
             b.apply_move(&kh8);
-            let (mv, _score) = b.find_best_move(depth);
+            let (mv, _score) = Searcher::new().find_best_move(&mut b, depth);
             let m = mv.unwrap();
             assert!(
                 m.src == Square::F7 && mating_targets.contains(&m.target),

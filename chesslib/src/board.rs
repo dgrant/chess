@@ -4,18 +4,7 @@ use crate::move_generation::{
     b_pawns_attack_targets, bishop_moves, king_legal_moves, knight_legal_moves, rook_moves,
     w_pawns_attack_targets,
 };
-use crate::search::{SearchState, MATE_SCORE};
 use crate::types::{Color, Move, Piece, PieceType, Square, SPACE};
-use std::time::{Duration, Instant};
-
-/// Read once at startup. When set, suppresses random tie-breaking in move
-/// selection so that benchmarks become deterministic (same engine + same
-/// opponent + same position + same time control = same game every run).
-fn deterministic_search() -> bool {
-    use std::sync::OnceLock;
-    static FLAG: OnceLock<bool> = OnceLock::new();
-    *FLAG.get_or_init(|| std::env::var("CHESS_DETERMINISTIC").is_ok())
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct BoardState {
@@ -947,49 +936,18 @@ impl Board {
             .collect()
     }
 
+    /// Returns one legal move from the current position as a string in
+    /// long algebraic notation (`"e2e4"`, `"e7e8q"` for promotions).
+    /// Useful for "play any legal move" scenarios in tests and toy
+    /// drivers — no search, no evaluation, just move generation.
+    /// Panics if the position has no legal moves (stalemate or
+    /// checkmate); call `is_checkmate` / `is_stalemate` first if you
+    /// need to handle that.
     pub fn get_next_move_random(&mut self) -> String {
-        // Default to getting one move
         self.get_next_moves(1)
             .into_iter()
             .next()
             .expect("No moves found, which should be impossible in current state")
-    }
-
-    pub fn get_next_move_smart(&mut self) -> Option<(String, i64)> {
-        let (best_move, best_score) = self.find_best_move(5);
-        best_move.map(|m| (m.to_string(), best_score))
-    }
-
-    /// Iterative deepening with a time budget. Always completes at least depth 1
-    /// (so we always return *something* legal if any move exists), then deepens
-    /// until the next iteration would likely overshoot the deadline.
-    ///
-    /// Killer and history tables persist across iterations: a move that caused
-    /// a cutoff at depth 4 will be tried first at depth 5.
-    pub fn find_best_move_within(&mut self, time_budget: Duration) -> (Option<Move>, i64, i32) {
-        let deadline = Instant::now() + time_budget;
-        let mut best_move = None;
-        let mut best_score = 0i64;
-        let mut completed_depth = 0;
-        let mut ss = SearchState::new();
-        for depth in 1..=20 {
-            let iter_start = Instant::now();
-            let (mv, score) = self.find_best_move_with_state(depth, &mut ss);
-            best_move = mv;
-            best_score = score;
-            completed_depth = depth;
-            let elapsed = iter_start.elapsed();
-            if Instant::now() + elapsed * 4 >= deadline {
-                break;
-            }
-        }
-        (best_move, best_score, completed_depth)
-    }
-
-    pub fn get_next_move_timed(&mut self, time_budget_ms: u64) -> Option<(String, i64, i32)> {
-        let (best_move, score, depth) =
-            self.find_best_move_within(Duration::from_millis(time_budget_ms));
-        best_move.map(|m| (m.to_string(), score, depth))
     }
 
     pub fn bitboard_to_moves(&mut self, source_pieces: u64, target_squares: u64) -> Vec<Move> {
@@ -1643,248 +1601,6 @@ impl Board {
                 )
             })
             .collect()
-    }
-
-    /// Static evaluation from the side-to-move's perspective.
-    /// Wraps `evaluate()` (White's POV) and flips for Black.
-    fn evaluate_pov(&self) -> i64 {
-        if self.side_to_move == Color::White {
-            self.evaluate()
-        } else {
-            -self.evaluate()
-        }
-    }
-
-    /// Quiescence search: at the main-search horizon, keep extending on captures
-    /// only until the position is "quiet" (no profitable captures left). Resolves
-    /// pending exchanges so the static eval at the real leaf is honest. Without
-    /// this, depth-N negamax happily evaluates positions with hanging pieces.
-    ///
-    /// Stand-pat: the side to move can decline to capture (= keep the static
-    /// eval). So `evaluate_pov` is the floor; captures only get explored if they
-    /// might beat it.
-    ///
-    /// Captures are ordered MVV-LVA (most valuable victim, least valuable
-    /// attacker) so promising captures (PxQ) are tried before bad ones (QxP).
-    /// With ordering, beta cutoffs land on the first or second move much more
-    /// often, and the recursion terminates fast even in tactical positions.
-    ///
-    /// Limitations of this first cut:
-    ///  - Doesn't generate check evasions when in check (should search all moves
-    ///    if in check, not just captures).
-    ///  - Misses en-passant captures (the `is_capture` test only checks whether
-    ///    target square is occupied; e.p. moves to an empty square).
-    fn quiesce(&mut self, mut alpha: i64, beta: i64) -> i64 {
-        let stand_pat = self.evaluate_pov();
-        if stand_pat >= beta {
-            return beta;
-        }
-        if stand_pat > alpha {
-            alpha = stand_pat;
-        }
-
-        let mut moves = Vec::new();
-        self.get_all_raw_moves_append(&mut moves);
-
-        // Filter to captures and score by MVV-LVA. Higher score first.
-        // Score = victim_value * 10 - attacker_value, so PxQ (8900) ranks
-        // far above QxP (100) and beats every quiet move (filtered out).
-        let mut scored: Vec<(i64, Move)> = moves
-            .into_iter()
-            .filter_map(|mv| {
-                let victim = self.get_piece_at_square_fast(mv.target.to_bit_index())?;
-                let attacker = self.get_piece_at_square_fast(mv.src.to_bit_index())?;
-                let score = victim.material_value() * 10 - attacker.material_value();
-                Some((score, mv))
-            })
-            .collect();
-        scored.sort_unstable_by(|a, b| b.0.cmp(&a.0));
-
-        for (_score, mv) in scored {
-            self.apply_move(&mv);
-            let score = -self.quiesce(-beta, -alpha);
-            self.undo_last_move();
-
-            if score >= beta {
-                return beta;
-            }
-            if score > alpha {
-                alpha = score;
-            }
-        }
-
-        alpha
-    }
-
-    /// Returns true if applying `mv` to the current position is a capture
-    /// (target square occupied). Doesn't catch en-passant; that's a known
-    /// limitation matching the quiescence implementation.
-    fn move_is_capture(&self, mv: &Move) -> bool {
-        self.get_piece_at_square_fast(mv.target.to_bit_index())
-            .is_some()
-    }
-
-    /// Score a move for ordering inside the main search. Higher = try first.
-    /// Tier 1: captures, ordered MVV-LVA.
-    /// Tier 2: killer-move slot 0 from this ply.
-    /// Tier 3: killer-move slot 1 from this ply.
-    /// Tier 4: history-heuristic score (any quiet move).
-    fn order_score(&self, mv: &Move, ss: &SearchState, ply: usize) -> i64 {
-        if let (Some(victim), Some(attacker)) = (
-            self.get_piece_at_square_fast(mv.target.to_bit_index()),
-            self.get_piece_at_square_fast(mv.src.to_bit_index()),
-        ) {
-            // Capture: MVV-LVA, big offset to put captures above any killer/history score.
-            return 1_000_000 + victim.material_value() * 10 - attacker.material_value();
-        }
-        if ply < crate::search::MAX_SEARCH_PLY {
-            if ss.killers[ply][0] == Some(*mv) {
-                return 500_000;
-            }
-            if ss.killers[ply][1] == Some(*mv) {
-                return 400_000;
-            }
-        }
-        let from = mv.src.to_bit_index() as usize;
-        let to = mv.target.to_bit_index() as usize;
-        ss.history[from][to]
-    }
-
-    /// Recursive negamax with alpha-beta + quiescence + killer/history move ordering.
-    /// `ply` is the distance from the root (0 at root); `depth` is remaining depth.
-    fn negamax_ab(
-        &mut self,
-        depth: i32,
-        ply: usize,
-        mut alpha: i64,
-        beta: i64,
-        ss: &mut SearchState,
-    ) -> i64 {
-        // Generate moves up-front so we can detect mate/stalemate before
-        // deciding whether to drop into quiescence. If we did the depth==0
-        // check first, mates discovered exactly at the horizon would be
-        // missed (quiescence's stand-pat doesn't recognise them) and the
-        // engine would happily delay a forced mate by extra plies.
-        let mut moves = Vec::new();
-        self.get_all_raw_moves_append(&mut moves);
-
-        if moves.is_empty() {
-            let in_check = match self.side_to_move {
-                Color::White => self.white_king_in_check,
-                Color::Black => self.black_king_in_check,
-            };
-            // Ply-aware mate score: closer mates score larger in magnitude
-            // so the search prefers them. Stalemate scores 0.
-            return if in_check {
-                -MATE_SCORE + ply as i64
-            } else {
-                0
-            };
-        }
-
-        if depth == 0 {
-            return self.quiesce(alpha, beta);
-        }
-
-        // Order moves with cheap heuristics: MVV-LVA captures > killers > history > rest.
-        moves.sort_unstable_by(|a, b| {
-            self.order_score(b, ss, ply)
-                .cmp(&self.order_score(a, ss, ply))
-        });
-
-        let mut best_score = i64::MIN + 1;
-
-        for mv in moves {
-            let is_cap = self.move_is_capture(&mv);
-            self.apply_move(&mv);
-            let score = -self.negamax_ab(depth - 1, ply + 1, -beta, -alpha, ss);
-            self.undo_last_move();
-
-            if score > best_score {
-                best_score = score;
-            }
-
-            if score >= beta {
-                ss.record_cutoff(ply, mv, depth, is_cap);
-                return beta;
-            }
-
-            if score > alpha {
-                alpha = score;
-            }
-        }
-
-        best_score
-    }
-
-    /// Finds the best move in the current position using negamax search with alpha-beta pruning.
-    /// Allocates a fresh SearchState; for iterative deepening (where you want killer/history
-    /// info to persist across iterations), use `find_best_move_with_state`.
-    pub fn find_best_move(&mut self, depth: i32) -> (Option<Move>, i64) {
-        let mut ss = SearchState::new();
-        self.find_best_move_with_state(depth, &mut ss)
-    }
-
-    /// Same as `find_best_move` but uses an externally-provided SearchState
-    /// so killer and history info persist across iterative-deepening iterations.
-    pub fn find_best_move_with_state(
-        &mut self,
-        depth: i32,
-        ss: &mut SearchState,
-    ) -> (Option<Move>, i64) {
-        let mut moves = Vec::new();
-        self.get_all_raw_moves_append(&mut moves);
-
-        // No legal moves at root: position is mate (in check) or stalemate.
-        // Return a ply-aware mate score (ply=0 here) or 0 for stalemate so
-        // callers don't have to special-case this.
-        if moves.is_empty() {
-            let in_check = match self.side_to_move {
-                Color::White => self.white_king_in_check,
-                Color::Black => self.black_king_in_check,
-            };
-            let score_pov = if in_check { -MATE_SCORE } else { 0 };
-            // Caller wants white-POV. Flip if black-to-move.
-            let white_pov = if self.side_to_move == Color::Black {
-                -score_pov
-            } else {
-                score_pov
-            };
-            return (None, white_pov);
-        }
-
-        // best_score lives in side-to-move's POV. Use MIN+1 so that the final
-        // negation for black is safe (-(MIN) overflows; -(MIN+1) = MAX).
-        let mut best_score = i64::MIN + 1;
-        let mut best_move = None;
-
-        // Order moves with the same heuristics negamax_ab uses internally.
-        // Highest order_score first (Reverse flips std's ascending sort).
-        moves.sort_unstable_by_key(|m| std::cmp::Reverse(self.order_score(m, ss, 0)));
-
-        for mv in moves {
-            self.apply_move(&mv);
-            let score = -self.negamax_ab(depth - 1, 1, i64::MIN + 1, i64::MAX - 1, ss);
-            self.undo_last_move();
-
-            if score > best_score {
-                best_score = score;
-                best_move = Some(mv);
-            } else if score == best_score && !deterministic_search() {
-                // Random tie-break adds opening variety in real play but
-                // makes benchmarks noisy. Disabled when CHESS_DETERMINISTIC=1.
-                if rand::random::<bool>() {
-                    best_move = Some(mv);
-                }
-            }
-        }
-
-        if self.side_to_move == Color::Black {
-            (best_move, -best_score)
-        } else {
-            // White just moved, so we want the evaluation
-            (best_move, best_score)
-        }
     }
 }
 

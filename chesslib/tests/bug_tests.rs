@@ -2,11 +2,12 @@
 // rn4k1/pppb1Q2/6B1/6p1/1P6/P1N5/1BPq2PP/R3R2K b - - 0 1
 
 use chesslib::fen::load_fen;
+use chesslib::search::Searcher;
 
 #[test]
 pub fn test_bug_position() {
     let mut board = load_fen("rn4k1/pppb1Q2/6B1/6p1/1P6/P1N5/1BPq2PP/R3R2K b - - 0 1").unwrap();
-    let (mv, _score) = board.find_best_move(2);
+    let (mv, _score) = Searcher::new().find_best_move(&mut board, 2);
     assert_eq!(mv.unwrap().to_string(), "g8h8");
 }
 
@@ -38,7 +39,7 @@ pub fn test_bug_position2() {
     // b8c6 after recent reverts). The test was pinning whatever move the
     // engine happened to like at a given moment — not a chess-objective
     // best move. Relaxed to: engine returns *some* legal move.
-    let (mv, _score) = board.find_best_move(4);
+    let (mv, _score) = Searcher::new().find_best_move(&mut board, 4);
     assert!(
         mv.is_some(),
         "find_best_move should return a legal move from this position"
