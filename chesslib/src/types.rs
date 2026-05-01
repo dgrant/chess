@@ -186,10 +186,34 @@ impl std::fmt::Display for Square {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum Color {
     White,
     Black,
+}
+
+impl Color {
+    /// Index for `Board::colors` (the per-colour bitboard array).
+    /// `White → 0`, `Black → 1`. Used only for array indexing; do not
+    /// rely on the numeric value for any other purpose.
+    #[inline]
+    pub fn idx(&self) -> usize {
+        match self {
+            Color::White => 0,
+            Color::Black => 1,
+        }
+    }
+
+    /// Returns the colour of the side that is *not* this colour.
+    /// Helpful when the convention wants "the other side" and reading
+    /// `match c { White => Black, Black => White }` adds noise.
+    #[inline]
+    pub fn opponent(&self) -> Color {
+        match self {
+            Color::White => Color::Black,
+            Color::Black => Color::White,
+        }
+    }
 }
 
 /// Represents the castling rights for both players
@@ -296,6 +320,34 @@ impl PieceType {
             PieceType::King => 'k',
         }
     }
+
+    /// Index for `Board::pieces` (the per-piece-type bitboard array).
+    /// The numeric values are an implementation detail of the bitboard
+    /// storage and have no chess meaning; do not depend on the order.
+    #[inline]
+    pub fn idx(&self) -> usize {
+        match self {
+            PieceType::Pawn => 0,
+            PieceType::Knight => 1,
+            PieceType::Bishop => 2,
+            PieceType::Rook => 3,
+            PieceType::Queen => 4,
+            PieceType::King => 5,
+        }
+    }
+
+    /// Iterate every piece type in a stable order. Useful when looping
+    /// over `Board::pieces` to do the same operation for each piece kind
+    /// (the kind of generic loop our previous 12-named-field layout
+    /// could not express).
+    pub const ALL: [PieceType; 6] = [
+        PieceType::Pawn,
+        PieceType::Knight,
+        PieceType::Bishop,
+        PieceType::Rook,
+        PieceType::Queen,
+        PieceType::King,
+    ];
 }
 
 #[derive(Debug, PartialEq, Clone, Copy)]
@@ -370,6 +422,41 @@ impl Piece {
             Piece::WhiteRook | Piece::BlackRook => ROOK_VALUE,
             Piece::WhiteQueen | Piece::BlackQueen => QUEEN_VALUE,
             Piece::WhiteKing | Piece::BlackKing => KING_VALUE,
+        }
+    }
+
+    /// The colour-agnostic kind of this piece (Pawn, Knight, …, King).
+    /// Pairs with `Piece::color()` so any piece can be split into the
+    /// `(PieceType, Color)` form that indexes `Board::pieces` /
+    /// `Board::colors`.
+    #[inline]
+    pub fn piece_type(&self) -> PieceType {
+        match self {
+            Piece::WhitePawn | Piece::BlackPawn => PieceType::Pawn,
+            Piece::WhiteKnight | Piece::BlackKnight => PieceType::Knight,
+            Piece::WhiteBishop | Piece::BlackBishop => PieceType::Bishop,
+            Piece::WhiteRook | Piece::BlackRook => PieceType::Rook,
+            Piece::WhiteQueen | Piece::BlackQueen => PieceType::Queen,
+            Piece::WhiteKing | Piece::BlackKing => PieceType::King,
+        }
+    }
+
+    /// Build a `Piece` from a `(PieceType, Color)` pair. Inverse of
+    /// `(piece.piece_type(), piece.color())`.
+    pub fn from_type_and_color(pt: PieceType, color: Color) -> Piece {
+        match (pt, color) {
+            (PieceType::Pawn, Color::White) => Piece::WhitePawn,
+            (PieceType::Knight, Color::White) => Piece::WhiteKnight,
+            (PieceType::Bishop, Color::White) => Piece::WhiteBishop,
+            (PieceType::Rook, Color::White) => Piece::WhiteRook,
+            (PieceType::Queen, Color::White) => Piece::WhiteQueen,
+            (PieceType::King, Color::White) => Piece::WhiteKing,
+            (PieceType::Pawn, Color::Black) => Piece::BlackPawn,
+            (PieceType::Knight, Color::Black) => Piece::BlackKnight,
+            (PieceType::Bishop, Color::Black) => Piece::BlackBishop,
+            (PieceType::Rook, Color::Black) => Piece::BlackRook,
+            (PieceType::Queen, Color::Black) => Piece::BlackQueen,
+            (PieceType::King, Color::Black) => Piece::BlackKing,
         }
     }
 }

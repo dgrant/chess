@@ -1,6 +1,6 @@
 use crate::board::Board;
 use crate::board_utils::get_empty_board;
-use crate::types::{Color, Square};
+use crate::types::{Color, PieceType, Square};
 
 impl Board {
     pub fn to_fen(&self) -> String {
@@ -116,21 +116,27 @@ pub fn load_fen(fen: &str) -> Result<Board, &'static str> {
                 let square = (7 - rank_idx) * 8 + file;
                 let bit = 1u64 << square;
 
-                match c {
-                    'P' => board.white_pawns |= bit,
-                    'N' => board.white_knights |= bit,
-                    'B' => board.white_bishops |= bit,
-                    'R' => board.white_rooks |= bit,
-                    'Q' => board.white_queen |= bit,
-                    'K' => board.white_king |= bit,
-                    'p' => board.black_pawns |= bit,
-                    'n' => board.black_knights |= bit,
-                    'b' => board.black_bishops |= bit,
-                    'r' => board.black_rooks |= bit,
-                    'q' => board.black_queen |= bit,
-                    'k' => board.black_king |= bit,
+                // Translate the FEN character into a (PieceType, Color)
+                // pair, then update both per-type and per-colour
+                // bitboards in lock-step. Uppercase = white, lowercase
+                // = black.
+                let (pt, color) = match c {
+                    'P' => (PieceType::Pawn, Color::White),
+                    'N' => (PieceType::Knight, Color::White),
+                    'B' => (PieceType::Bishop, Color::White),
+                    'R' => (PieceType::Rook, Color::White),
+                    'Q' => (PieceType::Queen, Color::White),
+                    'K' => (PieceType::King, Color::White),
+                    'p' => (PieceType::Pawn, Color::Black),
+                    'n' => (PieceType::Knight, Color::Black),
+                    'b' => (PieceType::Bishop, Color::Black),
+                    'r' => (PieceType::Rook, Color::Black),
+                    'q' => (PieceType::Queen, Color::Black),
+                    'k' => (PieceType::King, Color::Black),
                     _ => return Err("Invalid FEN: invalid piece"),
-                }
+                };
+                board.pieces[pt.idx()] |= bit;
+                board.colors[color.idx()] |= bit;
                 file += 1;
             }
         }

@@ -48,25 +48,25 @@ impl Board {
         let mut score = 0;
 
         // Count white pieces
-        score += (self.white_pawns.count_ones() * PAWN_VALUE as u32) as i64;
-        score += (self.white_knights.count_ones() * KNIGHT_VALUE as u32) as i64;
-        score += (self.white_bishops.count_ones() * BISHOP_VALUE as u32) as i64;
-        score += (self.white_rooks.count_ones() * ROOK_VALUE as u32) as i64;
-        score += (self.white_queen.count_ones() * QUEEN_VALUE as u32) as i64;
+        score += (self.white_pawns().count_ones() * PAWN_VALUE as u32) as i64;
+        score += (self.white_knights().count_ones() * KNIGHT_VALUE as u32) as i64;
+        score += (self.white_bishops().count_ones() * BISHOP_VALUE as u32) as i64;
+        score += (self.white_rooks().count_ones() * ROOK_VALUE as u32) as i64;
+        score += (self.white_queen().count_ones() * QUEEN_VALUE as u32) as i64;
 
         // Subtract black pieces
-        score -= (self.black_pawns.count_ones() * PAWN_VALUE as u32) as i64;
-        score -= (self.black_knights.count_ones() * KNIGHT_VALUE as u32) as i64;
-        score -= (self.black_bishops.count_ones() * BISHOP_VALUE as u32) as i64;
-        score -= (self.black_rooks.count_ones() * ROOK_VALUE as u32) as i64;
-        score -= (self.black_queen.count_ones() * QUEEN_VALUE as u32) as i64;
+        score -= (self.black_pawns().count_ones() * PAWN_VALUE as u32) as i64;
+        score -= (self.black_knights().count_ones() * KNIGHT_VALUE as u32) as i64;
+        score -= (self.black_bishops().count_ones() * BISHOP_VALUE as u32) as i64;
+        score -= (self.black_rooks().count_ones() * ROOK_VALUE as u32) as i64;
+        score -= (self.black_queen().count_ones() * QUEEN_VALUE as u32) as i64;
 
         // Bishop pair bonus
-        if self.white_bishops.count_ones() >= 2 {
+        if self.white_bishops().count_ones() >= 2 {
             score += BISHOP_PAIR_BONUS;
             // Add a bonus for check (50 centipawns)
         }
-        if self.black_bishops.count_ones() >= 2 {
+        if self.black_bishops().count_ones() >= 2 {
             score -= BISHOP_PAIR_BONUS;
         }
 
@@ -79,15 +79,15 @@ impl Board {
 
         // Center control (e4, e5, d4, d5)
         let center_squares = 0x0000001818000000u64;
-        score += ((self.any_white & center_squares).count_ones() as i64) * CENTER_CONTROL_BONUS;
-        score -= ((self.any_black & center_squares).count_ones() as i64) * CENTER_CONTROL_BONUS;
+        score += ((self.any_white() & center_squares).count_ones() as i64) * CENTER_CONTROL_BONUS;
+        score -= ((self.any_black() & center_squares).count_ones() as i64) * CENTER_CONTROL_BONUS;
 
         // Extended center control (e3, e6, d3, d6, c4, c5, f4, f5)
         let extended_center = 0x00003C3C3C3C0000u64;
         score +=
-            ((self.any_white & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
+            ((self.any_white() & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
         score -=
-            ((self.any_black & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
+            ((self.any_black() & extended_center).count_ones() as i64) * (CENTER_CONTROL_BONUS / 2);
 
         // Mobility evaluation for pieces
         score += self.evaluate_piece_mobility();
@@ -117,10 +117,10 @@ impl Board {
         }
 
         // Check if kings have moved to typical castled positions
-        let white_king_kingside = self.white_king & Square::G1.to_bitboard(); // g1
-        let white_king_queenside = self.white_king & Square::C1.to_bitboard(); // c1
-        let black_king_kingside = self.black_king & Square::G8.to_bitboard(); // g8
-        let black_king_queenside = self.black_king & Square::C8.to_bitboard(); // c8
+        let white_king_kingside = self.white_king() & Square::G1.to_bitboard(); // g1
+        let white_king_queenside = self.white_king() & Square::C1.to_bitboard(); // c1
+        let black_king_kingside = self.black_king() & Square::G8.to_bitboard(); // g8
+        let black_king_queenside = self.black_king() & Square::C8.to_bitboard(); // c8
 
         // Evaluate actual castled positions
         // We check if the king is in a castled position AND we've lost the corresponding castling right
@@ -144,52 +144,52 @@ impl Board {
         let mut score = 0;
 
         // Knights
-        let mut white_knights = self.white_knights;
+        let mut white_knights = self.white_knights();
         while white_knights != 0 {
             let pos = white_knights.trailing_zeros() as u8;
-            let moves = knight_legal_moves(1u64 << pos, self.any_white);
+            let moves = knight_legal_moves(1u64 << pos, self.any_white());
             score += (moves.count_ones() as i64) * MOBILITY_BONUS;
             white_knights &= white_knights - 1;
         }
 
-        let mut black_knights = self.black_knights;
+        let mut black_knights = self.black_knights();
         while black_knights != 0 {
             let pos = black_knights.trailing_zeros() as u8;
-            let moves = knight_legal_moves(1u64 << pos, self.any_black);
+            let moves = knight_legal_moves(1u64 << pos, self.any_black());
             score -= (moves.count_ones() as i64) * MOBILITY_BONUS;
             black_knights &= black_knights - 1;
         }
 
         // Bishops
-        let mut white_bishops = self.white_bishops;
+        let mut white_bishops = self.white_bishops();
         while white_bishops != 0 {
             let pos = white_bishops.trailing_zeros() as u8;
-            let moves = bishop_moves(1u64 << pos, self.any_white, self.any_black);
+            let moves = bishop_moves(1u64 << pos, self.any_white(), self.any_black());
             score += (moves.count_ones() as i64) * MOBILITY_BONUS;
             white_bishops &= white_bishops - 1;
         }
 
-        let mut black_bishops = self.black_bishops;
+        let mut black_bishops = self.black_bishops();
         while black_bishops != 0 {
             let pos = black_bishops.trailing_zeros() as u8;
-            let moves = bishop_moves(1u64 << pos, self.any_black, self.any_white);
+            let moves = bishop_moves(1u64 << pos, self.any_black(), self.any_white());
             score -= (moves.count_ones() as i64) * MOBILITY_BONUS;
             black_bishops &= black_bishops - 1;
         }
 
         // Rooks
-        let mut white_rooks = self.white_rooks;
+        let mut white_rooks = self.white_rooks();
         while white_rooks != 0 {
             let pos = white_rooks.trailing_zeros() as u8;
-            let moves = rook_moves(1u64 << pos, self.any_white, self.any_black);
+            let moves = rook_moves(1u64 << pos, self.any_white(), self.any_black());
             score += (moves.count_ones() as i64) * MOBILITY_BONUS;
             white_rooks &= white_rooks - 1;
         }
 
-        let mut black_rooks = self.black_rooks;
+        let mut black_rooks = self.black_rooks();
         while black_rooks != 0 {
             let pos = black_rooks.trailing_zeros() as u8;
-            let moves = rook_moves(1u64 << pos, self.any_black, self.any_white);
+            let moves = rook_moves(1u64 << pos, self.any_black(), self.any_white());
             score -= (moves.count_ones() as i64) * MOBILITY_BONUS;
             black_rooks &= black_rooks - 1;
         }

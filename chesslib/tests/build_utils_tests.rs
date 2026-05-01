@@ -5,19 +5,19 @@ use chesslib::Square;
 #[test]
 fn test_get_starting_board() {
     let board = get_starting_board();
-    assert_eq!(board.white_pawns, 0x000000000000FF00);
-    assert_eq!(board.white_knights, 0x0000000000000042);
-    assert_eq!(board.white_bishops, 0x0000000000000024);
-    assert_eq!(board.white_rooks, 0x0000000000000081);
-    assert_eq!(board.white_queen, Square::D1.to_bitboard());
-    assert_eq!(board.white_king, Square::E1.to_bitboard());
+    assert_eq!(board.white_pawns(), 0x000000000000FF00);
+    assert_eq!(board.white_knights(), 0x0000000000000042);
+    assert_eq!(board.white_bishops(), 0x0000000000000024);
+    assert_eq!(board.white_rooks(), 0x0000000000000081);
+    assert_eq!(board.white_queen(), Square::D1.to_bitboard());
+    assert_eq!(board.white_king(), Square::E1.to_bitboard());
 
-    assert_eq!(board.black_pawns, 0x00FF000000000000);
-    assert_eq!(board.black_knights, 0x4200000000000000);
-    assert_eq!(board.black_bishops, 0x2400000000000000);
-    assert_eq!(board.black_rooks, 0x8100000000000000);
-    assert_eq!(board.black_queen, Square::D8.to_bitboard());
-    assert_eq!(board.black_king, Square::E8.to_bitboard());
+    assert_eq!(board.black_pawns(), 0x00FF000000000000);
+    assert_eq!(board.black_knights(), 0x4200000000000000);
+    assert_eq!(board.black_bishops(), 0x2400000000000000);
+    assert_eq!(board.black_rooks(), 0x8100000000000000);
+    assert_eq!(board.black_queen(), Square::D8.to_bitboard());
+    assert_eq!(board.black_king(), Square::E8.to_bitboard());
 
     assert!(!board.white_king_in_check);
     assert!(!board.black_king_in_check);
@@ -171,24 +171,24 @@ fn test_get_starting_board() {
     // }
     // Composite bitboards
     assert_eq!(
-        board.any_white,
-        board.white_pawns
-            | board.white_knights
-            | board.white_bishops
-            | board.white_rooks
-            | board.white_queen
-            | board.white_king
+        board.any_white(),
+        board.white_pawns()
+            | board.white_knights()
+            | board.white_bishops()
+            | board.white_rooks()
+            | board.white_queen()
+            | board.white_king()
     );
     assert_eq!(
-        board.any_black,
-        board.black_pawns
-            | board.black_knights
-            | board.black_bishops
-            | board.black_rooks
-            | board.black_queen
-            | board.black_king
+        board.any_black(),
+        board.black_pawns()
+            | board.black_knights()
+            | board.black_bishops()
+            | board.black_rooks()
+            | board.black_queen()
+            | board.black_king()
     );
-    assert_eq!(board.empty, !(board.any_white | board.any_black));
+    assert_eq!(board.empty(), !(board.any_white() | board.any_black()));
     // Ensure the board is valid
     // assert!(board.is_valid());
     // // Ensure the side to move is white
